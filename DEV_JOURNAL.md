@@ -114,6 +114,7 @@ cd /var/www/mindandmotion-mobile
 npm run web  # Запуск Web версии
 npm run android  # Запуск Android (нужен эмулятор)
 npm run ios  # Запуск iOS (только на Mac)
+/bash
 
 ---
 
