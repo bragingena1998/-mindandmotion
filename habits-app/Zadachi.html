@@ -1,0 +1,1705 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Задачи — Жук Выводжук</title>
+
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="tasks.css">
+  <link rel="stylesheet" href="header.css">
+<script src="header-loader.js"></script>
+<script src="auth.js"></script>
+</head>
+<body class="theme-storm">
+
+<div class="site-bg-base"></div>
+<div class="site-bg-mask"></div>
+
+<div class="app-root">
+  <div class="app-shell">
+
+  
+    <!-- Загружаемая общая шапка -->
+<div id="header-placeholder"></div>
+  <!-- КОНТЕНТ СТРАНИЦЫ ЗАДАЧ -->
+    <main class="page-content page-tasks" id="tasks">
+      <div class="page-inner">
+
+        <div class="page-header">
+          <h1 class="page-title">🎯 Задачи</h1>
+
+          <div class="page-header__controls">
+            <div class="tasks-help-tooltip" aria-label="Подсказка по вкладке Задачи">
+              <span class="tasks-help-tooltip__icon">?</span>
+              <div class="tasks-help-tooltip__content">
+                <p><strong>Статистика сверху</strong> показывает, сколько задач сделано сегодня, за неделю, месяц и год.</p>
+                <p><strong>Дата / Срок</strong> — плановый день и крайний дедлайн задачи.</p>
+                <p><strong>Фокус‑сессия</strong> — таймер Помидоро, считает сессии по выбранной задаче.</p>
+                <p><strong>Статус и подсветка строки</strong> меняются автоматически по дате и дедлайну; «Готово» переводит задачу в выполненные.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section class="block block-tasks">
+          <div class="tasks-panel">
+            <h2 class="block-title">Задачи / фокус / сроки</h2>
+
+            <!-- СТАТИСТИКА -->
+            <div class="stats-grid">
+              <div class="stat-item">
+                <p class="stat-number" id="todayDoneCount">0</p>
+                <p class="stat-label">Сегодня</p>
+              </div>
+              <div class="stat-item">
+                <p class="stat-number" id="weekDoneCount">0</p>
+                <p class="stat-label">Неделя</p>
+              </div>
+              <div class="stat-item">
+                <p class="stat-number" id="monthDoneCount">0</p>
+                <p class="stat-label">Месяц</p>
+              </div>
+              <div class="stat-item">
+                <p class="stat-number" id="yearDoneCount">0</p>
+                <p class="stat-label">Год</p>
+              </div>
+                            <div class="stat-item">
+                <p class="stat-number" id="overdueDoneCount">0</p>
+                <p class="stat-label">Просрочено ✓</p>
+              </div>
+            </div>
+
+<!-- ФОРМА ДОБАВЛЕНИЯ -->
+<form id="taskForm" class="task-form">
+  <div class="date-field">
+    <div id="taskDateDisplay"
+         class="date-display"
+         data-role="date-display"
+         data-target="date">—</div>
+    <span class="date-icon">📅</span>
+  </div>
+
+  <div class="date-field">
+    <div id="taskDeadlineDisplay"
+         class="date-display"
+         data-role="date-display"
+         data-target="deadline">—</div>
+    <span class="date-icon">📅</span>
+  </div>
+
+  <input type="text" id="taskTitle" placeholder="Задача" required>
+
+  <select id="taskPriority">
+    <option value="1">Низкий</option>
+    <option value="2" selected>Нормальный</option>
+    <option value="3">Высокий</option>
+  </select>
+
+  <input type="text" id="taskComment" placeholder="Комментарий / ссылка">
+
+  <label class="checkbox-recurrence">
+    <input type="checkbox" id="taskIsRecurring">
+    <span>🔁</span>
+  </label>
+
+  <select id="taskRecurrenceType" style="display: none;">
+  <option value="">—</option>
+  <option value="daily">День</option>
+  <option value="weekly">Неделя</option>
+  <option value="monthly_date">Месяц</option>
+  <option value="monthly_weekday">День нед.</option>
+  <option value="yearly">Год</option>
+</select>
+
+</form>
+
+<!-- КНОПКА ДОБАВЛЕНИЯ (ОТДЕЛЬНО) -->
+<button type="submit" form="taskForm" class="habits-btn task-add-btn">+ Добавить задачу</button>
+
+<!-- ПОДСКАЗКА ПОД КНОПКОЙ -->
+<div id="recurrenceHintWrapper" class="recurrence-hint-wrapper" style="display: none;">
+  <span id="recurrenceHint" class="recurrence-hint"></span>
+</div>
+
+            <!-- ПОМИДОРО -->
+            <div class="pomodoro-panel">
+              <div class="pomodoro-label">Фокус‑сессия:</div>
+              <select id="pomodoroTaskSelect" style="min-width:220px;"></select>
+
+              <div class="pomodoro-label">
+                Длительность (мин):
+                <input type="number" id="pomodoroDuration" value="25" min="1" max="120" style="width:70px;">
+              </div>
+
+              <div class="pomodoro-timer" id="pomodoroTimer">25:00</div>
+
+              <button id="pomodoroToggleBtn" class="habits-btn">Старт</button>
+              <button id="pomodoroResetBtn" class="habits-btn habits-btn--secondary">Сброс</button>
+
+              <div class="pomodoro-current" id="pomodoroCurrentInfo"></div>
+            </div>
+
+            <!-- КНОПКА ПОКАЗА ВЫПОЛНЕННЫХ -->
+            <div style="margin-bottom:10px;">
+              <button id="toggleDoneTasks"
+                      class="habits-btn habits-btn--secondary toggle-done">
+                Показать выполненные
+              </button>
+            </div>
+
+            <!-- ТАБЛИЦА ЗАДАЧ -->
+            <div class="tasks-table-wrapper">
+              <div class="tasks-table-scroll">
+                <table id="tasksTable" class="habits-table">
+                  <thead>
+                  <tr>
+                    <th style="width:110px;">Дата</th>
+                    <th style="width:110px;">Срок</th>
+                    <th style="text-align:left;min-width:260px;">Задача</th>
+                    <th style="width:120px;">Приоритет</th>
+                    <th style="text-align:left;min-width:260px;">Комментарий</th>
+                    <th style="width:80px;">Фокус</th>
+                    <th style="width:100px;">Факт</th>
+                    <th style="width:80px;">Статус</th>
+                    <th style="width:70px;">Готово</th>
+                  </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- КОНТЕКСТНОЕ МЕНЮ -->
+        <div id="taskContextMenu" class="task-context-menu">
+          <button type="button" data-action="delete">Удалить задачу</button>
+        </div>
+
+        <!-- МОДАЛКА УДАЛЕНИЯ -->
+        <div id="deleteModalBackdrop" class="modal-backdrop">
+          <div class="modal">
+            <div class="modal-title">Удалить задачу?</div>
+            <div class="modal-text">
+              Задача будет удалена из списка. Её можно будет вернуть
+              в течение 20 секунд через «Восстановить».
+            </div>
+            <div class="modal-actions">
+              <button type="button" id="deleteCancelBtn"
+                      class="habits-btn habits-btn--secondary">Отмена</button>
+              <button type="button" id="deleteConfirmBtn"
+                      class="habits-btn habits-btn--danger">Удалить</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- UNDO-ТОСТ -->
+        <div id="undoToast" class="undo-toast">
+          <span>Задача удалена.</span>
+          <span class="undo-toast__timer" id="undoTimer">20</span>
+          <button type="button" id="undoBtn"
+                  class="habits-btn habits-btn--secondary">Восстановить</button>
+        </div>
+
+        <!-- МИНИ‑КАЛЕНДАРЬ -->
+        <div id="miniCalendarPopover" class="mini-calendar-popover">
+          <div class="mini-calendar-header">
+            <button type="button" class="mini-calendar-nav-btn" id="miniCalPrev">&lt;</button>
+            <div class="mini-calendar-month-label" id="miniCalMonthLabel"></div>
+            <button type="button" class="mini-calendar-nav-btn" id="miniCalNext">&gt;</button>
+          </div>
+          <div class="mini-calendar-grid" id="miniCalGrid"></div>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<script>
+(function(){
+    const STORAGE = {
+        tasks: 'tasks-tracker-tasks-v3'
+    };
+
+   // ❌ localStorage полностью отключен
+function save(key, data) {
+    // Только логируем, но не сохраняем в localStorage
+    console.log('💾 Data prepared for sync (localStorage disabled)');
+}
+function load(key) {
+    // Не загружаем из localStorage, только с сервера
+    return null;
+}
+
+
+    function getTodayISO() {
+        const d = new Date();
+        return d.toISOString().slice(0,10);
+    }
+
+    function addDaysISO(iso, delta) {
+        const d = new Date(iso);
+        d.setDate(d.getDate() + delta);
+        return d.toISOString().slice(0,10);
+    }
+
+    function getStartOfYearISO(iso) {
+        const d = new Date(iso);
+        return new Date(d.getFullYear(), 0, 1).toISOString().slice(0,10);
+    }
+
+    function compareISO(a,b) {
+        if (!a && !b) return 0;
+        if (!a) return 1;
+        if (!b) return -1;
+        return a.localeCompare(b);
+    }
+
+function formatDateDisplay(iso) {
+  if (!iso) return '';
+  const parts = iso.split('-');
+  if (parts.length !== 3) return iso;
+  const [y, m, d] = parts;
+  return `${d}.${m}.${y}`;
+}
+
+    function parseDisplayDate(str) {
+        const parts = (str || '').split('.');
+        if (parts.length !== 3) return null;
+        let [d,m,y] = parts.map(s => s.trim());
+        if (!d || !m || !y) return null;
+        return y.padStart(4,'0') + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+    }
+
+    function getMonthLabel(year, monthIndex) {
+        const months = ['ЯНВАРЬ','ФЕВРАЛЬ','МАРТ','АПРЕЛЬ','МАЙ','ИЮНЬ','ИЮЛЬ','АВГУСТ','СЕНТЯБРЬ','ОКТЯБРЬ','НОЯБРЬ','ДЕКАБРЬ'];
+        return months[monthIndex] + ' ' + year;
+    }
+
+    let tasksData = [];
+    let showDone = false;
+
+    let pomodoroTimerId = null;
+    let pomodoroRemaining = 0;
+    let pomodoroActiveTaskId = null;
+
+    let deleteTargetId = null;
+    let lastDeletedTask = null;
+    let undoTimerId = null;
+    let undoSecondsLeft = 0;
+
+    const todayDoneCountEl = document.getElementById('todayDoneCount');
+    const weekDoneCountEl = document.getElementById('weekDoneCount');
+    const monthDoneCountEl = document.getElementById('monthDoneCount');
+    const yearDoneCountEl = document.getElementById('yearDoneCount');
+const overdueDoneCountEl = document.getElementById('overdueDoneCount');
+
+
+    const taskForm = document.getElementById('taskForm');
+    const taskDateDisplay = document.getElementById('taskDateDisplay');
+    const taskDeadlineDisplay = document.getElementById('taskDeadlineDisplay');
+    const taskTitleInput = document.getElementById('taskTitle');
+    const taskPrioritySelect = document.getElementById('taskPriority');
+    const taskCommentInput = document.getElementById('taskComment');
+    const isRecurringCheckbox = document.getElementById('taskIsRecurring');
+    const recurrenceTypeSelect = document.getElementById('taskRecurrenceType');
+    const recurrenceHint = document.getElementById('recurrenceHint');
+    const recurrenceHintWrapper = document.getElementById('recurrenceHintWrapper');
+
+    const tasksTableBody = document.querySelector('#tasksTable tbody');
+    const toggleDoneTasksBtn = document.getElementById('toggleDoneTasks');
+    const taskContextMenu = document.getElementById('taskContextMenu');
+
+    const deleteModalBackdrop = document.getElementById('deleteModalBackdrop');
+    const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
+    const deleteCancelBtn = document.getElementById('deleteCancelBtn');
+
+    const undoToast = document.getElementById('undoToast');
+    const undoBtn = document.getElementById('undoBtn');
+    const undoTimerEl = document.getElementById('undoTimer');
+
+    const pomodoroTaskSelect = document.getElementById('pomodoroTaskSelect');
+    const pomodoroDurationInput = document.getElementById('pomodoroDuration');
+    const pomodoroTimerEl = document.getElementById('pomodoroTimer');
+    const pomodoroToggleBtn = document.getElementById('pomodoroToggleBtn');
+    const pomodoroResetBtn = document.getElementById('pomodoroResetBtn');
+    const pomodoroCurrentInfo = document.getElementById('pomodoroCurrentInfo');
+
+    // Мини‑календарь
+    const miniCalPopover = document.getElementById('miniCalendarPopover');
+    const miniCalMonthLabel = document.getElementById('miniCalMonthLabel');
+    const miniCalGrid = document.getElementById('miniCalGrid');
+    const miniCalPrev = document.getElementById('miniCalPrev');
+    const miniCalNext = document.getElementById('miniCalNext');
+
+    let miniCalState = {
+        year: new Date().getFullYear(),
+        monthIndex: new Date().getMonth(),
+        anchorRole: null,
+        anchorTaskId: null
+    };
+
+    function getDeadlineForLogic(task) {
+        return task.deadline || task.date || null;
+    }
+
+    function classifyTask(task) {
+        const today = getTodayISO();
+        const logicalDeadline = getDeadlineForLogic(task);
+        if (task.done) return 'done';
+        if (!logicalDeadline) return 'future';
+        if (logicalDeadline < today) return 'overdue';
+        if (logicalDeadline === today) return 'today';
+        return 'future';
+    }
+
+    function updateTaskStats() {
+    const today = getTodayISO();
+    
+    // СЕГОДНЯ: только задачи ВЫПОЛНЕННЫЕ СЕГОДНЯ
+    let todayDone = 0;
+    tasksData.forEach(t => {
+        if (t.done && t.doneDate === today) {
+            todayDone++;
+        }
+    });
+    
+    // НЕДЕЛЯ: Понедельник этой недели → Воскресенье
+    const weekStart = new Date(today);
+    const day = weekStart.getDay();
+    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1); // Понедельник
+    weekStart.setDate(diff);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekStartISO = weekStart.toISOString().slice(0, 10);
+    
+    let weekDone = 0;
+    tasksData.forEach(t => {
+        if (t.done && t.doneDate >= weekStartISO && t.doneDate <= today) {
+            weekDone++;
+        }
+    });
+    
+    // МЕСЯЦ: 1-го числа → конец месяца
+    const monthStart = new Date(today);
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStartISO = monthStart.toISOString().slice(0, 10);
+    
+    let monthDone = 0;
+    tasksData.forEach(t => {
+        if (t.done && t.doneDate >= monthStartISO && t.doneDate <= today) {
+            monthDone++;
+        }
+    });
+    
+    // ГОД: 1 января → 31 декабря
+    const yearStart = new Date(today.split('-')[0], 0, 1);
+    yearStart.setHours(0, 0, 0, 0);
+    const yearStartISO = yearStart.toISOString().slice(0, 10);
+    
+    let yearDone = 0;
+    tasksData.forEach(t => {
+        if (t.done && t.doneDate >= yearStartISO && t.doneDate <= today) {
+            yearDone++;
+        }
+    });
+    
+    // ПРОСРОЧЕНО (активные): deadline < сегодня И не выполнены
+    let overdueActive = 0;
+    tasksData.forEach(t => {
+        if (!t.done) {
+            const deadline = t.deadline || t.date;
+            if (deadline && deadline < today) {
+                overdueActive++;
+            }
+        }
+    });
+    
+    // Обновляем HTML
+    todayDoneCountEl.textContent = todayDone;
+    weekDoneCountEl.textContent = weekDone;
+    monthDoneCountEl.textContent = monthDone;
+    yearDoneCountEl.textContent = yearDone;
+    
+    
+    // СКРЫВАЕМ "Просрочено ✓"
+    const overdueDoneSection = overdueDoneCountEl.closest('.stat-item');
+    if (overdueDoneSection) {
+        overdueDoneSection.style.display = 'none';
+    }
+}
+
+
+    function getRecurrenceLabel(type, value) {
+        switch (type) {
+            case 'daily':
+                return 'Каждый день';
+            case 'weekly':
+                return 'Каждую неделю';
+            case 'monthly_date':
+                return `Каждое ${value}-е число месяца`;
+            case 'monthly_weekday':
+                const [week, weekday] = value.split(',').map(Number);
+                const weekNames = {'1': 'первый', '2': 'второй', '3': 'третий', '4': 'четвёртый', '-1': 'последний'};
+                const dayNames = ['воскресенье', 'понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу'];
+                return `Каждый ${weekNames[week.toString()]} ${dayNames[weekday]} месяца`;
+            case 'yearly':
+                return 'Каждый год в ту же дату';
+            default:
+                return 'Настроено повторение';
+        }
+    }
+
+    function renderTasks() {
+        const sorted = tasksData.slice().sort((a,b) => {
+            const c = compareISO(getDeadlineForLogic(a) || '', getDeadlineForLogic(b) || '');
+            if (c !== 0) return c;
+            const pDiff = (b.priority||2) - (a.priority||2);
+            if (pDiff !== 0) return pDiff;
+            return compareISO(a.date || '', b.date || '');
+        });
+
+        tasksTableBody.innerHTML = '';
+        const today = getTodayISO();
+
+        sorted.forEach(task => {
+            const statusClass = classifyTask(task);
+            if (!showDone && statusClass === 'done') return;
+
+            const tr = document.createElement('tr');
+            tr.dataset.id = String(task.id);
+
+            if (statusClass === 'overdue') tr.classList.add('task-overdue');
+            if (statusClass === 'today')   tr.classList.add('task-today');
+            if (statusClass === 'future')  tr.classList.add('task-future');
+            if (statusClass === 'done')    tr.classList.add('task-done');
+
+            const dateCell = document.createElement('td');
+            dateCell.className = 'date-cell';
+            dateCell.textContent = formatDateDisplay(task.date || '');
+
+            const deadlineCell = document.createElement('td');
+            deadlineCell.className = 'deadline-cell';
+            deadlineCell.textContent = formatDateDisplay(task.deadline || '');
+
+            const titleCell = document.createElement('td');
+            titleCell.className = 'task-label editable-text';
+            titleCell.textContent = task.title;
+
+            if (task.isRecurring && task.recurrenceType) {
+    const indicator = document.createElement('span');
+    indicator.className = 'recurring-indicator';
+    indicator.textContent = '🔁';
+    
+    const tooltip = document.createElement('div');
+    tooltip.className = 'recurring-tooltip';
+    
+    const label = document.createElement('span');
+    label.className = 'recurring-tooltip-label';
+    label.textContent = '🔁 Повторяется';
+    
+    const desc = document.createElement('span');
+    desc.className = 'recurring-tooltip-desc';
+    desc.textContent = getRecurrenceLabel(task.recurrenceType, task.recurrenceValue);
+    
+    tooltip.appendChild(label);
+    tooltip.appendChild(desc);
+    indicator.appendChild(tooltip);
+    titleCell.appendChild(indicator);
+}
+
+
+            const priorityCell = document.createElement('td');
+            priorityCell.className = 'priority-cell';
+            const pWrap = document.createElement('div');
+            pWrap.className = 'task-priority-select';
+            const pBtn = document.createElement('button');
+            pBtn.type = 'button';
+            const pVal = task.priority || 2;
+            pBtn.className = 'priority-badge priority-' + pVal;
+            pBtn.textContent = getPriorityText(pVal);
+            pWrap.appendChild(pBtn);
+
+            const pDrop = document.createElement('div');
+            pDrop.className = 'task-priority-dropdown';
+            [1,2,3].forEach(p => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = getPriorityText(p);
+                b.dataset.value = String(p);
+                pDrop.appendChild(b);
+            });
+            pWrap.appendChild(pDrop);
+            priorityCell.appendChild(pWrap);
+
+            const commentCell = document.createElement('td');
+            commentCell.className = 'comment-cell editable-text';
+            commentCell.textContent = task.comment || '';
+
+            const focusCell = document.createElement('td');
+            const sessions = task.focusSessions || 0;
+            const fb = document.createElement('span');
+            fb.className = 'focus-badge';
+            fb.textContent = sessions ? `${sessions}×` : '0×';
+            focusCell.appendChild(fb);
+
+            const factCell = document.createElement('td');
+            factCell.textContent = formatDateDisplay(task.doneDate || '');
+
+            const statusCell = document.createElement('td');
+            if (task.done) {
+                statusCell.textContent = 'Готово';
+            } else {
+                const logicalDeadline = getDeadlineForLogic(task);
+                if (logicalDeadline && logicalDeadline < today) statusCell.textContent = 'Просрочено';
+                else if (logicalDeadline === today) statusCell.textContent = 'Сегодня';
+                else statusCell.textContent = 'В работе';
+            }
+
+            const doneCell = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'task-done-checkbox';
+            checkbox.checked = task.done;
+            doneCell.appendChild(checkbox);
+
+            tr.appendChild(dateCell);
+            tr.appendChild(deadlineCell);
+            tr.appendChild(titleCell);
+            tr.appendChild(priorityCell);
+            tr.appendChild(commentCell);
+            tr.appendChild(focusCell);
+            tr.appendChild(factCell);
+            tr.appendChild(statusCell);
+            tr.appendChild(doneCell);
+
+            tasksTableBody.appendChild(tr);
+        });
+    }
+
+    function getPriorityText(p) {
+        if (p === 3) return 'Высокий';
+        if (p === 2) return 'Нормальный';
+        return 'Низкий';
+    }
+// Рассчитывает новый deadline для повторяющейся задачи
+function calculateNextDeadline(template, newDate) {
+    if (!template.deadline) return '';
+
+    // Разница в днях между датой и deadline шаблона
+    const templateDate = new Date(template.date);
+    const templateDeadline = new Date(template.deadline);
+    const daysDiff = Math.floor((templateDeadline - templateDate) / (1000 * 60 * 60 * 24));
+
+    // Добавляем эту разницу к новой дате
+    const newDateObj = new Date(newDate);
+    newDateObj.setDate(newDateObj.getDate() + daysDiff);
+
+    return newDateObj.toISOString().slice(0, 10);
+}
+
+
+    // Генерирует будущие повторения на месяц вперёд
+    function checkRecurringTasks() {
+        const today = getTodayISO();
+        const oneMonthLater = addDaysISO(today, 30);
+
+        const templates = tasksData.filter(t => 
+            t.isRecurring && 
+            t.recurrenceType && 
+            !t.isGenerated
+        );
+
+        let hasChanges = false;
+
+        templates.forEach(template => {
+            let currentDate = template.date;
+            let safetyCounter = 0;
+            const MAX_ITERATIONS = 50;
+
+            while (currentDate && currentDate <= oneMonthLater && safetyCounter < MAX_ITERATIONS) {
+                safetyCounter++;
+
+                const exists = tasksData.some(t => 
+                    t.date === currentDate &&
+                    (t.id === template.id || t.templateId === template.id)
+                );
+
+                if (!exists && currentDate >= today) {
+                    const newTask = {
+    id: Date.now() + Math.floor(Math.random() * 1000000),
+    date: currentDate,
+    deadline: calculateNextDeadline(template, currentDate),  // ✅ НОВАЯ ФУНКЦИЯ!
+                        title: template.title,
+                        priority: template.priority,
+                        comment: template.comment,
+                        done: false,
+                        doneDate: null,
+                        focusSessions: 0,
+                        isRecurring: true,
+                        recurrenceType: template.recurrenceType,
+                        recurrenceValue: template.recurrenceValue,
+                        isGenerated: true,
+                        templateId: template.id
+                    };
+                    tasksData.push(newTask);
+                    hasChanges = true;
+                }
+
+                const nextDate = calculateNextRecurrence(template, currentDate);
+
+                if (nextDate === currentDate) {
+                    console.error('Бесконечный цикл предотвращён:', template);
+                    break;
+                }
+
+                currentDate = nextDate;
+            }
+
+            if (safetyCounter >= MAX_ITERATIONS) {
+                console.warn('Достигнут лимит итераций для задачи:', template.title);
+            }
+        });
+
+        if (hasChanges) {
+         saveTasks();
+        }
+    }
+
+    // ОДНА ВЕРСИЯ calculateNextRecurrence
+    function calculateNextRecurrence(task, lastDateISO) {
+        const lastDate = new Date(lastDateISO);
+
+        switch (task.recurrenceType) {
+            case 'daily':
+                const nextDay = new Date(lastDate);
+                nextDay.setDate(nextDay.getDate() + 1);
+                return nextDay.toISOString().slice(0, 10);
+
+            case 'weekly':
+                const nextWeek = new Date(lastDate);
+                nextWeek.setDate(nextWeek.getDate() + 7);
+                return nextWeek.toISOString().slice(0, 10);
+
+          case 'monthly_date':
+    const day = parseInt(task.recurrenceValue || lastDate.getDate());
+    const nextMonth = new Date(lastDate);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    
+    // Если в следующем месяце меньше дней (например, 31 → 28 февраля)
+    const maxDay = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
+    nextMonth.setDate(Math.min(day, maxDay));
+    
+    return nextMonth.toISOString().slice(0, 10);
+
+
+
+            case 'monthly_weekday':
+                if (!task.recurrenceValue) return null;
+                const [week, weekday] = task.recurrenceValue.split(',').map(Number);
+                const currentDate = new Date(lastDate);
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                return getNthWeekdayOfMonth(currentDate.getFullYear(), currentDate.getMonth(), week, weekday);
+
+            case 'yearly':
+                const nextYear = new Date(lastDate);
+                nextYear.setFullYear(nextYear.getFullYear() + 1);
+                return nextYear.toISOString().slice(0, 10);
+
+            default:
+                return null;
+        }
+    }
+
+    // Получить N-й день недели в месяце
+    function getNthWeekdayOfMonth(year, month, n, weekday) {
+        const firstDay = new Date(year, month, 1);
+        const firstWeekday = firstDay.getDay();
+
+        let offset = (weekday - firstWeekday + 7) % 7;
+        if (n === -1) {
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            const date = new Date(year, month, lastDay);
+            while (date.getDay() !== weekday) {
+                date.setDate(date.getDate() -1);
+            }
+            return date.toISOString().slice(0, 10);
+        } else {
+            const day = 1 + offset + (n - 1) * 7;
+            return new Date(year, month, day).toISOString().slice(0, 10);
+        }
+    }
+
+  // Сохранение задач (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+async function saveTasks() {
+    save(STORAGE.tasks, tasksData);
+
+    const token = localStorage.getItem('app-auth-token');
+    if (!token) {
+        console.log('📱 Нет токена — используется только localStorage');
+        return;
+    }
+
+    try {
+        const response = await fetch('http://mindandmotion.ru:5000/api/tasks/sync', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ tasks: tasksData })
+        });
+
+        if (response.ok) {
+            console.log('✅ Задачи синхронизированы с сервером');
+        } else {
+            console.warn('⚠️ Sync вернул ошибку:', response.status);
+        }
+    } catch (err) {
+        console.log('📱 Синхронизация недоступна (используется localStorage)');
+    }
+}
+
+    function renderPomodoroTaskSelect() {
+        pomodoroTaskSelect.innerHTML = '';
+        const active = tasksData.filter(t => !t.done);
+        active.sort((a,b) => compareISO(getDeadlineForLogic(a) || '', getDeadlineForLogic(b) || ''));
+        active.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.title || '(без названия)';
+            pomodoroTaskSelect.appendChild(opt);
+        });
+        if (pomodoroActiveTaskId && !active.some(t => t.id === pomodoroActiveTaskId)) {
+            pomodoroActiveTaskId = null;
+        }
+        if (!pomodoroActiveTaskId && active.length) {
+            pomodoroActiveTaskId = active[0].id;
+        }
+        pomodoroTaskSelect.value = pomodoroActiveTaskId || '';
+        updatePomodoroCurrentLabel();
+    }
+
+    function updatePomodoroCurrentLabel() {
+        if (!pomodoroActiveTaskId) {
+            pomodoroCurrentInfo.textContent = '';
+            return;
+        }
+        const task = tasksData.find(t => t.id === pomodoroActiveTaskId);
+        if (!task) {
+            pomodoroCurrentInfo.textContent = '';
+            return;
+        }
+        const sessions = task.focusSessions || 0;
+        pomodoroCurrentInfo.textContent =
+            `Фокус на: ${task.title || '(без названия)'} · сессий: ${sessions}`;
+    }
+
+    function formatSecondsToMMSS(totalSeconds) {
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    }
+
+    function resetFormDates() {
+        const today = getTodayISO();
+        taskDateDisplay.dataset.iso = today;
+        taskDateDisplay.textContent = formatDateDisplay(today);
+        taskDeadlineDisplay.dataset.iso = '';
+        taskDeadlineDisplay.textContent = '—';
+    }
+    
+  function showNotification(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast-notification ${type}`;
+      toast.textContent = message;
+      toast.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: ${type === 'success' ? '#4caf50' : '#f44336'};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        z-index: 10000;
+        animation: slideInRight 0.3s ease-out;
+        font-weight: 600;
+      `;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.animation = 'slideInRight 0.3s ease-out reverse';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+    
+  async function addTaskFromForm(e) {
+  e.preventDefault();
+
+  // Проверка авторизации
+  if (!window.isUserLoggedIn?.() && !localStorage.getItem('app-auth-token')) {
+    showNotification('Пожалуйста, войдите в аккаунт', 'error');
+    if (window.openAuthModal) {
+      window.openAuthModal();
+    }
+    return;
+  }
+
+  const dateIso = taskDateDisplay.dataset.iso || getTodayISO();
+  const deadlineIso = taskDeadlineDisplay.dataset.iso || '';
+  const title = taskTitleInput.value.trim();
+  const priority = Number(taskPrioritySelect.value) || 2;
+  const comment = taskCommentInput.value.trim();
+  const isRecurring = isRecurringCheckbox.checked;
+  const recurrenceType = recurrenceTypeSelect.value;
+  let recurrenceValue = '';
+
+  if (isRecurring && recurrenceType) {
+    const date = new Date(dateIso);
+
+    switch (recurrenceType) {
+      case 'monthly_date':
+        recurrenceValue = date.getDate().toString();
+        break;
+
+      case 'monthly_weekday':
+        const weekday = date.getDay();
+        const weekOfMonth = Math.ceil(date.getDate() / 7);
+        recurrenceValue = `${weekOfMonth},${weekday}`;
+        break;
+
+      default:
+        recurrenceValue = '';
+    }
+  }
+
+  if (!title) {
+    alert('Введите название задачи');
+    return;
+  }
+
+  const newTask = {
+    date: dateIso,
+    deadline: deadlineIso,
+    title,
+    priority,
+    comment,
+    done: false,
+    doneDate: null,
+    focusSessions: 0,
+    isRecurring,
+    recurrenceType,
+    recurrenceValue
+  };
+
+  console.log('📤 ОТПРАВЛЯЕМ НА СЕРВЕР:', {
+    isRecurring,
+    recurrenceType,
+    recurrenceValue,
+    isRecurringCheckbox: isRecurringCheckbox.checked,
+    recurrenceTypeSelect: recurrenceTypeSelect.value
+  });
+
+  try {
+    const token = localStorage.getItem('app-auth-token');
+    if (!token) {
+      showNotification('Необходима авторизация', 'error');
+      return;
+    }
+
+    const response = await fetch('http://mindandmotion.ru:5000/api/tasks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(newTask)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Ошибка добавления задачи');
+    }
+
+    const savedTask = await response.json();
+    
+    console.log('📥 ПОЛУЧЕНО С СЕРВЕРА:', savedTask);
+
+    // Нормализуем ответ
+    const normalizedTask = {
+      id: savedTask.id || Date.now(),
+      date: savedTask.date ? savedTask.date.split('T')[0] : dateIso,
+      deadline: savedTask.deadline ? savedTask.deadline.split('T')[0] : deadlineIso,
+      title: savedTask.title || title,
+      priority: Number(savedTask.priority || priority),
+      comment: savedTask.comment || comment,
+      done: Boolean(savedTask.done),
+      doneDate: savedTask.doneDate ? savedTask.doneDate.split('T')[0] : null,
+      focusSessions: Number(savedTask.focusSessions || savedTask.focus_sessions || 0),
+      isRecurring: Boolean(savedTask.isRecurring || savedTask.is_recurring),
+      recurrenceType: savedTask.recurrenceType || savedTask.recurrence_type || '',
+      recurrenceValue: savedTask.recurrenceValue || savedTask.recurrence_value || '',
+      isGenerated: Boolean(savedTask.isGenerated || savedTask.is_generated),
+      templateId: savedTask.templateId || savedTask.template_id || null
+    };
+
+    // Добавляем в массив
+    tasksData.push(normalizedTask);
+
+    // Если повторяющаяся - генерируем будущие задачи
+    if (normalizedTask.isRecurring && normalizedTask.recurrenceType) {
+      console.log('🔁 Генерируем повторяющиеся задачи...');
+      checkRecurringTasks();
+    }
+
+    // Очищаем форму
+    taskTitleInput.value = '';
+    taskCommentInput.value = '';
+    isRecurringCheckbox.checked = false;
+    recurrenceTypeSelect.style.display = 'none';
+    recurrenceTypeSelect.value = '';
+    recurrenceHintWrapper.style.display = 'none';
+    resetFormDates();
+
+    // Перерисовываем
+    renderTasks();
+    renderPomodoroTaskSelect();
+    updateTaskStats();
+    showNotification('Задача добавлена!', 'success');
+
+  } catch (error) {
+    console.error('❌ Ошибка добавления задачи:', error);
+    showNotification('Ошибка: ' + error.message, 'error');
+  }
+}
+
+    function findTaskByRow(tr) {
+        const id = Number(tr.dataset.id);
+        if (!id) return null;
+        return tasksData.find(t => t.id === id) || null;
+    }
+
+async function setTaskDone(task, done) {
+    const today = getTodayISO();
+    task.done = !!done;
+
+    if (done) {
+        task.doneDate = task.doneDate || today;
+    } else {
+        task.doneDate = null;
+    }
+
+    await saveTasks();
+    renderTasks();
+    renderPomodoroTaskSelect();
+    updateTaskStats();
+}
+
+
+    function openTaskContextMenu(x,y, tr) {
+        const task = findTaskByRow(tr);
+        if (!task) return;
+        taskContextMenu.style.display = 'block';
+        taskContextMenu.dataset.id = String(task.id);
+        let left = x;
+        let top = y;
+        taskContextMenu.style.left = left + 'px';
+        taskContextMenu.style.top = top + 'px';
+        const rect = taskContextMenu.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        if (rect.right > vw) left -= (rect.right - vw + 8);
+        if (rect.bottom > vh) top -= (rect.bottom - vh + 8);
+        taskContextMenu.style.left = left + 'px';
+        taskContextMenu.style.top = top + 'px';
+    }
+
+    function closeTaskContextMenu() {
+        taskContextMenu.style.display = 'none';
+        delete taskContextMenu.dataset.id;
+    }
+
+    function showDeleteModal(id) {
+        deleteTargetId = id;
+        deleteModalBackdrop.style.display = 'flex';
+    }
+
+    function hideDeleteModal() {
+        deleteModalBackdrop.style.display = 'none';
+        deleteTargetId = null;
+    }
+
+    function showUndoToast() {
+        undoSecondsLeft = 20;
+        undoTimerEl.textContent = undoSecondsLeft;
+        undoToast.style.display = 'inline-flex';
+        if (undoTimerId) clearInterval(undoTimerId);
+        undoTimerId = setInterval(() => {
+            undoSecondsLeft--;
+            if (undoSecondsLeft <= 0) {
+                hideUndoToast();
+                lastDeletedTask = null;
+            } else {
+                undoTimerEl.textContent = undoSecondsLeft;
+            }
+        }, 1000);
+    }
+
+    function hideUndoToast() {
+        undoToast.style.display = 'none';
+        if (undoTimerId) {
+            clearInterval(undoTimerId);
+            undoTimerId = null;
+        }
+    }
+
+  // Удаление задачи (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+async function deleteTaskById(id) {
+    const idx = tasksData.findIndex(t => t.id === id);
+    if (idx === -1) return;
+    
+    lastDeletedTask = tasksData[idx];
+    tasksData.splice(idx, 1);
+    
+    await saveTasks();
+
+    
+    // Удаляем на сервере
+    const token = localStorage.getItem('app-auth-token');
+    if (token) {
+        try {
+            const response = await fetch('http://mindandmotion.ru:5000/api/tasks/delete', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ id: id })
+            });
+            
+            if (response.ok) {
+                console.log(`✅ Задача удалена на сервере: ${id}`);
+            } else {
+                console.warn(`⚠️ Не удалось удалить на сервере: ${response.status}`);
+            }
+        } catch (err) {
+            console.log('📱 Не удалось синхронизировать удаление');
+        }
+    }
+    
+    renderTasks();
+    renderPomodoroTaskSelect();
+    updateTaskStats();
+    showUndoToast();
+}
+
+
+async function restoreLastDeleted() {
+    if (!lastDeletedTask) return;
+    tasksData.push(lastDeletedTask);
+    lastDeletedTask = null;
+    await saveTasks();
+    renderTasks();
+    hideUndoToast();
+}
+
+
+    function startPomodoro() {
+        if (pomodoroTimerId) return;
+        const durationMin = Math.max(1, Math.min(120, Number(pomodoroDurationInput.value || '25')));
+        pomodoroRemaining = durationMin * 60;
+
+        if (!pomodoroTaskSelect.value) {
+            const active = tasksData.filter(t => !t.done);
+            if (!active.length) {
+                alert('Нет активных задач для фокуса');
+                return;
+            }
+            pomodoroActiveTaskId = active[0].id;
+            pomodoroTaskSelect.value = String(pomodoroActiveTaskId);
+        } else {
+            pomodoroActiveTaskId = Number(pomodoroTaskSelect.value);
+        }
+
+        updatePomodoroCurrentLabel();
+        updatePomodoroTimerUI();
+
+        pomodoroTimerId = setInterval(() => {
+            pomodoroRemaining--;
+            if (pomodoroRemaining <= 0) {
+                stopPomodoro(true);
+            } else {
+                updatePomodoroTimerUI();
+            }
+        }, 1000);
+
+        pomodoroToggleBtn.textContent = 'Пауза';
+    }
+
+async function stopPomodoro(finished) {
+    if (pomodoroTimerId) {
+        clearInterval(pomodoroTimerId);
+        pomodoroTimerId = null;
+    }
+
+    if (finished && pomodoroActiveTaskId) {
+        const task = tasksData.find(t => t.id === pomodoroActiveTaskId);
+        if (task) {
+            task.focusSessions = (task.focusSessions || 0) + 1;
+            await saveTasks();
+            renderTasks();
+        }
+    }
+
+    updatePomodoroTimerUI();
+    pomodoroToggleBtn.textContent = 'Старт';
+}
+
+
+    function resetPomodoro() {
+        if (pomodoroTimerId) {
+            clearInterval(pomodoroTimerId);
+            pomodoroTimerId = null;
+        }
+        const durationMin = Math.max(1, Math.min(120, Number(pomodoroDurationInput.value || '25')));
+        pomodoroRemaining = durationMin * 60;
+        updatePomodoroTimerUI();
+        pomodoroToggleBtn.textContent = 'Старт';
+    }
+
+    function updatePomodoroTimerUI() {
+        if (!pomodoroRemaining) {
+            const durationMin = Math.max(1, Math.min(120, Number(pomodoroDurationInput.value || '25')));
+            pomodoroTimerEl.textContent = formatSecondsToMMSS(durationMin * 60);
+        } else {
+            pomodoroTimerEl.textContent = formatSecondsToMMSS(pomodoroRemaining);
+        }
+    }
+
+    function beginInlineEdit(cell) {
+        cell.contentEditable = 'true';
+        cell.dataset.oldValue = cell.textContent;
+        cell.focus();
+        document.execCommand('selectAll', false, null);
+    }
+
+       async function finishInlineEdit(cell, commit) {
+        cell.contentEditable = 'false';
+        const tr = cell.closest('tr');
+        const task = findTaskByRow(tr);
+        if (!task) return;
+
+        const field = cell.classList.contains('task-label') ? 'title' :
+                      cell.classList.contains('comment-cell') ? 'comment' : null;
+        if (!field) return;
+
+        const newVal = commit ? cell.textContent.trim() : (cell.dataset.oldValue || '');
+        cell.textContent = newVal;
+        task[field] = newVal;
+        await saveTasks();  // ← С AWAIT!
+        renderTasks();
+    }
+
+
+// Создание ISO даты без проблем с timezone
+    function makeISODate(year, monthIndex, day) {
+      const y = String(year);
+      const m = String(monthIndex + 1).padStart(2, '0');
+      const d = String(day).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    
+    // Мини‑календарь
+
+function buildMiniCalendarGrid() {
+  miniCalGrid.innerHTML = '';
+  
+  const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  weekdays.forEach(w => {
+    const div = document.createElement('div');
+    div.className = 'mini-calendar-weekday';
+    div.textContent = w;
+    miniCalGrid.appendChild(div);
+  });
+
+  const year = miniCalState.year;
+  const monthIndex = miniCalState.monthIndex;
+  miniCalMonthLabel.textContent = getMonthLabel(year, monthIndex);
+
+  const firstDay = new Date(year, monthIndex, 1);
+  const firstWeekday = (firstDay.getDay() + 6) % 7; // Понедельник = 0
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const todayIso = getTodayISO();
+  const selectedIso = miniCalState.selectedIso || null;
+
+  // Пустые ячейки перед первым днём
+  for (let i = 0; i < firstWeekday; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'mini-calendar-cell mini-calendar-cell--empty';
+    miniCalGrid.appendChild(cell);
+  }
+
+  // Дни месяца
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cell = document.createElement('div');
+    cell.className = 'mini-calendar-cell';
+    cell.textContent = d;
+
+    // ИСПОЛЬЗУЕМ ИСПРАВЛЕННУЮ ФУНКЦИЮ
+    const iso = makeISODate(year, monthIndex, d);
+
+    if (iso === todayIso) {
+      cell.classList.add('mini-calendar-cell--today');
+    }
+    if (selectedIso === iso) {
+      cell.classList.add('mini-calendar-cell--selected');
+    }
+
+    cell.dataset.iso = iso;
+    miniCalGrid.appendChild(cell);
+  }
+}
+
+    function openMiniCalendar(anchorEl, role, taskId) {
+        const rect = anchorEl.getBoundingClientRect();
+        const today = getTodayISO();
+        const baseDateIso = anchorEl.dataset.iso || today;
+        const baseDate = new Date(baseDateIso);
+
+        miniCalState.year = baseDate.getFullYear();
+        miniCalState.monthIndex = baseDate.getMonth();
+        miniCalState.selectedIso = baseDateIso;
+        miniCalState.anchorRole = role;
+        miniCalState.anchorTaskId = taskId != null ? Number(taskId) : null;
+
+        buildMiniCalendarGrid();
+
+        let left = rect.left;
+        let top = rect.bottom + 6;
+        miniCalPopover.style.display = 'block';
+        miniCalPopover.style.left = left + 'px';
+        miniCalPopover.style.top = top + 'px';
+        const popRect = miniCalPopover.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        if (popRect.right > vw) left -= (popRect.right - vw + 8);
+        if (popRect.bottom > vh) top -= (popRect.bottom - vh + 8);
+        miniCalPopover.style.left = left + 'px';
+        miniCalPopover.style.top = top + 'px';
+    }
+
+    function closeMiniCalendar() {
+        miniCalPopover.style.display = 'none';
+        miniCalState.anchorRole = null;
+        miniCalState.anchorTaskId = null;
+    }
+
+   async function applyMiniCalendarSelection(iso) {
+    const role = miniCalState.anchorRole;
+    const taskId = miniCalState.anchorTaskId;
+
+    if (!role) return;
+
+    if (!taskId) {
+        // Форма добавления
+        if (role === 'date') {
+            taskDateDisplay.dataset.iso = iso;
+            taskDateDisplay.textContent = formatDateDisplay(iso);
+            if (!taskDeadlineDisplay.dataset.iso) {
+                taskDeadlineDisplay.dataset.iso = iso;
+                taskDeadlineDisplay.textContent = formatDateDisplay(iso);
+            }
+        } else if (role === 'deadline') {
+            taskDeadlineDisplay.dataset.iso = iso;
+            taskDeadlineDisplay.textContent = formatDateDisplay(iso);
+        }
+    } else {
+        // Редактирование задачи
+        const task = tasksData.find(t => t.id === taskId);
+        if (!task) return;
+        if (role === 'date') {
+            task.date = iso;
+        } else if (role === 'deadline') {
+            task.deadline = iso;
+        }
+        await saveTasks();  // ← ТОЛЬКО ОДИН await
+        renderTasks();
+    }
+}
+
+    // Обновить подсказку повторения
+    function updateRecurrenceHint() {
+        const dateIso = taskDateDisplay.dataset.iso || getTodayISO();
+        const type = recurrenceTypeSelect.value;
+
+        if (!type) {
+            recurrenceHintWrapper.style.display = 'none';
+            recurrenceHint.textContent = '';
+            return;
+        }
+
+        const date = new Date(dateIso);
+        const day = date.getDate();
+        const month = date.getMonth();
+        const weekday = date.getDay();
+        const weekdayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+        const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 
+                            'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+
+        let hint = '';
+
+        switch (type) {
+            case 'daily':
+                hint = '📅 Задача будет повторяться ежедневно';
+                break;
+            case 'weekly':
+                hint = `📅 Каждый ${weekdayNames[weekday]} недели`;
+                break;
+            case 'monthly_date':
+                hint = `📅 Каждое ${day}-е число месяца`;
+                break;
+            case 'monthly_weekday':
+                const weekOfMonth = Math.ceil(day / 7);
+                hint = `📅 Каждый ${weekOfMonth}-й ${weekdayNames[weekday]} месяца`;
+                break;
+            case 'yearly':
+                hint = `📅 Ежегодно ${day} ${monthNames[month]}`;
+                break;
+        }
+
+        recurrenceHint.textContent = hint;
+        recurrenceHintWrapper.style.display = 'block';
+    }
+
+// При загрузке страницы
+async function loadTasksFromServer() {
+  try {
+    const response = await fetch('http://mindandmotion.ru:5000/api/tasks');
+    const serverTasks = await response.json();
+    
+    console.log('✅ Tasks from server:', serverTasks);
+    console.log('First task structure:', serverTasks[0]);
+    
+    tasksData = serverTasks.map(t => ({
+    id: t.id,
+    date: t.date ? t.date.split('T')[0] : '',
+    deadline: t.deadline ? t.deadline.split('T')[0] : '',
+    title: t.title || '',
+    priority: Number(t.priority || 2),
+    comment: t.comment || '',
+    done: Boolean(t.done),
+    doneDate: t.doneDate ? t.doneDate.split('T')[0] : null,
+    focusSessions: Number(t.focusSessions || 0),
+    isRecurring: Boolean(t.isRecurring),         // ← ВАЖНО!
+    recurrenceType: t.recurrenceType || '',      // ← ВАЖНО!
+    recurrenceValue: t.recurrenceValue || '',    // ← ВАЖНО!
+    isGenerated: Boolean(t.isGenerated),         // ← ВАЖНО!
+    templateId: t.templateId || null             // ← ВАЖНО!
+}));
+    
+    renderTasks();
+  } catch (err) {
+    console.error('❌ Ошибка загрузки:', err);
+  }
+}
+
+
+async function initializeApp() {
+    console.log('📱 Инициализация...');
+
+    const token = localStorage.getItem('app-auth-token');
+
+    if (!token) {
+        console.log('⚠️ Нет токена. Пустой список.');
+        tasksData = [];
+        renderTasks();
+        renderPomodoroTaskSelect();
+        updateTaskStats();
+        return;
+    }
+
+    try {
+        const response = await fetch('http://mindandmotion.ru:5000/api/tasks', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+    const serverTasks = await response.json();
+    
+    // ✅ НОРМАЛИЗУЕМ ВСЕ ДАТЫ
+tasksData = serverTasks.map(t => ({
+    id: t.id,
+    date: t.date ? t.date.split('T')[0] : '',
+    deadline: t.deadline ? t.deadline.split('T')[0] : '',
+    title: t.title || '',
+    priority: Number(t.priority || 2),
+    comment: t.comment || '',
+    done: Boolean(t.done),
+    doneDate: t.doneDate ? t.doneDate.split('T')[0] : null,
+    focusSessions: Number(t.focusSessions || 0),
+    isRecurring: Boolean(t.isRecurring),         // ← ВАЖНО!
+    recurrenceType: t.recurrenceType || '',      // ← ВАЖНО!
+    recurrenceValue: t.recurrenceValue || '',    // ← ВАЖНО!
+    isGenerated: Boolean(t.isGenerated),         // ← ВАЖНО!
+    templateId: t.templateId || null             // ← ВАЖНО!
+}));
+    
+    console.log(`✅ Загружено ${tasksData.length} задач`);
+}
+ else {
+            console.warn(`⚠️ Ошибка сервера: ${response.status}`);
+            tasksData = [];
+        }
+    } catch (err) {
+        console.error('❌ Ошибка загрузки:', err);
+        tasksData = [];
+    }
+
+    renderTasks();
+    renderPomodoroTaskSelect();
+    updateTaskStats();
+    checkRecurringTasks();
+}
+
+// ✅ ДЛЯ ОТЛАДКИ
+window.debugTasksData = function() {
+    console.log('📦 Всего задач:', tasksData.length);
+    tasksData.forEach((t, i) => {
+        console.log(`Задача ${i}:`, {
+            id: t.id,
+            title: t.title,
+            date: t.date,
+            deadline: t.deadline,
+            isRecurring: t.isRecurring,
+            recurrenceType: t.recurrenceType,
+            recurrenceValue: t.recurrenceValue
+        });
+    });
+};
+
+// ✅ ВЫЗОВ ИНИЦИАЛИЗАЦИИ + ВСЕ СОБЫТИЯ
+(async function() {
+    await initializeApp();
+
+    // ========== СОБЫТИЯ ==========
+    taskForm.addEventListener('submit', addTaskFromForm);
+
+    toggleDoneTasksBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        showDone = !showDone;
+        toggleDoneTasksBtn.textContent = showDone ? 'Скрыть выполненные' : 'Показать выполненные';
+        renderTasks();
+    });
+
+    [taskDateDisplay, taskDeadlineDisplay].forEach(el => {
+        el.addEventListener('click', function() {
+            const role = this.dataset.target === 'deadline' ? 'deadline' : 'date';
+            openMiniCalendar(this, role, null);
+        });
+    });
+
+    tasksTableBody.addEventListener('click', async function(e){
+        const checkbox = e.target.closest('.task-done-checkbox');
+        if (checkbox) {
+            const tr = checkbox.closest('tr');
+            const task = findTaskByRow(tr);
+            if (!task) return;
+            await setTaskDone(task, checkbox.checked);
+            return;
+        }
+
+        const priorityBtn = e.target.closest('.priority-badge');
+        if (priorityBtn) {
+            const dropdown = priorityBtn.parentNode.querySelector('.task-priority-dropdown');
+            if (dropdown) {
+                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+            }
+            return;
+        }
+
+        const dropdownItem = e.target.closest('.task-priority-dropdown button');
+        if (dropdownItem) {
+            const p = Number(dropdownItem.dataset.value);
+            const row = dropdownItem.closest('tr');
+            const task = findTaskByRow(row);
+            if (task) {
+                task.priority = p;
+                await saveTasks();
+                renderTasks();
+            }
+            return;
+        }
+
+        const dateCell = e.target.closest('.date-cell');
+        if (dateCell) {
+            const tr = dateCell.closest('tr');
+            const task = findTaskByRow(tr);
+            if (!task) return;
+            dateCell.dataset.iso = task.date || getTodayISO();
+            openMiniCalendar(dateCell, 'date', task.id);
+            return;
+        }
+
+        const deadlineCell = e.target.closest('.deadline-cell');
+        if (deadlineCell) {
+            const tr = deadlineCell.closest('tr');
+            const task = findTaskByRow(tr);
+            if (!task) return;
+            deadlineCell.dataset.iso = task.deadline || task.date || getTodayISO();
+            openMiniCalendar(deadlineCell, 'deadline', task.id);
+            return;
+        }
+
+        const cell = e.target.closest('.editable-text');
+        if (cell && cell.contentEditable !== 'true') {
+            beginInlineEdit(cell);
+        }
+    });
+
+    tasksTableBody.addEventListener('keydown', async function(e){
+        const cell = e.target.closest('.editable-text');
+        if (!cell || cell.contentEditable !== 'true') return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            await finishInlineEdit(cell, true);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            finishInlineEdit(cell, false);
+        }
+    });
+
+    tasksTableBody.addEventListener('focusout', async function(e){
+        const cell = e.target.closest('.editable-text');
+        if (!cell || cell.contentEditable !== 'true') return;
+        await finishInlineEdit(cell, true);
+    });
+
+    document.addEventListener('click', function(e){
+        if (!e.target.closest('.task-priority-select')) {
+            document.querySelectorAll('.task-priority-dropdown').forEach(d => d.style.display = 'none');
+        }
+        if (!taskContextMenu.contains(e.target)) {
+            closeTaskContextMenu();
+        }
+        if (!miniCalPopover.contains(e.target) && 
+            !e.target.closest('[data-role="date-display"]') && 
+            !e.target.closest('.date-cell') && 
+            !e.target.closest('.deadline-cell')) {
+            closeMiniCalendar();
+        }
+    });
+
+    tasksTableBody.addEventListener('contextmenu', function(e){
+        const row = e.target.closest('tr');
+        if (!row) return;
+        e.preventDefault();
+        openTaskContextMenu(e.clientX, e.clientY, row);
+    });
+
+    taskContextMenu.addEventListener('click', function(e){
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const idStr = taskContextMenu.dataset.id;
+        if (!idStr) return;
+        const id = Number(idStr);
+        if (btn.dataset.action === 'delete') {
+            showDeleteModal(id);
+        }
+        closeTaskContextMenu();
+    });
+
+    deleteCancelBtn.addEventListener('click', function() {
+        hideDeleteModal();
+    });
+
+    deleteConfirmBtn.addEventListener('click', function() {
+        if (deleteTargetId !== null) {
+            deleteTaskById(deleteTargetId);
+        }
+        hideDeleteModal();
+    });
+
+    undoBtn.addEventListener('click', function() {
+        restoreLastDeleted();
+    });
+
+    pomodoroToggleBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        if (pomodoroTimerId) {
+            stopPomodoro(false);
+        } else {
+            startPomodoro();
+        }
+    });
+
+    pomodoroResetBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        resetPomodoro();
+    });
+
+    pomodoroTaskSelect.addEventListener('change', function() {
+        pomodoroActiveTaskId = pomodoroTaskSelect.value ? Number(pomodoroTaskSelect.value) : null;
+        updatePomodoroCurrentLabel();
+    });
+
+    miniCalPrev.addEventListener('click', function() {
+        miniCalState.monthIndex--;
+        if (miniCalState.monthIndex < 0) {
+            miniCalState.monthIndex = 11;
+            miniCalState.year--;
+        }
+        buildMiniCalendarGrid();
+    });
+
+    miniCalNext.addEventListener('click', function() {
+        miniCalState.monthIndex++;
+        if (miniCalState.monthIndex > 11) {
+            miniCalState.monthIndex = 0;
+            miniCalState.year++;
+        }
+        buildMiniCalendarGrid();
+    });
+
+    miniCalGrid.addEventListener('click', function(e){
+        const cell = e.target.closest('.mini-calendar-cell');
+        if (!cell || cell.classList.contains('mini-calendar-cell--empty')) return;
+        const iso = cell.dataset.iso;
+        miniCalState.selectedIso = iso;
+        applyMiniCalendarSelection(iso);
+        closeMiniCalendar();
+    });
+
+    isRecurringCheckbox.addEventListener('change', function() {
+    if (this.checked) {
+        recurrenceTypeSelect.style.display = 'block';
+        recurrenceTypeSelect.value = 'daily';
+        updateRecurrenceHint();
+    } else {
+        recurrenceTypeSelect.style.display = 'none';
+        recurrenceTypeSelect.value = '';
+        recurrenceHintWrapper.style.display = 'none';
+        recurrenceHint.textContent = '';
+    }
+});
+
+    recurrenceTypeSelect.addEventListener('change', function() {
+        updateRecurrenceHint();
+    });
+
+    pomodoroDurationInput.addEventListener('change', function() {
+        resetPomodoro();
+    });
+})();
+
+})(); // Закрываем (function(){
+</script>
+</body>
+</html>

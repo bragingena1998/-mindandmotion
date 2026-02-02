@@ -1,0 +1,11 @@
+
+// Эти функции будут доступны глобально
+window.TasksAPI = {
+  fetchTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+  adaptTaskFromAPI,
+  adaptTaskForAPI,
+  isUserLoggedIn
+};

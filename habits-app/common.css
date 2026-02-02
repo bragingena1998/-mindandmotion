@@ -1,0 +1,1157 @@
+1452
+1446
+/* ===== БАЗА И ТЕМЫ ===== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* базовые переменные (если нет класса темы) */
+:root {
+  --bg-main:
+    radial-gradient(circle at 0% 0%, rgba(76, 29, 149, 0.25) 0, transparent 55%),
+    radial-gradient(circle at 100% 0%, rgba(147, 51, 234, 0.25) 0, transparent 55%),
+    radial-gradient(circle at 50% 120%, #020617 0, #000 60%);
+
+  --accent-1: #f97316;
+  --accent-2: #ec4899;
+  --accent-border: #fbbf24;
+
+  --accent-soft: rgba(236, 72, 153, 0.35);
+  --accent-text: #fef9c3;
+
+  --danger-1: #fb7185;
+  --danger-2: #b91c1c;
+
+  --ok-1: #22c55e;
+  --ok-2: #16a34a;
+
+  --text-main: #e5e7eb;
+  --text-muted: #9ca3af;
+  --text-soft: #6b7280;
+  --text-strong: #f9fafb;
+
+  --border-subtle: rgba(148, 163, 184, 0.25);
+
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+
+  --shadow-soft: 0 24px 60px rgba(15, 23, 42, 0.95);
+  --shadow-subtle: 0 18px 40px rgba(15, 23, 42, 0.8);
+}
+
+/* === T1: Acid Storm === */
+body.theme-storm {
+  --bg-main:
+    radial-gradient(circle at 50% 15%, rgba(255, 0, 128, 0.30) 0, transparent 55%),
+    radial-gradient(circle at 0% 0%,   rgba(0, 255, 204, 0.22) 0, transparent 55%),
+    radial-gradient(circle at 100% 0%, rgba(255, 204, 0,   0.18) 0, transparent 55%),
+    radial-gradient(circle at 50% 120%, #030014 0, #020013 45%, #000 80%),
+    repeating-linear-gradient(
+      130deg,
+      rgba(255,255,255,0.05) 0,
+      rgba(255,255,255,0.02) 2px,
+      transparent 4px,
+      transparent 8px
+    );
+
+  --accent-1: #ff0080;
+  --accent-2: #00ffcc;
+  --accent-border: #ffcc00;
+  --accent-soft: rgba(0, 255, 204, 0.35);
+  --accent-text: #fef9c3;
+}
+
+/* === T2: Night Subway === */
+body.theme-ice {
+  --bg-main:
+    radial-gradient(circle at 60% 0%,  rgba(0, 184, 255, 0.27) 0, transparent 55%),
+    radial-gradient(circle at 5%  40%, rgba(189, 0, 255, 0.23) 0, transparent 55%),
+    radial-gradient(circle at 95% 80%, rgba(0, 255, 159, 0.20) 0, transparent 55%),
+    radial-gradient(circle at 50% 120%, #020617 0, #01010b 50%, #000 85%),
+    repeating-linear-gradient(
+      160deg,
+      rgba(0,0,0,0.4) 0,
+      rgba(0,0,0,0.4) 3px,
+      transparent 6px,
+      transparent 10px
+    );
+
+  --accent-1: #00b8ff;
+  --accent-2: #bd00ff;
+  --accent-border: #00ff9f;
+  --accent-soft: rgba(0, 184, 255, 0.35);
+  --accent-text: #e0f2fe;
+}
+
+/* === T3: Riot Sunset === */
+body.theme-blood {
+  --bg-main:
+    radial-gradient(circle at 10% 0%,  rgba(255, 115, 8, 0.30) 0, transparent 55%),
+    radial-gradient(circle at 90% 0%,  rgba(190, 24, 93, 0.32) 0, transparent 55%),
+    radial-gradient(circle at 20% 70%, rgba(255, 0, 64, 0.25) 0, transparent 60%),
+    radial-gradient(circle at 50% 120%, #140016 0, #05000a 45%, #000 80%),
+    repeating-linear-gradient(
+      150deg,
+      rgba(255,255,255,0.06) 0,
+      rgba(255,255,255,0.02) 2px,
+      transparent 5px,
+      transparent 9px
+    );
+
+  --accent-1: #ff7308;
+  --accent-2: #66023d;
+  --accent-border: #ff2eff;
+  --accent-soft: rgba(255, 115, 8, 0.32);
+  --accent-text: #fff7ed;
+}
+
+/* === T4: Toxic Terminal (зелёный CRT) === */
+body.theme-toxic {
+  --bg-main:
+    radial-gradient(circle at 0% 0%, rgba(74, 222, 128, 0.22) 0, transparent 55%),
+    radial-gradient(circle at 100% 20%, rgba(45, 212, 191, 0.24) 0, transparent 55%),
+    radial-gradient(circle at 50% 120%, #020617 0, #000 80%),
+    repeating-linear-gradient(
+      180deg,
+      rgba(15,255,80,0.12) 0,
+      rgba(15,255,80,0.05) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+
+  --accent-1: #22c55e;
+  --accent-2: #16a34a;
+  --accent-border: #bbf7d0;
+  --accent-soft: rgba(34, 197, 94, 0.35);
+  --accent-text: #ecfdf5;
+
+  --danger-1: #f97316;
+  --danger-2: #b91c1c;
+}
+
+/* === T5: Glitch Violet (фиолет+бирюза) === */
+body.theme-glitch {
+  --bg-main:
+    radial-gradient(circle at 20% 0%, rgba(139, 92, 246, 0.32) 0, transparent 55%),
+    radial-gradient(circle at 80% 10%, rgba(45, 212, 191, 0.26) 0, transparent 55%),
+    radial-gradient(circle at 50% 120%, #020617 0, #020012 50%, #000 85%),
+    repeating-linear-gradient(
+      135deg,
+      rgba(56,189,248,0.18) 0,
+      rgba(56,189,248,0.08) 1px,
+      transparent 3px,
+      transparent 6px
+    );
+
+  --accent-1: #8b5cf6;
+  --accent-2: #22d3ee;
+  --accent-border: #a855f7;
+  --accent-soft: rgba(139, 92, 246, 0.35);
+  --accent-text: #e0f2fe;
+}
+
+/* Базовый фон */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg-main);
+  background-attachment: fixed;
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* мягкий градиент подложки */
+.site-bg-base {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, rgba(0,0,0,0.55) 0, #000 80%);
+  opacity: 0.55;
+  z-index: 0;
+}
+
+/* слой с картинкой‑маской */
+.site-bg-mask {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: url("generated-image (1).png") center/cover no-repeat;
+  mix-blend-mode: soft-light;
+  opacity: 0.45;
+  z-index: 1;
+}
+
+/* ===== ОБОЛОЧКА ПРИЛОЖЕНИЯ ===== */
+
+.app-root {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 24px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Контейнер, ограничивающий общую ширину интерфейса */
+.app-shell {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ===== ВНУТРЕННИЕ ЗАГОЛОВКИ И БЛОКИ ===== */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.block {
+  background:
+    radial-gradient(circle at top left, #1e1b4b 0, #020617 60%);
+  border-radius: 18px;
+  padding: 18px 18px 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(167, 139, 250, 0.6);
+  box-shadow:
+    0 0 24px var(--accent-soft),
+    0 0 0 1px rgba(15, 23, 42, 0.9) inset;
+}
+
+.block-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e5e7eb;
+}
+
+/* ===== ЖИЗНЕННОЕ ВРЕМЯ / ПЕРСОНАЛЬНЫЙ ГОД (общий стиль карточек прогресса) ===== */
+
+.life-time-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .life-time-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.life-time-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at top left, rgba(30, 64, 175, 0.35) 0, #020617 65%);
+  box-shadow:
+    0 0 0 1px rgba(30, 64, 175, 0.7),
+    0 16px 32px rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.life-time-item__label {
+  font-size: 11px;
+  color: #c4b5fd;
+  margin-bottom: 4px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.life-time-item__value {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #fbbf24;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.8);
+}
+
+.life-time-item__bar,
+.personal-year-bar {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  border-radius: 999px;
+  overflow: hidden;
+  background:
+    linear-gradient(#020617, #020617) padding-box,
+    linear-gradient(90deg, #4c1d95, #1e293b) border-box;
+  border: 1px solid transparent;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 12px 22px rgba(0, 0, 0, 0.85) inset;
+  transition: box-shadow 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.life-time-item__bar-fill,
+.personal-year-bar__fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  box-shadow: 0 0 26px var(--accent-soft);
+  transition: width 0.35s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.life-time-item__bar-fill span,
+.personal-year-bar__fill span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #020617;
+}
+
+/* ===== ОБЩИЕ КНОПКИ ===== */
+
+.habits-btn {
+  padding: 6px 18px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: radial-gradient(circle at top, var(--accent-1), #020617 75%);
+  color: var(--accent-text);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow:
+    0 0 18px var(--accent-soft),
+    0 0 0 1px rgba(55, 48, 163, 0.8) inset;
+  transition: 0.18s ease-out;
+}
+
+.habits-btn:hover {
+  background: radial-gradient(circle at top, var(--accent-2), #451a03 75%);
+  color: #111827;
+  box-shadow:
+    0 0 24px var(--accent-soft),
+    0 0 0 1px rgba(15, 23, 42, 0.9) inset;
+}
+
+.habits-btn--danger {
+  border-color: var(--danger-1);
+  color: #fee2e2;
+  box-shadow:
+    0 0 18px rgba(248, 113, 113, 0.9),
+    0 0 0 1px rgba(127, 29, 29, 0.9) inset;
+}
+
+.habits-btn--danger:hover {
+  background: radial-gradient(circle at top, #b91c1c 0, #450a0a 75%);
+  color: #fee2e2;
+  box-shadow: 0 0 24px rgba(248, 113, 113, 1);
+}
+
+/* ===== КАРТОЧКИ / БЛОКИ ===== */
+
+.card {
+  background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.85), rgba(2, 6, 23, 0.98));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
+  padding: 18px 18px 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 65%),
+    radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.18), transparent 60%);
+  opacity: 0.6;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.card-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.page-content {
+  max-width: 100%;
+  margin: 0;
+  padding: 0 0 20px;
+}
+
+
+/* ===== БЛОК «ТРЕКЕР ПРИВЫЧЕК» – ПОДСКАЗКА (МОЖНО ИСПОЛЬЗОВАТЬ ВЕЗДЕ) ===== */
+
+.block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.block-header__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.habits-help-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  cursor: help;
+  background: radial-gradient(circle at top, #1f2937 0, #020617 80%);
+  box-shadow:
+    0 0 0 1px rgba(148, 163, 184, 0.9),
+    0 0 12px rgba(129, 140, 248, 0.9);
+}
+
+.habits-help-tooltip__icon {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+.habits-help-tooltip__content {
+  position: absolute;
+  top: 130%;
+  right: 0;
+  min-width: 280px;
+  max-width: 360px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top left, #1e1b4b 0, #020617 70%);
+  box-shadow:
+    0 16px 32px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(55, 65, 81, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e5e7eb;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out, visibility 0.15s;
+  z-index: 50;
+}
+
+.habits-help-tooltip__content p {
+  margin: 0 0 4px;
+}
+
+.habits-help-tooltip__content p:last-child {
+  margin-bottom: 0;
+}
+
+.habits-help-tooltip:hover .habits-help-tooltip__content {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* ===== МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ УДАЛЕНИЯ ===== */
+
+.habits-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(0,0,0,0.85) 0, rgba(0,0,0,0.98) 60%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.habits-modal {
+  min-width: 320px;
+  max-width: 480px;
+  border-radius: 18px;
+  padding: 16px 18px 14px;
+  background:
+    radial-gradient(circle at top left, rgba(30, 64, 175, 0.75) 0, #020617 70%);
+  border: 1px solid rgba(129, 140, 248, 0.9);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.96),
+    0 0 0 1px rgba(15, 23, 42, 1) inset;
+  color: #e5e7eb;
+}
+
+.habits-modal__title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #bfdbfe;
+}
+
+.habits-modal__text {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #e5e7eb;
+}
+
+.habits-modal__name {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.habits-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.habits-modal__btn {
+  padding: 5px 16px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: radial-gradient(circle at top, var(--accent-1), #020617 75%);
+  color: var(--accent-text);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow:
+    0 0 16px var(--accent-soft),
+    0 0 0 1px rgba(15, 23, 42, 1) inset;
+  transition: 0.16s ease-out;
+}
+
+.habits-modal__btn:hover {
+  background: radial-gradient(circle at top, var(--accent-2), #111827 75%);
+  color: #020617;
+}
+
+.habits-modal__btn--cancel {
+  border-color: rgba(148, 163, 184, 0.8);
+  background: radial-gradient(circle at top, #111827 0, #020617 80%);
+  color: #e5e7eb;
+  box-shadow:
+    0 0 12px rgba(148, 163, 184, 0.7),
+    0 0 0 1px rgba(15, 23, 42, 1) inset;
+}
+
+.habits-modal__btn--cancel:hover {
+  background: radial-gradient(circle at top, #1f2937 0, #020617 80%);
+}
+
+/* ===== БАННЕР ВОССТАНОВЛЕНИЯ ===== */
+
+.habits-undo-banner {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.habits-undo-banner__btn {
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(248, 250, 252, 0.85);
+  background:
+    radial-gradient(circle at top left, #1e1b4b 0, #020617 70%);
+  color: #f9fafb;
+  cursor: pointer;
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 1);
+}
+
+.habits-undo-banner__btn:hover {
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.98),
+    0 0 0 1px rgba(129, 140, 248, 0.9);
+}
+
+/* поля редактирования в таблицах */
+
+.habit-edit-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #e5e7eb;
+  background: radial-gradient(circle at top, #020617 0, #020617 80%);
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.8);
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 1) inset,
+    0 0 8px rgba(148, 163, 184, 0.7);
+}
+
+.habit-edit-input:focus {
+  border-color: rgba(236, 72, 153, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 1) inset,
+    0 0 10px rgba(236, 72, 153, 0.9);
+}
+
+/* ==================== МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ ==================== */
+
+.auth-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 9998;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.auth-modal-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+.auth-modal {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  width: 90%;
+  max-width: 480px;
+  background: radial-gradient(circle at top left, #1e1b4b 0%, #020617 70%);
+  border: 2px solid var(--accent-border);
+  border-radius: var(--radius-lg, 24px);
+  box-shadow: var(--shadow-soft);
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-modal.active {
+  display: block;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.auth-modal__content {
+  position: relative;
+  padding: 32px;
+}
+
+.auth-modal__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  color: var(--text-main);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.auth-modal__close:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  transform: rotate(90deg);
+}
+
+.auth-modal__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 4px;
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--border-subtle);
+}
+
+.auth-modal__tab {
+  flex: 1;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-modal__tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+}
+
+.auth-modal__tab.active {
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  color: #ffffff;
+  box-shadow: 0 4px 12px var(--accent-soft);
+}
+
+.auth-modal__form {
+  display: none;
+}
+
+.auth-modal__form.active {
+  display: block;
+  animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-modal__form h3 {
+  margin: 0 0 20px 0;
+  color: var(--text-main);
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 0 8px var(--accent-soft);
+}
+
+.auth-modal__form input {
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--radius-md, 12px);
+  color: var(--text-main);
+  font-size: 15px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.auth-modal__form input::placeholder {
+  color: var(--text-muted);
+}
+
+.auth-modal__form input:focus {
+  outline: none;
+  background: rgba(15, 23, 42, 0.95);
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.auth-modal__form button[type="submit"],
+.logout-panel button {
+  width: 100%;
+  padding: 14px 16px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  border: none;
+  border-radius: var(--radius-md, 12px);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px var(--accent-soft);
+}
+
+.auth-modal__form button[type="submit"]:hover,
+.logout-panel button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--accent-soft);
+}
+
+.auth-modal__form button[type="submit"]:active,
+.logout-panel button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px var(--accent-soft);
+}
+
+.auth-modal__switch {
+  text-align: center;
+  margin-top: 16px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.switch-form {
+  color: var(--accent-border);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.switch-form:hover {
+  color: var(--accent-1);
+}
+
+.logout-panel {
+  text-align: center;
+}
+
+.logout-panel h3 {
+  margin: 0 0 16px 0;
+  color: var(--text-main);
+  font-size: 24px;
+  font-weight: 700;
+  text-shadow: 0 0 8px var(--accent-soft);
+}
+
+.logout-panel p {
+  margin: 0 0 24px 0;
+  color: var(--text-muted);
+  font-size: 15px;
+  word-break: break-all;
+}
+
+.logout-panel button {
+  background: linear-gradient(135deg, var(--danger-1), var(--danger-2));
+  box-shadow: 0 4px 12px rgba(248, 113, 113, 0.5);
+}
+
+.logout-panel button:hover {
+  box-shadow: 0 6px 16px rgba(248, 113, 113, 0.7);
+}
+
+/* Адаптив для мобильных */
+@media (max-width: 520px) {
+  .auth-modal {
+    width: 95%;
+    max-width: none;
+  }
+
+  .auth-modal__content {
+    padding: 24px 20px;
+  }
+
+  .auth-modal__form h3,
+  .logout-panel h3 {
+    font-size: 20px;
+  }
+
+  .auth-modal__form input {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .auth-modal__form button[type="submit"],
+  .logout-panel button {
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+}
+
+/* ==================== EMAIL VERIFICATION STYLES ==================== */
+
+/* Индикатор прогресса (2 шага) */
+.auth-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 1.5rem 0;
+  gap: 1rem;
+}
+
+
+.auth-progress__circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.auth-progress__step--active .auth-progress__circle {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.auth-progress__step span {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.auth-progress__step--active span {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.auth-progress__line {
+  width: 50px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  margin-bottom: 24px;
+}
+
+/* Поле ввода кода (6 ячеек) */
+.auth-code-inputs {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+.auth-code-digit {
+  width: 45px !important;
+  height: 55px;
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.auth-code-digit:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  transform: scale(1.05);
+  background: rgba(102, 126, 234, 0.1);
+}
+
+/* Текст подтверждения */
+.auth-verification-text {
+  text-align: center;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.auth-verification-text strong {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 16px;
+  color: #667eea;
+}
+
+/* Таймер */
+.auth-timer {
+  text-align: center;
+  margin: 1rem 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.auth-timer strong {
+  font-weight: 600;
+  font-size: 16px;
+  color: #f39c12;
+}
+
+/* Вторичная кнопка */
+.auth-btn-secondary {
+  background: transparent !important;
+  border: 2px solid #667eea !important;
+  color: #667eea !important;
+  margin-top: 1rem;
+}
+
+.auth-btn-secondary:hover:not(:disabled) {
+  background: rgba(102, 126, 234, 0.2) !important;
+}
+
+.auth-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Ошибки */
+.auth-error {
+  display: block;
+  font-size: 13px;
+  color: #ff6b6b;
+  margin-top: 0.5rem;
+  min-height: 18px;
+}
+
+/* Адаптив */
+@media (max-width: 768px) {
+  .auth-code-digit {
+    width: 38px !important;
+    height: 48px;
+    font-size: 18px;
+  }
+  
+  .auth-code-inputs {
+    gap: 0.4rem;
+  }
+}
+
+/* ==================== КНОПКИ В МОДАЛЬНОМ ОКНЕ АВТОРИЗАЦИИ ==================== */
+
+#signup-send-code-btn,
+#verify-code-btn,
+#login-form button[type="submit"],
+#logout-btn,
+#forgot-send-code-btn,
+#forgot-reset-btn {
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+#signup-send-code-btn:hover:not(:disabled),
+#verify-code-btn:hover:not(:disabled),
+#login-form button[type="submit"]:hover,
+#logout-btn:hover,
+#forgot-send-code-btn:hover:not(:disabled),
+#forgot-reset-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+#signup-send-code-btn:active:not(:disabled),
+#verify-code-btn:active:not(:disabled),
+#login-form button[type="submit"]:active,
+#logout-btn:active,
+#forgot-send-code-btn:active:not(:disabled),
+#forgot-reset-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+#signup-send-code-btn:disabled,
+#verify-code-btn:disabled,
+#forgot-send-code-btn:disabled,
+#forgot-reset-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+/* Вторичная кнопка (Отправить повторно) */
+#resend-code-btn,
+#forgot-resend-btn {
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  background: transparent;
+  color: #667eea;
+  border: 2px solid #667eea;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+#resend-code-btn:hover:not(:disabled),
+#forgot-resend-btn:hover:not(:disabled) {
+  background: rgba(102, 126, 234, 0.1);
+  transform: translateY(-2px);
+}
+
+#resend-code-btn:active:not(:disabled),
+#forgot-resend-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+#resend-code-btn:disabled,
+#forgot-resend-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+/* Убираем старые стили */
+.auth-btn-secondary {
+  background: transparent !important;
+  border: 2px solid #667eea !important;
+  color: #667eea !important;
+  margin-top: 1rem;
+}
+
+.auth-btn-secondary:hover:not(:disabled) {
+  background: rgba(102, 126, 234, 0.2) !important;
+}
+
+.auth-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* ===== СТИЛИЗАЦИЯ ССЫЛОК В МОДАЛКЕ ===== */
+
+.auth-modal__switch a,
+.auth-modal__switch span {
+  color: #667eea;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.auth-modal__switch a:hover,
+.auth-modal__switch span:hover {
+  color: #764ba2;
+}
+
