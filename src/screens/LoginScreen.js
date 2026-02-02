@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { authAPI } from '../services/api';
+import { saveToken } from '../services/storage'; // ← ДОБАВЬ ЭТУ СТРОКУ
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -43,18 +44,20 @@ const handleLogin = async () => {
     console.log('✅ Ответ сервера:', response);
     
     // Если успешно - сохраняем токен и переходим на главный экран
+
 if (response.token) {
   console.log('✅ Токен получен:', response.token.substring(0, 20) + '...');
+  
+  // Сохраняем токен в AsyncStorage
+  await saveToken(response.token, response.userId);
   
   // Показываем сообщение об успехе
   setSuccessMessage('✅ Успешный вход! Токен получен!');
   
-  // Через 2 секунды скрываем
+  // Через 1 секунду переходим на экран задач
   setTimeout(() => {
-    setSuccessMessage('');
-  }, 3000);
-  
-  // TODO: Сохранить токен и перейти на главный экран
+    navigation.replace('Tasks');
+  }, 1000);
 }else {
       console.log('⚠️ Токен не получен');
       Alert.alert('Ошибка', 'Токен не получен от сервера');
