@@ -60,52 +60,32 @@ const TasksScreen = ({ navigation }) => {
       }
 
       // Моковые данные (временно)
-setTimeout(() => {
-  setTasks([
-    { 
-      id: 1, 
-      title: 'Сделать дизайн мобильного приложения', 
-      completed: false,
-      priority: 'high',
-      dueDate: '2026-02-03',
-      completedAt: null // Дата завершения (null если не выполнено)
-    },
-    { 
-      id: 2, 
-      title: 'Написать код для TasksScreen', 
-      completed: true,
-      priority: 'medium',
-      dueDate: '2026-02-03',
-      completedAt: '2026-02-03' // Выполнено сегодня
-    },
-    { 
-      id: 3, 
-      title: 'Протестировать приложение', 
-      completed: false,
-      priority: 'low',
-      dueDate: '2026-02-04',
-      completedAt: null
-    },
-    { 
-      id: 4, 
-      title: 'Тестовая задача за неделю', 
-      completed: true,
-      priority: 'medium',
-      dueDate: '2026-02-02',
-      completedAt: '2026-02-02' // Выполнено в понедельник
-    },
-    { 
-      id: 5, 
-      title: 'Задача за прошлый месяц', 
-      completed: true,
-      priority: 'low',
-      dueDate: '2026-01-15',
-      completedAt: '2026-01-15' // Выполнено в январе
-    },
-  ]);
-  setLoading(false);
-}, 500);
-
+      setTimeout(() => {
+        setTasks([
+          { 
+            id: 1, 
+            title: 'Сделать дизайн мобильного приложения', 
+            completed: false,
+            priority: 'high',
+            dueDate: '2026-02-03'
+          },
+          { 
+            id: 2, 
+            title: 'Написать код для TasksScreen', 
+            completed: true,
+            priority: 'medium',
+            dueDate: '2026-02-03'
+          },
+          { 
+            id: 3, 
+            title: 'Протестировать приложение', 
+            completed: false,
+            priority: 'low',
+            dueDate: '2026-02-04'
+          },
+        ]);
+        setLoading(false);
+      }, 500);
 
     } catch (err) {
       console.error('Ошибка загрузки задач:', err);
@@ -136,36 +116,6 @@ setTimeout(() => {
     await AsyncStorage.removeItem('token');
     navigation.replace('Login');
   };
-  
-// Расчёт статистики (как на сайте)
-const today = new Date();
-const todayStr = today.toISOString().split('T')[0]; // '2026-02-03'
-
-// Начало недели (понедельник)
-const getStartOfWeek = (date) => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.setDate(diff));
-};
-
-const startOfWeek = getStartOfWeek(today);
-const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
-
-// Начало месяца
-const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-const startOfMonthStr = startOfMonth.toISOString().split('T')[0];
-
-// Подсчёт
-const completedToday = tasks.filter(t => t.completed && t.completedAt === todayStr).length;
-const completedWeek = tasks.filter(t => t.completed && t.completedAt >= startOfWeekStr).length;
-const completedMonth = tasks.filter(t => {
-  if (!t.completed || !t.completedAt) return false;
-  const completedDate = new Date(t.completedAt);
-  return completedDate.getMonth() === today.getMonth() && 
-         completedDate.getFullYear() === today.getFullYear();
-}).length;
-const completedTotal = tasks.filter(t => t.completed).length;
 
   // Рендер одной задачи
   const renderTask = ({ item }) => {
@@ -177,7 +127,7 @@ const completedTotal = tasks.filter(t => t.completed).length;
         default: return colors.textMuted;
       }
     };
-    
+
     return (
       <TouchableOpacity
         style={[
@@ -251,7 +201,7 @@ const completedTotal = tasks.filter(t => t.completed).length;
         {/* Шапка */}
         <View style={[styles.header, { backgroundColor: colors.surface }]}>
           <Text style={[styles.headerTitle, { color: colors.accentText }]}>
-    МОИ ЗАДАЧИ
+            МОИ ЗАДАЧИ
           </Text>
           
           <View style={styles.headerButtons}>
@@ -284,29 +234,6 @@ const completedTotal = tasks.filter(t => t.completed).length;
             </TouchableOpacity>
           </View>
         </View>
-{/* Статистика */}
-<View style={styles.statsContainer}>
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.ok1 }]}>
-    <Text style={[styles.statNumber, { color: colors.ok1 }]}>{completedToday}</Text>
-    <Text style={[styles.statLabel, { color: colors.textMuted }]}>СЕГОДНЯ</Text>
-  </View>
-  
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
-    <Text style={[styles.statNumber, { color: colors.accent1 }]}>{completedWeek}</Text>
-    <Text style={[styles.statLabel, { color: colors.textMuted }]}>НЕДЕЛЯ</Text>
-  </View>
-  
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accent2 }]}>
-    <Text style={[styles.statNumber, { color: colors.accent2 }]}>{completedMonth}</Text>
-    <Text style={[styles.statLabel, { color: colors.textMuted }]}>МЕСЯЦ</Text>
-  </View>
-  
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-    <Text style={[styles.statNumber, { color: colors.accentText }]}>{completedTotal}</Text>
-    <Text style={[styles.statLabel, { color: colors.textMuted }]}>ВСЕГО</Text>
-  </View>
-</View>
-
 
         {/* Список задач */}
         <FlatList
@@ -463,33 +390,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
   },
-statsContainer: {
-  flexDirection: 'row',
-  padding: 16,
-  gap: 8, // Уменьшили с 12 до 8
-},
-statCard: {
-  flex: 1,
-  padding: 12,
-  borderRadius: 12,
-  borderWidth: 1,
-  alignItems: 'center',
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.3,
-  shadowRadius: 8,
-  elevation: 4,
-},
-statNumber: {
-  fontSize: 28,
-  fontWeight: '700',
-  marginBottom: 4,
-},
-statLabel: {
-  fontSize: 10,
-  textTransform: 'uppercase',
-  letterSpacing: 0.08,
-},
 });
 
 export default TasksScreen;

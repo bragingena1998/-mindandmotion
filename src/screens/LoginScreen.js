@@ -9,6 +9,7 @@ import Input from '../components/Input';
 import Card from '../components/Card';
 import api from '../services/api';
 import { saveToken } from '../services/storage';
+import Background from '../components/Background';
 
 const LoginScreen = ({ navigation }) => {
   const { colors, spacing, changeTheme, theme } = useTheme();
@@ -60,8 +61,9 @@ navigation.replace('Tasks');
     }
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+return (
+  <Background>
+    <View style={styles.container}>
       {/* Кнопка переключения темы (в правом верхнем углу) */}
       <TouchableOpacity
         style={[
@@ -125,6 +127,7 @@ navigation.replace('Tasks');
         </Card>
       </ScrollView>
     </View>
+</Background>
   );
 };
 
