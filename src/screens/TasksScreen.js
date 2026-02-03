@@ -15,6 +15,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import Background from '../components/Background';
 import Button from '../components/Button';
+import Modal from '../components/Modal';
+import Input from '../components/Input';
 import api from '../services/api';
 import { getToken } from '../services/storage';
 
@@ -24,6 +26,16 @@ const TasksScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+const [showAddModal, setShowAddModal] = useState(false);
+const [newTask, setNewTask] = useState({
+  title: '',
+  date: new Date().toISOString().split('T')[0],  // Дата планирования
+  deadline: new Date().toISOString().split('T')[0],  // Срок
+  priority: 2,  // 1=высокий, 2=средний, 3=низкий (как на сайте)
+  comment: '',
+});
+
+
 
   // Список тем для кнопки
   const themes = [
@@ -167,6 +179,36 @@ const completedMonth = tasks.filter(t => {
 }).length;
 const completedTotal = tasks.filter(t => t.completed).length;
 
+// Форматирование даты для отображения (как на сайте)
+const formatTaskDate = (task) => {
+  if (!task.date && !task.deadline) return '';
+  
+  const formatDate = (isoDate) => {
+    if (!isoDate) return '';
+    const [year, month, day] = isoDate.split('-');
+    return `${day}.${month}.${year}`;
+  };
+
+  const date = task.date || task.dueDate;
+  const deadline = task.deadline || task.dueDate;
+
+  // Если deadline нет или совпадает с датой
+  if (!deadline || date === deadline) {
+    return formatDate(date);
+  }
+
+  // Если месяц совпадает
+  const [yearD, monthD, dayD] = date.split('-');
+  const [yearDL, monthDL, dayDL] = deadline.split('-');
+
+  if (yearD === yearDL && monthD === monthDL) {
+    return `${dayD}-${dayDL}.${monthD}.${yearD}`;
+  }
+
+  // Разные месяцы
+  return `${formatDate(date)} - ${formatDate(deadline)}`;
+};
+
   // Рендер одной задачи
   const renderTask = ({ item }) => {
     const getPriorityColor = () => {
@@ -227,8 +269,9 @@ const completedTotal = tasks.filter(t => t.completed).length;
             </View>
             
             <Text style={[styles.taskDate, { color: colors.textMuted }]}>
-              {item.dueDate}
-            </Text>
+  {formatTaskDate(item)}
+</Text>
+
           </View>
         </View>
       </TouchableOpacity>
@@ -330,17 +373,138 @@ const completedTotal = tasks.filter(t => t.completed).length;
           }
         />
 
-        {/* Кнопка добавления задачи */}
+         {/* Кнопка добавления задачи */}
         <View style={styles.buttonContainer}>
           <Button
             title="+ Добавить задачу"
-            onPress={() => alert('Функция в разработке')}
+            onPress={() => setShowAddModal(true)}
           />
         </View>
-      </View>
+      </View> 
+
+      {/* Модалка добавления задачи */}
+  <Modal
+  visible={showAddModal}
+  onClose={() => {
+    setNewTask({ 
+      title: '', 
+      date: new Date().toISOString().split('T')[0],
+      deadline: new Date().toISOString().split('T')[0],
+      priority: 2,
+      comment: '',
+    });
+    setShowAddModal(false);
+  }}
+  title="Новая задача"
+>
+  <Input
+    label="Название задачи"
+    placeholder="Например: Купить продукты"
+    value={newTask.title}
+    onChangeText={(text) => setNewTask({ ...newTask, title: text })}
+  />
+
+ <Input
+  label="Дата (когда планируете)"
+  value={newTask.date}
+  onChangeText={(text) => setNewTask({ ...newTask, date: text })}
+  placeholder="03.02.2026"
+/>
+
+<Input
+  label="Срок (deadline)"
+  value={newTask.deadline}
+  onChangeText={(text) => setNewTask({ ...newTask, deadline: text })}
+  placeholder="10.02.2026"
+/>
+
+  {/* Приоритет */}
+<View style={styles.formGroup}>
+  <Text style={[styles.formLabel, { color: colors.textMain }]}>
+    Приоритет
+  </Text>
+  <View style={styles.priorityRow}>
+    <TouchableOpacity
+      style={[
+        styles.priorityBtn,
+        {
+          backgroundColor: newTask.priority === 1 ? colors.danger1 : colors.surface,
+          borderColor: newTask.priority === 1 ? colors.danger1 : colors.borderSubtle,
+        },
+      ]}
+      onPress={() => setNewTask({ ...newTask, priority: 1 })}
+    >
+      <Text style={[styles.priorityBtnText, { color: newTask.priority === 1 ? '#020617' : colors.textMain }]}>
+        ВЫСОКИЙ
+      </Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={[
+        styles.priorityBtn,
+        {
+          backgroundColor: newTask.priority === 2 ? colors.accent1 : colors.surface,
+          borderColor: newTask.priority === 2 ? colors.accent1 : colors.borderSubtle,
+        },
+      ]}
+      onPress={() => setNewTask({ ...newTask, priority: 2 })}
+    >
+      <Text style={[styles.priorityBtnText, { color: newTask.priority === 2 ? '#020617' : colors.textMain }]}>
+        СРЕДНИЙ
+      </Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={[
+        styles.priorityBtn,
+        {
+          backgroundColor: newTask.priority === 3 ? colors.ok1 : colors.surface,
+          borderColor: newTask.priority === 3 ? colors.ok1 : colors.borderSubtle,
+        },
+      ]}
+      onPress={() => setNewTask({ ...newTask, priority: 3 })}
+    >
+      <Text style={[styles.priorityBtnText, { color: newTask.priority === 3 ? '#020617' : colors.textMain }]}>
+        НИЗКИЙ
+      </Text>
+    </TouchableOpacity>
+  </View>
+</View>
+
+
+  <Button
+    title="Добавить"
+    onPress={() => {
+      if (newTask.title.trim()) {
+        const newTaskObj = {
+          id: Date.now(),
+          title: newTask.title,
+          date: newTask.date,
+          deadline: newTask.deadline,
+          completed: false,
+          priority: newTask.priority === 1 ? 'high' : newTask.priority === 2 ? 'medium' : 'low',
+          dueDate: newTask.deadline,  // Для совместимости
+          completedAt: null,
+          comment: newTask.comment,
+        };
+        setTasks([...tasks, newTaskObj]);
+        setNewTask({ 
+          title: '', 
+          date: new Date().toISOString().split('T')[0],
+          deadline: new Date().toISOString().split('T')[0],
+          priority: 2,
+          comment: '',
+        });
+        setShowAddModal(false);
+      }
+    }}
+  />
+</Modal>
+
     </Background>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -438,17 +602,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  priorityText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#020617',
-    textTransform: 'uppercase',
-  },
+priorityBadge: {
+  paddingHorizontal: 10,
+  paddingVertical: 4,
+  borderRadius: 999,
+  minWidth: 70,
+},
+priorityText: {
+  fontSize: 9,
+  fontWeight: '600',
+  color: '#020617',
+  textTransform: 'uppercase',
+  letterSpacing: 0.05,
+},
+
   taskDate: {
     fontSize: 11,
   },
@@ -490,6 +657,34 @@ statLabel: {
   textTransform: 'uppercase',
   letterSpacing: 0.08,
 },
+formGroup: {
+  marginBottom: 16,
+},
+formLabel: {
+  fontSize: 14,
+  fontWeight: '500',
+  marginBottom: 8,
+  letterSpacing: 0.06,
+},
+priorityRow: {
+  flexDirection: 'row',
+  gap: 6,
+},
+priorityBtn: {
+  flex: 1,
+  paddingVertical: 8,
+  paddingHorizontal: 4,
+  borderRadius: 999,
+  borderWidth: 1,
+  alignItems: 'center',
+},
+priorityBtnText: {
+  fontSize: 10,
+  fontWeight: '600',
+  textTransform: 'uppercase',
+  letterSpacing: 0.05,
+},
+
 });
 
 export default TasksScreen;
