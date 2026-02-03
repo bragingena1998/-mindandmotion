@@ -1,221 +1,183 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { authAPI } from '../services/api';
-import { saveToken } from '../services/storage'; // ← ДОБАВЬ ЭТУ СТРОКУ
+// src/screens/LoginScreen.js
+// Экран авторизации с компактным переключателем тем
 
-export default function LoginScreen({ navigation }) {
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import Card from '../components/Card';
+import api from '../services/api';
+import { saveToken } from '../services/storage';
+
+const LoginScreen = ({ navigation }) => {
+  const { colors, spacing, changeTheme, theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-const [successMessage, setSuccessMessage] = useState(''); // ← ДОБАВЬ ЭТУ СТРОКУ
+  const [error, setError] = useState('');
 
-// Функция логина
-const handleLogin = async () => {
-  console.log('🔵 Кнопка нажата!');
-  console.log('Email:', email);
-  console.log('Password:', password ? '***' : 'пусто');
-  
-  // Валидация
-  if (!email || !password) {
-    console.log('❌ Ошибка валидации');
-    Alert.alert('Ошибка', 'Заполните все поля');
-    return;
-  }
+  // Список тем для переключения
+  const themes = [
+    { key: 'default', emoji: '🎨', name: 'Default' },
+    { key: 'storm', emoji: '⚡', name: 'Storm' },
+    { key: 'ice', emoji: '❄️', name: 'Ice' },
+    { key: 'blood', emoji: '🔥', name: 'Blood' },
+    { key: 'toxic', emoji: '☢️', name: 'Toxic' },
+    { key: 'glitch', emoji: '👾', name: 'Glitch' },
+  ];
 
-  console.log('✅ Валидация пройдена');
-  setLoading(true);
+  // Циклическое переключение тем
+  const cycleTheme = () => {
+    const currentIndex = themes.findIndex(t => t.key === theme);
+    const nextIndex = (currentIndex + 1) % themes.length;
+    changeTheme(themes[nextIndex].key);
+  };
 
-  try {
-    console.log('🚀 Отправляем запрос на сервер...');
+  // Получаем текущую тему
+  const currentTheme = themes.find(t => t.key === theme);
+
+  const handleLogin = async () => {
+    setError('');
     
-    // Отправляем запрос на сервер
-    const response = await authAPI.login(email, password);
-    
-    console.log('✅ Ответ сервера:', response);
-    
-    // Если успешно - сохраняем токен и переходим на главный экран
-
-if (response.token) {
-  console.log('✅ Токен получен:', response.token.substring(0, 20) + '...');
-  
-  // Сохраняем токен в AsyncStorage
-  await saveToken(response.token, response.userId);
-  
-  // Показываем сообщение об успехе
-  setSuccessMessage('✅ Успешный вход! Токен получен!');
-  
-  // Через 1 секунду переходим на экран задач
-  setTimeout(() => {
-    navigation.replace('Tasks');
-  }, 1000);
-}else {
-      console.log('⚠️ Токен не получен');
-      Alert.alert('Ошибка', 'Токен не получен от сервера');
+    if (!email || !password) {
+      setError('Заполните все поля');
+      return;
     }
-  } catch (error) {
-    console.log('❌ ОШИБКА:', error);
-    console.log('Response:', error.response?.data);
-    
-    // Обработка ошибок
-    const message = error.response?.data?.error || 'Ошибка входа';
-    Alert.alert('Ошибка', message);
-  } finally {
-    console.log('🏁 Завершение');
-    setLoading(false);
-  }
-};
+
+    setLoading(true);
+
+    try {
+const response = await api.post('/api/login', { email, password });
+const { token, userId } = response.data; // ← Получаем userId из ответа
+
+await saveToken(token, userId); // ← Передаём оба параметра
+navigation.replace('Tasks');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Ошибка входа');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.content}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Кнопка переключения темы (в правом верхнем углу) */}
+      <TouchableOpacity
+        style={[
+          styles.themeToggle,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.accentBorder,
+          },
+        ]}
+        onPress={cycleTheme}
+      >
+        <Text style={styles.themeEmoji}>{currentTheme?.emoji}</Text>
+      </TouchableOpacity>
+
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Заголовок */}
-        <Text style={styles.title}>MindAndMotion</Text>
-        <Text style={styles.subtitle}>Вход в систему</Text>
+        <Text style={[styles.title, { color: colors.accentText }]}>
+          MINDANDMOTION
+        </Text>
 
-{/* ДОБАВЬ ЭТО */}
-{successMessage ? (
-  <View style={styles.successBox}>
-    <Text style={styles.successText}>{successMessage}</Text>
-  </View>
-) : null}
+        {/* Карточка с формой */}
+        <Card style={styles.card}>
+          <Input
+            label="Email"
+            placeholder="your@email.com"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              setError('');
+            }}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
 
-        {/* Поле Email */}
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+          <Input
+            label="Пароль"
+            placeholder="••••••••"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              setError('');
+            }}
+            secureTextEntry
+          />
 
-        {/* Поле Password */}
-        <TextInput
-          style={styles.input}
-          placeholder="Пароль"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
+          {error ? (
+            <Text style={[styles.errorText, { color: colors.danger1 }]}>
+              {error}
+            </Text>
+          ) : null}
 
-        {/* Кнопка входа */}
-        <TouchableOpacity 
-          style={styles.button}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Войти</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Ссылки */}
-        <TouchableOpacity 
-          style={styles.linkContainer}
-          onPress={() => Alert.alert('Скоро', 'Экран регистрации в разработке')}
-        >
-          <Text style={styles.link}>Нет аккаунта? Зарегистрироваться</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.linkContainer}
-          onPress={() => Alert.alert('Скоро', 'Восстановление пароля в разработке')}
-        >
-          <Text style={styles.link}>Забыли пароль?</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <Button
+            title="Войти"
+            onPress={handleLogin}
+            loading={loading}
+            style={styles.button}
+          />
+        </Card>
+      </ScrollView>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
-  content: {
-    flex: 1,
+  themeToggle: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    width: 50,
+    height: 50,
+    borderRadius: 999,
+    borderWidth: 2,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  themeEmoji: {
+    fontSize: 24,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 60,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#666',
-    textAlign: 'center',
     marginBottom: 40,
+    textAlign: 'center',
+    letterSpacing: 0.12,
+    textTransform: 'uppercase',
   },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 15,
+  card: {
+    marginBottom: 24,
+  },
+  errorText: {
+    fontSize: 13,
+    marginBottom: 12,
+    textAlign: 'center',
   },
   button: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 10,
+    marginTop: 8,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkContainer: {
-    marginTop: 15,
-    alignItems: 'center',
-  },
-  link: {
-    color: '#007AFF',
-    fontSize: 14,
-  },
-
-link: {
-  color: '#007AFF',
-  fontSize: 14,
-},
-// ДОБАВЬ ЭТО:
-successBox: {
-  backgroundColor: '#4CAF50',
-  borderRadius: 8,
-  padding: 15,
-  marginBottom: 20,
-  alignItems: 'center',
-},
-successText: {
-  color: '#fff',
-  fontSize: 16,
-  fontWeight: '600',
-},
-
 });
+
+export default LoginScreen;
 
