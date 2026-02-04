@@ -9,7 +9,8 @@ import {
   FlatList, 
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl 
+  RefreshControl, 
+  Alert
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
@@ -19,6 +20,8 @@ import Modal from '../components/Modal';
 import Input from '../components/Input';
 import api from '../services/api';
 import { getToken } from '../services/storage';
+import { tasksAPI } from '../services/api';
+
 
 const TasksScreen = ({ navigation }) => {
   const { colors, spacing, changeTheme, theme } = useTheme();
@@ -61,71 +64,38 @@ const [newTask, setNewTask] = useState({
     loadTasks();
   }, []);
 
-  const loadTasks = async () => {
-    try {
-      setError('');
-      const token = await getToken();
-      
-      if (!token) {
-        navigation.replace('Login');
-        return;
-      }
-
-      // Моковые данные (временно)
-setTimeout(() => {
-  setTasks([
-    { 
-      id: 1, 
-      title: 'Сделать дизайн мобильного приложения', 
-      completed: false,
-      priority: 'high',
-      dueDate: '2026-02-03',
-      completedAt: null // Дата завершения (null если не выполнено)
-    },
-    { 
-      id: 2, 
-      title: 'Написать код для TasksScreen', 
-      completed: true,
-      priority: 'medium',
-      dueDate: '2026-02-03',
-      completedAt: '2026-02-03' // Выполнено сегодня
-    },
-    { 
-      id: 3, 
-      title: 'Протестировать приложение', 
-      completed: false,
-      priority: 'low',
-      dueDate: '2026-02-04',
-      completedAt: null
-    },
-    { 
-      id: 4, 
-      title: 'Тестовая задача за неделю', 
-      completed: true,
-      priority: 'medium',
-      dueDate: '2026-02-02',
-      completedAt: '2026-02-02' // Выполнено в понедельник
-    },
-    { 
-      id: 5, 
-      title: 'Задача за прошлый месяц', 
-      completed: true,
-      priority: 'low',
-      dueDate: '2026-01-15',
-      completedAt: '2026-01-15' // Выполнено в январе
-    },
-  ]);
-  setLoading(false);
-}, 500);
-
-
-    } catch (err) {
-      console.error('Ошибка загрузки задач:', err);
-      setError('Ошибка загрузки задач');
-      setTasks([]);
-      setLoading(false);
+const loadTasks = async () => {
+  try {
+    setError('');
+    const token = await getToken();
+    
+    if (!token) {
+      navigation.replace('Login');
+      return;
     }
-  };
+
+    // Загружаем реальные задачи с API
+    const data = await tasksAPI.getTasks();
+    console.log('🔍 RAW данные с API:', JSON.stringify(data, null, 2));
+    
+  // Преобразуем приоритеты из чисел (1,2,3) в строки (high, medium, low)
+const formattedTasks = data.map(task => ({
+  ...task,
+  priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
+  dueDate: task.deadline || task.date,
+  completed: task.done || false, // ← ДОБАВЬ ЭТУ СТРОКУ
+}));
+
+    
+    setTasks(formattedTasks);
+    setLoading(false);
+  } catch (err) {
+    console.error('Ошибка загрузки задач:', err);
+    setError('Ошибка загрузки задач');
+    setTasks([]);
+    setLoading(false);
+  }
+};
 
   // Обновление списка
   const onRefresh = async () => {
@@ -135,16 +105,61 @@ setTimeout(() => {
   };
 
   // Переключение статуса задачи
-  const toggleTask = (taskId) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId 
-        ? { ...task, completed: !task.completed }
-        : task
-    ));
-  };
+const toggleTask = async (taskId) => {
+  try {
+    const taskToUpdate = tasks.find(t => t.id === taskId);
+    if (!taskToUpdate) return;
+
+    // Оптимистичное обновление UI
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      )
+    );
+
+    // Формируем данные для отправки (как бэкенд ожидает)
+    const updatedTaskData = {
+      title: taskToUpdate.title,
+      date: taskToUpdate.date,
+      deadline: taskToUpdate.deadline,
+      priority: taskToUpdate.priority === 'high' ? 1 : taskToUpdate.priority === 'low' ? 3 : 2,
+      comment: taskToUpdate.comment || '',
+      done: !taskToUpdate.completed, // Переключаем
+      doneDate: !taskToUpdate.completed ? new Date().toISOString().split('T')[0] : null,
+    };
+
+    // Отправляем на сервер через updateTask
+    await tasksAPI.updateTask(taskId, updatedTaskData);
+    
+  } catch (error) {
+    console.error('❌ Ошибка переключения задачи:', error);
+    // Откатываем изменения при ошибке
+    loadTasks();
+  }
+};
+
+
 
   // Выход
-  const handleLogout = async () => {
+const deleteTask = async (taskId) => {
+  try {
+    setLoading(true);
+    
+    // Удаляем на сервере
+    await tasksAPI.deleteTask(taskId);
+    
+    // Удаляем из локального массива
+    setTasks(tasks.filter(t => t.id !== taskId));
+    
+    setLoading(false);
+  } catch (err) {
+    console.error('Ошибка удаления задачи:', err);
+    setError('Не удалось удалить задачу: ' + err.message);
+    setLoading(false);
+  }
+};
+ 
+ const handleLogout = async () => {
     await AsyncStorage.removeItem('token');
     navigation.replace('Login');
   };
@@ -168,45 +183,65 @@ const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
 const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 const startOfMonthStr = startOfMonth.toISOString().split('T')[0];
 
-// Подсчёт
-const completedToday = tasks.filter(t => t.completed && t.completedAt === todayStr).length;
-const completedWeek = tasks.filter(t => t.completed && t.completedAt >= startOfWeekStr).length;
-const completedMonth = tasks.filter(t => {
-  if (!t.completed || !t.completedAt) return false;
-  const completedDate = new Date(t.completedAt);
-  return completedDate.getMonth() === today.getMonth() && 
-         completedDate.getFullYear() === today.getFullYear();
+// Подсчёт (используем doneDate из БД!)
+const completedToday = tasks.filter(t => {
+  if (!t.completed || !t.doneDate) return false;
+  const doneDate = new Date(t.doneDate).toISOString().split('T')[0];
+  return doneDate === todayStr;
 }).length;
+
+const completedWeek = tasks.filter(t => {
+  if (!t.completed || !t.doneDate) return false;
+  const doneDate = new Date(t.doneDate).toISOString().split('T')[0];
+  return doneDate >= startOfWeekStr;
+}).length;
+
+const completedMonth = tasks.filter(t => {
+  if (!t.completed || !t.doneDate) return false;
+  const doneDate = new Date(t.doneDate);
+  return doneDate.getMonth() === today.getMonth() && 
+         doneDate.getFullYear() === today.getFullYear();
+}).length;
+
 const completedTotal = tasks.filter(t => t.completed).length;
 
-// Форматирование даты для отображения (как на сайте)
+
+/// Форматирование даты для отображения (как на сайте)
 const formatTaskDate = (task) => {
-  if (!task.date && !task.deadline) return '';
-  
-  const formatDate = (isoDate) => {
-    if (!isoDate) return '';
-    const [year, month, day] = isoDate.split('-');
+  const formatDate = (isoString) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
     return `${day}.${month}.${year}`;
   };
 
-  const date = task.date || task.dueDate;
-  const deadline = task.deadline || task.dueDate;
+  const dateStr = task.date;
+  const deadlineStr = task.deadline;
 
-  // Если deadline нет или совпадает с датой
-  if (!deadline || date === deadline) {
-    return formatDate(date);
+  // Если нет deadline или они совпадают
+  if (!deadlineStr || dateStr === deadlineStr) {
+    return formatDate(dateStr);
   }
 
-  // Если месяц совпадает
-  const [yearD, monthD, dayD] = date.split('-');
-  const [yearDL, monthDL, dayDL] = deadline.split('-');
+  // Если разные - показываем диапазон
+  const dateObj = new Date(dateStr);
+  const deadlineObj = new Date(deadlineStr);
 
-  if (yearD === yearDL && monthD === monthDL) {
-    return `${dayD}-${dayDL}.${monthD}.${yearD}`;
+  const dayStart = String(dateObj.getDate()).padStart(2, '0');
+  const dayEnd = String(deadlineObj.getDate()).padStart(2, '0');
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const year = dateObj.getFullYear();
+
+  // Если один месяц
+  if (dateObj.getMonth() === deadlineObj.getMonth() && 
+      dateObj.getFullYear() === deadlineObj.getFullYear()) {
+    return `${dayStart}-${dayEnd}.${month}.${year}`;
   }
 
   // Разные месяцы
-  return `${formatDate(date)} - ${formatDate(deadline)}`;
+  return `${formatDate(dateStr)} - ${formatDate(deadlineStr)}`;
 };
 
   // Рендер одной задачи
@@ -233,16 +268,17 @@ const formatTaskDate = (task) => {
         onPress={() => toggleTask(item.id)}
       >
         <View
-          style={[
-            styles.checkbox,
-            {
-              borderColor: item.completed ? colors.ok1 : colors.borderSubtle,
-              backgroundColor: item.completed ? colors.ok1 : 'transparent',
-            },
-          ]}
-        >
-          {item.completed && <Text style={styles.checkmark}>✓</Text>}
-        </View>
+  style={[
+    styles.checkbox,
+    {
+      borderColor: item.completed ? colors.ok1 : colors.borderSubtle,
+      backgroundColor: item.completed ? colors.ok1 : 'transparent',
+    },
+  ]}
+>
+  {item.completed && <Text style={styles.checkmark}>✓</Text>}
+</View>
+
 
         <View style={styles.taskContent}>
           <Text
@@ -268,13 +304,32 @@ const formatTaskDate = (task) => {
               </Text>
             </View>
             
-            <Text style={[styles.taskDate, { color: colors.textMuted }]}>
+                        <Text style={[styles.taskDate, { color: colors.textMuted }]}>
   {formatTaskDate(item)}
 </Text>
-
           </View>
+
+          <TouchableOpacity
+            onPress={() => {
+              Alert.alert(
+                'Удалить задачу?',
+                `"${item.title}" будет удалена навсегда`,
+                [
+                  { text: 'Отмена', style: 'cancel' },
+                  { 
+                    text: 'Удалить', 
+                    onPress: () => deleteTask(item.id),
+                    style: 'destructive' 
+                  },
+                ]
+              );
+            }}
+          >
+            <Text style={{ fontSize: 16 }}>🗑️</Text>
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
+
     );
   };
 
@@ -474,30 +529,57 @@ const formatTaskDate = (task) => {
 
   <Button
     title="Добавить"
-    onPress={() => {
-      if (newTask.title.trim()) {
-        const newTaskObj = {
-          id: Date.now(),
-          title: newTask.title,
-          date: newTask.date,
-          deadline: newTask.deadline,
-          completed: false,
-          priority: newTask.priority === 1 ? 'high' : newTask.priority === 2 ? 'medium' : 'low',
-          dueDate: newTask.deadline,  // Для совместимости
-          completedAt: null,
-          comment: newTask.comment,
-        };
-        setTasks([...tasks, newTaskObj]);
-        setNewTask({ 
-          title: '', 
-          date: new Date().toISOString().split('T')[0],
-          deadline: new Date().toISOString().split('T')[0],
-          priority: 2,
-          comment: '',
-        });
-        setShowAddModal(false);
-      }
-    }}
+// В обработчике кнопки "Добавить" в Modal
+onPress={async () => {
+  if (!newTask.title.trim()) {
+    setError('Название задачи не может быть пусто');
+    return;
+  }
+
+  try {
+    setLoading(true);
+    
+    // Преобразуем приоритет обратно в число для отправки на сервер
+    const taskToSend = {
+      title: newTask.title,
+      date: newTask.date,
+      deadline: newTask.deadline,
+      priority: newTask.priority, // Это уже число 1, 2, 3
+      comment: newTask.comment || '',
+      done: false,
+      doneDate: null,
+    };
+
+    // Отправляем на сервер
+    const createdTask = await tasksAPI.createTask(taskToSend);
+    
+    // Преобразуем ответ в нужный формат
+    const formattedTask = {
+      ...createdTask,
+      priority: createdTask.priority === 1 ? 'high' : createdTask.priority === 3 ? 'low' : 'medium',
+      dueDate: createdTask.deadline || createdTask.date,
+    };
+    
+    // Добавляем в локальный массив
+    setTasks([...tasks, formattedTask]);
+    
+    // Очищаем форму
+    setNewTask({ 
+      title: '', 
+      date: new Date().toISOString().split('T')[0],
+      deadline: new Date().toISOString().split('T')[0],
+      priority: 2,
+      comment: '',
+    });
+    
+    setShowAddModal(false);
+    setLoading(false);
+  } catch (err) {
+    console.error('Ошибка создания задачи:', err);
+    setError('Не удалось создать задачу: ' + err.message);
+    setLoading(false);
+  }
+}}
   />
 </Modal>
 
@@ -683,6 +765,13 @@ priorityBtnText: {
   fontWeight: '600',
   textTransform: 'uppercase',
   letterSpacing: 0.05,
+},
+deleteButton: {
+  paddingHorizontal: 12,
+  paddingVertical: 8,
+  borderRadius: 6,
+  justifyContent: 'center',
+  alignItems: 'center',
 },
 
 });
