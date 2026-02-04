@@ -30,6 +30,7 @@ const TasksScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 const [showAddModal, setShowAddModal] = useState(false);
+const [hideCompleted, setHideCompleted] = useState(false); 
 const [newTask, setNewTask] = useState({
   title: '',
   date: new Date().toISOString().split('T')[0],  // Дата планирования
@@ -244,6 +245,11 @@ const formatTaskDate = (task) => {
   return `${formatDate(dateStr)} - ${formatDate(deadlineStr)}`;
 };
 
+// Фильтрация задач
+const filteredTasks = hideCompleted 
+  ? tasks.filter(t => !t.completed) 
+  : tasks;
+  
   // Рендер одной задачи
   const renderTask = ({ item }) => {
     const getPriorityColor = () => {
@@ -405,10 +411,33 @@ const formatTaskDate = (task) => {
   </View>
 </View>
 
+{/* ← ДОБАВЬ ЭТОТ БЛОК: */}
+{/* Фильтр выполненных */}
+<View style={styles.filterContainer}>
+  <TouchableOpacity
+    style={[
+      styles.filterButton,
+      {
+        backgroundColor: hideCompleted ? colors.accent1 : colors.surface,
+        borderColor: colors.accentBorder,
+      },
+    ]}
+    onPress={() => setHideCompleted(!hideCompleted)}
+  >
+    <Text
+      style={[
+        styles.filterText,
+        { color: hideCompleted ? '#020617' : colors.textMain },
+      ]}
+    >
+      {hideCompleted ? '👁️ Показать выполненные' : '🙈 Скрыть выполненные'}
+    </Text>
+  </TouchableOpacity>
+</View>
 
         {/* Список задач */}
         <FlatList
-          data={tasks}
+          data={filteredTasks} 
           renderItem={renderTask}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
@@ -716,6 +745,22 @@ statsContainer: {
   flexDirection: 'row',
   padding: 16,
   gap: 8, // Уменьшили с 12 до 8
+},
+filterContainer: {
+  paddingHorizontal: 16,
+  paddingBottom: 8,
+},
+filterButton: {
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  borderRadius: 999,
+  borderWidth: 1,
+  alignItems: 'center',
+},
+filterText: {
+  fontSize: 13,
+  fontWeight: '600',
+  letterSpacing: 0.06,
 },
 statCard: {
   flex: 1,
