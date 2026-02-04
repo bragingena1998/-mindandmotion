@@ -144,27 +144,29 @@ const toggleTask = async (taskId) => {
 
 
 
-  // Выход
 const deleteTask = async (taskId) => {
+  console.log('🗑️ Попытка удаления задачи:', taskId);
+  
   try {
-    setLoading(true);
-    
     // Удаляем на сервере
+    console.log('📡 Отправляем запрос на сервер...');
     await tasksAPI.deleteTask(taskId);
+    console.log('✅ Задача удалена на сервере');
     
     // Удаляем из локального массива
-    setTasks(tasks.filter(t => t.id !== taskId));
+    setTasks(prevTasks => {
+      const newTasks = prevTasks.filter(t => t.id !== taskId);
+      console.log('🔄 Обновлён локальный список:', newTasks.length, 'задач');
+      return newTasks;
+    });
     
-    setLoading(false);
   } catch (err) {
-    console.error('Ошибка удаления задачи:', err);
-    setError('Не удалось удалить задачу: ' + err.message);
-    setLoading(false);
+    console.error('❌ Ошибка удаления задачи:', err);
+    Alert.alert('Ошибка', 'Не удалось удалить задачу: ' + err.message);
   }
-};
+}; 
 
- const handleEditTask = (task) => {
-  // Преобразуем обратно priority из строки в число
+  const handleEditTask = (task) => {
   setNewTask({
     title: task.title,
     date: task.date.split('T')[0],
@@ -176,11 +178,13 @@ const deleteTask = async (taskId) => {
   setShowAddModal(true);
 };
 
- const handleLogout = async () => {
-    await AsyncStorage.removeItem('token');
-    navigation.replace('Login');
-  };
-  
+// ← ДОБАВЬ ЭТУ ФУНКЦИЮ:
+const handleLogout = async () => {
+  await AsyncStorage.removeItem('token');
+  navigation.replace('Login');
+};
+
+
 // Расчёт статистики (как на сайте)
 const today = new Date();
 const todayStr = today.toISOString().split('T')[0]; // '2026-02-03'
@@ -326,7 +330,8 @@ const sortedTasks = [...filteredTasks].sort((a, b) => {
 });
 
 
-  // Рендер одной задачи
+
+// Рендер одной задачи
 const renderTask = ({ item }) => {
   const getPriorityColor = () => {
     switch (item.priority) {
@@ -337,15 +342,13 @@ const renderTask = ({ item }) => {
     }
   };
   
-  // ← ДОБАВИЛИ ОПРЕДЕЛЕНИЕ СТАТУСА:
   const taskStatus = getTaskStatus(item);
   
-  // ← ДОБАВИЛИ ЦВЕТА ПОДСВЕТКИ:
   const getStatusColor = () => {
     if (item.completed) return colors.borderSubtle;
-    if (taskStatus === 'overdue') return colors.danger1; // Красный
-    if (taskStatus === 'today') return colors.ok1; // Зелёный
-    return colors.borderSubtle; // Обычная рамка
+    if (taskStatus === 'overdue') return colors.danger1;
+    if (taskStatus === 'today') return colors.ok1;
+    return colors.borderSubtle;
   };
   
   return (
@@ -354,9 +357,9 @@ const renderTask = ({ item }) => {
         styles.taskItem,
         {
           backgroundColor: colors.surface,
-          borderColor: getStatusColor(), // ← ИЗМЕНИЛИ
-          borderWidth: taskStatus === 'future' ? 1 : 2, // ← Будущие тоньше
-          opacity: item.completed ? 0.5 : (taskStatus === 'future' ? 0.6 : 1), // ← Будущие приглушены
+          borderColor: getStatusColor(),
+          borderWidth: taskStatus === 'future' ? 1 : 2,
+          opacity: item.completed ? 0.5 : (taskStatus === 'future' ? 0.6 : 1),
         },
         item.completed && styles.taskCompleted,
       ]}
@@ -375,6 +378,40 @@ const renderTask = ({ item }) => {
       </View>
 
       <View style={styles.taskContent}>
+        {/* ← КНОПКИ СВЕРХУ СПРАВА */}
+        <View style={styles.taskActions}>
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              handleEditTask(item);
+            }}
+            style={styles.actionButton}
+          >
+            <Text style={{ fontSize: 18 }}>✏️</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              Alert.alert(
+                'Удалить задачу?',
+                `"${item.title}" будет удалена навсегда`,
+                [
+                  { text: 'Отмена', style: 'cancel' },
+                  { 
+                    text: 'Удалить', 
+                    onPress: () => deleteTask(item.id),
+                    style: 'destructive' 
+                  },
+                ]
+              );
+            }}
+            style={styles.actionButton}
+          >
+            <Text style={{ fontSize: 18 }}>🗑️</Text>
+          </TouchableOpacity>
+        </View>
+
         <Text
           style={[
             styles.taskTitle,
@@ -386,24 +423,24 @@ const renderTask = ({ item }) => {
         </Text>
         
         {!item.completed && (
-  <View style={styles.statusBadge}>
-    {taskStatus === 'overdue' && (
-      <Text style={[styles.statusText, { color: colors.danger1 }]}>
-        🔥 ПРОСРОЧЕНО
-      </Text>
-    )}
-    {taskStatus === 'today' && (
-      <Text style={[styles.statusText, { color: colors.ok1 }]}>
-        ⚡ СЕГОДНЯ
-      </Text>
-    )}
-    {taskStatus === 'future' && (
-      <Text style={[styles.statusText, { color: colors.textMuted }]}>
-        📅 В ПЛАНЕ
-      </Text>
-    )}
-  </View>
-)}
+          <View style={styles.statusBadge}>
+            {taskStatus === 'overdue' && (
+              <Text style={[styles.statusText, { color: colors.danger1 }]}>
+                🔥 ПРОСРОЧЕНО
+              </Text>
+            )}
+            {taskStatus === 'today' && (
+              <Text style={[styles.statusText, { color: colors.ok1 }]}>
+                ⚡ СЕГОДНЯ
+              </Text>
+            )}
+            {taskStatus === 'future' && (
+              <Text style={[styles.statusText, { color: colors.textMuted }]}>
+                📅 В ПЛАНЕ
+              </Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.taskMeta}>
           <View
@@ -422,40 +459,11 @@ const renderTask = ({ item }) => {
             {formatTaskDate(item)}
           </Text>
         </View>
-
-        {/* Кнопки действий */}
-        <View style={styles.taskActions}>
-          <TouchableOpacity
-            onPress={() => handleEditTask(item)}
-            style={styles.actionButton}
-          >
-            <Text style={{ fontSize: 16 }}>✏️</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              Alert.alert(
-                'Удалить задачу?',
-                `"${item.title}" будет удалена навсегда`,
-                [
-                  { text: 'Отмена', style: 'cancel' },
-                  { 
-                    text: 'Удалить', 
-                    onPress: () => deleteTask(item.id),
-                    style: 'destructive' 
-                  },
-                ]
-              );
-            }}
-            style={styles.actionButton}
-          >
-            <Text style={{ fontSize: 16 }}>🗑️</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </TouchableOpacity>
   );
 };
+
 
 
   if (loading) {
@@ -1015,12 +1023,20 @@ taskMeta: {
   gap: 8,
 },
 taskActions: {
+  position: 'absolute',
+  top: 8,
+  right: 8,
   flexDirection: 'row',
-  gap: 12,
-  marginTop: 8,
+  gap: 8,
+  zIndex: 10,
 },
 actionButton: {
-  padding: 4,
+  width: 32,
+  height: 32,
+  backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  borderRadius: 8,
+  alignItems: 'center',
+  justifyContent: 'center',
 },
 statusBadge: {
   marginBottom: 6,
