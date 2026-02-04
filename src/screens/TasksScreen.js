@@ -30,8 +30,10 @@ const TasksScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 const [showAddModal, setShowAddModal] = useState(false);
-const [hideCompleted, setHideCompleted] = useState(false); 
+const [hideCompleted, setHideCompleted] = useState(true);
 const [editingTask, setEditingTask] = useState(null);
+const [sortBy, setSortBy] = useState('date');
+const [showFilterMenu, setShowFilterMenu] = useState(false);
 const [newTask, setNewTask] = useState({
   title: '',
   date: new Date().toISOString().split('T')[0],  // Дата планирования
@@ -263,8 +265,67 @@ const formatTaskDate = (task) => {
 const filteredTasks = hideCompleted 
   ? tasks.filter(t => !t.completed) 
   : tasks;
+
+// Определение статуса задачи по дате
+const getTaskStatus = (task) => {
+  const today = new Date().toISOString().split('T')[0];
+  const startDate = task.date;
+  const endDate = task.deadline || task.date;
   
-  // Рендер одной задачи
+  // Если сегодня попадает в диапазон [startDate, endDate] - задача актуальна
+  if (today >= startDate && today <= endDate) return 'today';
+  
+  // Если дедлайн уже прошёл - просрочено
+  if (endDate < today) return 'overdue';
+  
+  // Если задача ещё в будущем
+  return 'future';
+};
+
+
+// Сортировка задач
+const sortedTasks = [...filteredTasks].sort((a, b) => {
+  if (sortBy === 'date') {
+    // УМНАЯ СОРТИРОВКА ПО ДАТЕ
+    const today = new Date().toISOString().split('T')[0];
+    
+    const deadlineA = a.deadline || a.date;
+    const deadlineB = b.deadline || b.date;
+    
+    // Категоризация задач
+    const getCategoryOrder = (deadline) => {
+      if (deadline < today) return 1; // Просроченные (красные) - сверху
+      if (deadline === today) return 2; // Сегодняшние (зелёные) - в середине
+      return 3; // Будущие (приглушённые) - внизу
+    };
+    
+    const categoryA = getCategoryOrder(deadlineA);
+    const categoryB = getCategoryOrder(deadlineB);
+    
+    // Сначала по категориям
+    if (categoryA !== categoryB) {
+      return categoryA - categoryB;
+    }
+    
+    // Внутри категории - по дате
+    return new Date(deadlineA) - new Date(deadlineB);
+  }
+  
+  if (sortBy === 'priority') {
+    // По приоритету (высокий -> средний -> низкий)
+    const priorityOrder = { high: 1, medium: 2, low: 3 };
+    return priorityOrder[a.priority] - priorityOrder[b.priority];
+  }
+  
+  if (sortBy === 'title') {
+    // По названию (А -> Я)
+    return a.title.localeCompare(b.title, 'ru');
+  }
+  
+  return 0;
+});
+
+
   // Рендер одной задачи
 const renderTask = ({ item }) => {
   const getPriorityColor = () => {
@@ -276,13 +337,26 @@ const renderTask = ({ item }) => {
     }
   };
   
+  // ← ДОБАВИЛИ ОПРЕДЕЛЕНИЕ СТАТУСА:
+  const taskStatus = getTaskStatus(item);
+  
+  // ← ДОБАВИЛИ ЦВЕТА ПОДСВЕТКИ:
+  const getStatusColor = () => {
+    if (item.completed) return colors.borderSubtle;
+    if (taskStatus === 'overdue') return colors.danger1; // Красный
+    if (taskStatus === 'today') return colors.ok1; // Зелёный
+    return colors.borderSubtle; // Обычная рамка
+  };
+  
   return (
     <TouchableOpacity
       style={[
         styles.taskItem,
         {
           backgroundColor: colors.surface,
-          borderColor: colors.borderSubtle,
+          borderColor: getStatusColor(), // ← ИЗМЕНИЛИ
+          borderWidth: taskStatus === 'future' ? 1 : 2, // ← Будущие тоньше
+          opacity: item.completed ? 0.5 : (taskStatus === 'future' ? 0.6 : 1), // ← Будущие приглушены
         },
         item.completed && styles.taskCompleted,
       ]}
@@ -311,6 +385,26 @@ const renderTask = ({ item }) => {
           {item.title}
         </Text>
         
+        {!item.completed && (
+  <View style={styles.statusBadge}>
+    {taskStatus === 'overdue' && (
+      <Text style={[styles.statusText, { color: colors.danger1 }]}>
+        🔥 ПРОСРОЧЕНО
+      </Text>
+    )}
+    {taskStatus === 'today' && (
+      <Text style={[styles.statusText, { color: colors.ok1 }]}>
+        ⚡ СЕГОДНЯ
+      </Text>
+    )}
+    {taskStatus === 'future' && (
+      <Text style={[styles.statusText, { color: colors.textMuted }]}>
+        📅 В ПЛАНЕ
+      </Text>
+    )}
+  </View>
+)}
+
         <View style={styles.taskMeta}>
           <View
             style={[
@@ -415,18 +509,18 @@ const renderTask = ({ item }) => {
         </View>
 {/* Статистика */}
 <View style={styles.statsContainer}>
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.ok1 }]}>
-    <Text style={[styles.statNumber, { color: colors.ok1 }]}>{completedToday}</Text>
+  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
+    <Text style={[styles.statNumber, { color: colors.accentText }]}>{completedToday}</Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>СЕГОДНЯ</Text>
   </View>
   
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
-    <Text style={[styles.statNumber, { color: colors.accent1 }]}>{completedWeek}</Text>
+  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
+    <Text style={[styles.statNumber, { color: colors.accentText }]}>{completedWeek}</Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>НЕДЕЛЯ</Text>
   </View>
   
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accent2 }]}>
-    <Text style={[styles.statNumber, { color: colors.accent2 }]}>{completedMonth}</Text>
+  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
+    <Text style={[styles.statNumber, { color: colors.accentText }]}>{completedMonth}</Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>МЕСЯЦ</Text>
   </View>
   
@@ -436,33 +530,89 @@ const renderTask = ({ item }) => {
   </View>
 </View>
 
-{/* ← ДОБАВЬ ЭТОТ БЛОК: */}
-{/* Фильтр выполненных */}
+
+{/* Кнопка фильтра/сортировки */}
 <View style={styles.filterContainer}>
-  <TouchableOpacity
-    style={[
-      styles.filterButton,
-      {
-        backgroundColor: hideCompleted ? colors.accent1 : colors.surface,
-        borderColor: colors.accentBorder,
-      },
-    ]}
-    onPress={() => setHideCompleted(!hideCompleted)}
-  >
-    <Text
-      style={[
-        styles.filterText,
-        { color: hideCompleted ? '#020617' : colors.textMain },
-      ]}
-    >
-      {hideCompleted ? '👁️ Показать выполненные' : '🙈 Скрыть выполненные'}
-    </Text>
-  </TouchableOpacity>
+ <TouchableOpacity
+  style={[
+    styles.filterMenuButton,
+    {
+      backgroundColor: colors.surface,
+      borderColor: colors.accentBorder,
+    },
+  ]}
+  onPress={() => setShowFilterMenu(!showFilterMenu)}
+>
+  <Text style={{ fontSize: 20 }}>⚙️</Text>
+</TouchableOpacity>
+
+
+  {/* Выпадающее меню */}
+  {showFilterMenu && (
+    <View style={[styles.filterMenu, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
+      {/* Скрыть выполненные */}
+      <TouchableOpacity
+        style={styles.filterMenuItem}
+        onPress={() => setHideCompleted(!hideCompleted)}
+      >
+        <Text style={{ fontSize: 16 }}>
+          {hideCompleted ? '✅' : '⬜'}
+        </Text>
+        <Text style={[styles.filterMenuItemText, { color: colors.textMain }]}>
+          Скрыть выполненные
+        </Text>
+      </TouchableOpacity>
+
+      {/* Разделитель */}
+      <View style={[styles.filterMenuDivider, { backgroundColor: colors.borderSubtle }]} />
+
+      {/* Сортировка */}
+      <Text style={[styles.filterMenuLabel, { color: colors.textMuted }]}>
+        СОРТИРОВКА:
+      </Text>
+
+      <TouchableOpacity
+        style={styles.filterMenuItem}
+        onPress={() => setSortBy('date')}
+      >
+        <Text style={{ fontSize: 16 }}>
+          {sortBy === 'date' ? '🔘' : '⚪'}
+        </Text>
+        <Text style={[styles.filterMenuItemText, { color: colors.textMain }]}>
+          По дате
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.filterMenuItem}
+        onPress={() => setSortBy('priority')}
+      >
+        <Text style={{ fontSize: 16 }}>
+          {sortBy === 'priority' ? '🔘' : '⚪'}
+        </Text>
+        <Text style={[styles.filterMenuItemText, { color: colors.textMain }]}>
+          По приоритету
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.filterMenuItem}
+        onPress={() => setSortBy('title')}
+      >
+        <Text style={{ fontSize: 16 }}>
+          {sortBy === 'title' ? '🔘' : '⚪'}
+        </Text>
+        <Text style={[styles.filterMenuItemText, { color: colors.textMain }]}>
+          По названию
+        </Text>
+      </TouchableOpacity>
+    </View>
+  )}
 </View>
 
         {/* Список задач */}
         <FlatList
-          data={filteredTasks} 
+          data={sortedTasks}
           renderItem={renderTask}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
@@ -797,13 +947,7 @@ filterContainer: {
   paddingHorizontal: 16,
   paddingBottom: 8,
 },
-filterButton: {
-  paddingVertical: 12,
-  paddingHorizontal: 16,
-  borderRadius: 999,
-  borderWidth: 1,
-  alignItems: 'center',
-},
+
 filterText: {
   fontSize: 13,
   fontWeight: '600',
@@ -878,6 +1022,56 @@ taskActions: {
 actionButton: {
   padding: 4,
 },
+statusBadge: {
+  marginBottom: 6,
+},
+statusText: {
+  fontSize: 9,
+  fontWeight: '700',
+  textTransform: 'uppercase',
+  letterSpacing: 0.08,
+},
+filterContainer: {
+  paddingHorizontal: 16,
+  paddingVertical: 8,
+},
+filterMenuButton: {
+  width: 44,
+  height: 44,
+  borderRadius: 12,
+  borderWidth: 1,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+filterMenu: {
+  marginTop: 8,
+  padding: 12,
+  borderRadius: 12,
+  borderWidth: 1,
+  gap: 12,
+},
+filterMenuItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 12,
+  paddingVertical: 8,
+},
+filterMenuItemText: {
+  fontSize: 14,
+  fontWeight: '500',
+},
+filterMenuLabel: {
+  fontSize: 11,
+  fontWeight: '600',
+  textTransform: 'uppercase',
+  letterSpacing: 0.08,
+  marginTop: 4,
+},
+filterMenuDivider: {
+  height: 1,
+  marginVertical: 4,
+},
+
 });
 
 export default TasksScreen;
