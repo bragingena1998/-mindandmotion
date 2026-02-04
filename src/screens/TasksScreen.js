@@ -31,6 +31,7 @@ const TasksScreen = ({ navigation }) => {
   const [error, setError] = useState('');
 const [showAddModal, setShowAddModal] = useState(false);
 const [hideCompleted, setHideCompleted] = useState(false); 
+const [editingTask, setEditingTask] = useState(null);
 const [newTask, setNewTask] = useState({
   title: '',
   date: new Date().toISOString().split('T')[0],  // Дата планирования
@@ -159,7 +160,20 @@ const deleteTask = async (taskId) => {
     setLoading(false);
   }
 };
- 
+
+ const handleEditTask = (task) => {
+  // Преобразуем обратно priority из строки в число
+  setNewTask({
+    title: task.title,
+    date: task.date.split('T')[0],
+    deadline: task.deadline.split('T')[0],
+    priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
+    comment: task.comment || '',
+  });
+  setEditingTask(task);
+  setShowAddModal(true);
+};
+
  const handleLogout = async () => {
     await AsyncStorage.removeItem('token');
     navigation.replace('Login');
@@ -251,69 +265,78 @@ const filteredTasks = hideCompleted
   : tasks;
   
   // Рендер одной задачи
-  const renderTask = ({ item }) => {
-    const getPriorityColor = () => {
-      switch (item.priority) {
-        case 'high': return colors.danger1;
-        case 'medium': return colors.accent1;
-        case 'low': return colors.ok1;
-        default: return colors.textMuted;
-      }
-    };
-    
-    return (
-      <TouchableOpacity
+  // Рендер одной задачи
+const renderTask = ({ item }) => {
+  const getPriorityColor = () => {
+    switch (item.priority) {
+      case 'high': return colors.danger1;
+      case 'medium': return colors.accent1;
+      case 'low': return colors.ok1;
+      default: return colors.textMuted;
+    }
+  };
+  
+  return (
+    <TouchableOpacity
+      style={[
+        styles.taskItem,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.borderSubtle,
+        },
+        item.completed && styles.taskCompleted,
+      ]}
+      onPress={() => toggleTask(item.id)}
+    >
+      <View
         style={[
-          styles.taskItem,
+          styles.checkbox,
           {
-            backgroundColor: colors.surface,
-            borderColor: colors.borderSubtle,
+            borderColor: item.completed ? colors.ok1 : colors.borderSubtle,
+            backgroundColor: item.completed ? colors.ok1 : 'transparent',
           },
-          item.completed && styles.taskCompleted,
         ]}
-        onPress={() => toggleTask(item.id)}
       >
-        <View
-  style={[
-    styles.checkbox,
-    {
-      borderColor: item.completed ? colors.ok1 : colors.borderSubtle,
-      backgroundColor: item.completed ? colors.ok1 : 'transparent',
-    },
-  ]}
->
-  {item.completed && <Text style={styles.checkmark}>✓</Text>}
-</View>
+        {item.completed && <Text style={styles.checkmark}>✓</Text>}
+      </View>
 
-
-        <View style={styles.taskContent}>
-          <Text
+      <View style={styles.taskContent}>
+        <Text
+          style={[
+            styles.taskTitle,
+            { color: item.completed ? colors.textMuted : colors.textMain },
+            item.completed && styles.taskTitleCompleted,
+          ]}
+        >
+          {item.title}
+        </Text>
+        
+        <View style={styles.taskMeta}>
+          <View
             style={[
-              styles.taskTitle,
-              { color: item.completed ? colors.textMuted : colors.textMain },
-              item.completed && styles.taskTitleCompleted,
+              styles.priorityBadge,
+              { backgroundColor: getPriorityColor() },
             ]}
           >
-            {item.title}
-          </Text>
-          
-          <View style={styles.taskMeta}>
-            <View
-              style={[
-                styles.priorityBadge,
-                { backgroundColor: getPriorityColor() },
-              ]}
-            >
-              <Text style={styles.priorityText}>
-                {item.priority === 'high' ? 'Высокий' : 
-                 item.priority === 'medium' ? 'Средний' : 'Низкий'}
-              </Text>
-            </View>
-            
-                        <Text style={[styles.taskDate, { color: colors.textMuted }]}>
-  {formatTaskDate(item)}
-</Text>
+            <Text style={styles.priorityText}>
+              {item.priority === 'high' ? 'Высокий' : 
+               item.priority === 'medium' ? 'Средний' : 'Низкий'}
+            </Text>
           </View>
+          
+          <Text style={[styles.taskDate, { color: colors.textMuted }]}>
+            {formatTaskDate(item)}
+          </Text>
+        </View>
+
+        {/* Кнопки действий */}
+        <View style={styles.taskActions}>
+          <TouchableOpacity
+            onPress={() => handleEditTask(item)}
+            style={styles.actionButton}
+          >
+            <Text style={{ fontSize: 16 }}>✏️</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => {
@@ -330,14 +353,16 @@ const filteredTasks = hideCompleted
                 ]
               );
             }}
+            style={styles.actionButton}
           >
             <Text style={{ fontSize: 16 }}>🗑️</Text>
           </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
-    );
-  };
 
   if (loading) {
     return (
@@ -466,8 +491,9 @@ const filteredTasks = hideCompleted
         </View>
       </View> 
 
-      {/* Модалка добавления задачи */}
-  <Modal
+
+ {/* Модалка добавления задачи */}
+<Modal
   visible={showAddModal}
   onClose={() => {
     setNewTask({ 
@@ -477,10 +503,12 @@ const filteredTasks = hideCompleted
       priority: 2,
       comment: '',
     });
+    setEditingTask(null); // ← ДОБАВИЛИ
     setShowAddModal(false);
   }}
-  title="Новая задача"
+  title={editingTask ? "Редактировать задачу" : "Новая задача"} // ← ИЗМЕНИЛИ
 >
+
   <Input
     label="Название задачи"
     placeholder="Например: Купить продукты"
@@ -557,59 +585,78 @@ const filteredTasks = hideCompleted
 
 
   <Button
-    title="Добавить"
-// В обработчике кнопки "Добавить" в Modal
-onPress={async () => {
-  if (!newTask.title.trim()) {
-    setError('Название задачи не может быть пусто');
-    return;
-  }
+  title={editingTask ? "Сохранить" : "Добавить"} // ← ИЗМЕНИЛИ ТЕКСТ
+  onPress={async () => {
+    if (!newTask.title.trim()) {
+      setError('Название задачи не может быть пусто');
+      return;
+    }
 
-  try {
-    setLoading(true);
-    
-    // Преобразуем приоритет обратно в число для отправки на сервер
-    const taskToSend = {
-      title: newTask.title,
-      date: newTask.date,
-      deadline: newTask.deadline,
-      priority: newTask.priority, // Это уже число 1, 2, 3
-      comment: newTask.comment || '',
-      done: false,
-      doneDate: null,
-    };
+    try {
+      setLoading(true);
+      
+      const taskToSend = {
+        title: newTask.title,
+        date: newTask.date,
+        deadline: newTask.deadline,
+        priority: newTask.priority,
+        comment: newTask.comment || '',
+        done: false,
+        doneDate: null,
+      };
 
-    // Отправляем на сервер
-    const createdTask = await tasksAPI.createTask(taskToSend);
-    
-    // Преобразуем ответ в нужный формат
-    const formattedTask = {
-      ...createdTask,
-      priority: createdTask.priority === 1 ? 'high' : createdTask.priority === 3 ? 'low' : 'medium',
-      dueDate: createdTask.deadline || createdTask.date,
-    };
-    
-    // Добавляем в локальный массив
-    setTasks([...tasks, formattedTask]);
-    
-    // Очищаем форму
-    setNewTask({ 
-      title: '', 
-      date: new Date().toISOString().split('T')[0],
-      deadline: new Date().toISOString().split('T')[0],
-      priority: 2,
-      comment: '',
-    });
-    
-    setShowAddModal(false);
-    setLoading(false);
-  } catch (err) {
-    console.error('Ошибка создания задачи:', err);
-    setError('Не удалось создать задачу: ' + err.message);
-    setLoading(false);
-  }
-}}
-  />
+      if (editingTask) {
+        // РЕДАКТИРОВАНИЕ
+        console.log('📝 Редактируем задачу:', editingTask.id);
+        await tasksAPI.updateTask(editingTask.id, taskToSend);
+        
+        // Обновляем локально
+        setTasks(tasks.map(t => 
+          t.id === editingTask.id 
+            ? {
+                ...t,
+                ...taskToSend,
+                priority: taskToSend.priority === 1 ? 'high' : taskToSend.priority === 3 ? 'low' : 'medium',
+                dueDate: taskToSend.deadline,
+              }
+            : t
+        ));
+        
+      } else {
+        // СОЗДАНИЕ
+        console.log('➕ Создаём задачу');
+        const createdTask = await tasksAPI.createTask(taskToSend);
+        
+        const formattedTask = {
+          ...createdTask,
+          priority: createdTask.priority === 1 ? 'high' : createdTask.priority === 3 ? 'low' : 'medium',
+          dueDate: createdTask.deadline || createdTask.date,
+        };
+        
+        setTasks([...tasks, formattedTask]);
+      }
+      
+      // Очищаем форму
+      setNewTask({ 
+        title: '', 
+        date: new Date().toISOString().split('T')[0],
+        deadline: new Date().toISOString().split('T')[0],
+        priority: 2,
+        comment: '',
+      });
+      
+      setEditingTask(null);
+      setShowAddModal(false);
+      setLoading(false);
+      
+    } catch (err) {
+      console.error('❌ Ошибка:', err);
+      setError('Не удалось сохранить задачу: ' + err.message);
+      setLoading(false);
+    }
+  }}
+/>
+
 </Modal>
 
     </Background>
@@ -818,7 +865,19 @@ deleteButton: {
   justifyContent: 'center',
   alignItems: 'center',
 },
-
+taskMeta: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+taskActions: {
+  flexDirection: 'row',
+  gap: 12,
+  marginTop: 8,
+},
+actionButton: {
+  padding: 4,
+},
 });
 
 export default TasksScreen;
