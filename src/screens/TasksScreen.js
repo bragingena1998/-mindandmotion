@@ -1,7 +1,7 @@
 // src/screens/TasksScreen.js
 // Экран задач с вашими стилями
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -21,6 +21,7 @@ import Input from '../components/Input';
 import api from '../services/api';
 import { getToken } from '../services/storage';
 import { tasksAPI } from '../services/api';
+import DatePicker from '../components/DatePicker';
 
 
 const TasksScreen = ({ navigation }) => {
@@ -32,13 +33,14 @@ const TasksScreen = ({ navigation }) => {
 const [showAddModal, setShowAddModal] = useState(false);
 const [hideCompleted, setHideCompleted] = useState(true);
 const [editingTask, setEditingTask] = useState(null);
+const [taskToDelete, setTaskToDelete] = useState(null); // ← НОВАЯ СТРОКА
 const [sortBy, setSortBy] = useState('date');
 const [showFilterMenu, setShowFilterMenu] = useState(false);
 const [newTask, setNewTask] = useState({
   title: '',
-  date: new Date().toISOString().split('T')[0],  // Дата планирования
-  deadline: new Date().toISOString().split('T')[0],  // Срок
-  priority: 2,  // 1=высокий, 2=средний, 3=низкий (как на сайте)
+  date: new Date().toISOString().split('T')[0],
+  deadline: new Date().toISOString().split('T')[0],
+  priority: 2,
   comment: '',
 });
 
@@ -158,24 +160,24 @@ useEffect(() => {
   checkToken();
 }, []);
 
-const deleteTask = useCallback((taskId) => {
-  const id = parseInt(taskId);  // ✅ Приводим к числу
-  console.log('🗑️ Удаляем ID:', id, 'typeof:', typeof id);
-  
-  // ✅ IMMUTABLE update
-  setTasks((prevTasks) => {
-    const newTasks = prevTasks.filter(task => parseInt(task.id) !== id);
-    console.log('🔄 Новых задач:', newTasks.length);
-    return newTasks;
-  });
-  
-  // Stats (пример)
-  setStats((prev) => ({
-    ...prev,
-    pending: Math.max(0, prev.pending - 1)
-  }));
-  
-  console.log('✅ State обновлён');
+const deleteTask = useCallback(async (taskId) => {
+  try {
+    console.log('🗑️ Удаляем задачу ID:', taskId);
+    
+    // 1. Оптимистичное обновление UI
+    setTasks((prevTasks) => prevTasks.filter(task => task.id !== taskId));
+    
+    // 2. Отправляем DELETE на сервер
+    await tasksAPI.deleteTask(taskId);
+    
+    console.log('✅ Задача удалена (UI + API)');
+  } catch (error) {
+    console.error('❌ Ошибка удаления:', error);
+    
+    // 3. Откатываем при ошибке
+    loadTasks();
+    Alert.alert('Ошибка', 'Не удалось удалить задачу');
+  }
 }, []);
 
 
@@ -287,62 +289,72 @@ const filteredTasks = hideCompleted
 
 // Определение статуса задачи по дате
 const getTaskStatus = (task) => {
+  // Приводим все даты к формату YYYY-MM-DD для корректного сравнения
   const today = new Date().toISOString().split('T')[0];
-  const startDate = task.date;
-  const endDate = task.deadline || task.date;
+  
+  // Если date/deadline приходят как ISO (2026-02-05T00:00:00.000Z), обрезаем до YYYY-MM-DD
+  const startDate = task.date ? task.date.split('T')[0] : today;
+  const endDate = task.deadline ? task.deadline.split('T')[0] : startDate;
+  
+  console.log('📅 getTaskStatus:', task.title, '| today:', today, '| start:', startDate, '| end:', endDate);
   
   // Если сегодня попадает в диапазон [startDate, endDate] - задача актуальна
-  if (today >= startDate && today <= endDate) return 'today';
+  if (today >= startDate && today <= endDate) {
+    console.log('✅ Статус: today');
+    return 'today';
+  }
   
   // Если дедлайн уже прошёл - просрочено
-  if (endDate < today) return 'overdue';
+  if (endDate < today) {
+    console.log('🔥 Статус: overdue');
+    return 'overdue';
+  }
   
   // Если задача ещё в будущем
+  console.log('📆 Статус: future');
   return 'future';
 };
+
 
 
 // Сортировка задач
 const sortedTasks = [...filteredTasks].sort((a, b) => {
   if (sortBy === 'date') {
-    // УМНАЯ СОРТИРОВКА ПО ДАТЕ
-    const today = new Date().toISOString().split('T')[0];
+    // ИСПОЛЬЗУЕМ getTaskStatus вместо ручной проверки deadline
+    const statusA = getTaskStatus(a);
+    const statusB = getTaskStatus(b);
     
-    const deadlineA = a.deadline || a.date;
-    const deadlineB = b.deadline || b.date;
+    // Порядок категорий: overdue (1) → today (2) → future (3)
+    const categoryOrder = { overdue: 1, today: 2, future: 3 };
+    const categoryA = categoryOrder[statusA];
+    const categoryB = categoryOrder[statusB];
     
-    // Категоризация задач
-    const getCategoryOrder = (deadline) => {
-      if (deadline < today) return 1; // Просроченные (красные) - сверху
-      if (deadline === today) return 2; // Сегодняшние (зелёные) - в середине
-      return 3; // Будущие (приглушённые) - внизу
-    };
+    console.log('🔀 Сортировка:', a.title, '(', statusA, categoryA, ') vs', b.title, '(', statusB, categoryB, ')');
     
-    const categoryA = getCategoryOrder(deadlineA);
-    const categoryB = getCategoryOrder(deadlineB);
-    
-    // Сначала по категориям
+    // Сначала сортируем по категориям
     if (categoryA !== categoryB) {
       return categoryA - categoryB;
     }
     
-    // Внутри категории - по дате
+    // Внутри категории — по deadline
+    const deadlineA = a.deadline ? a.deadline.split('T')[0] : a.date.split('T')[0];
+    const deadlineB = b.deadline ? b.deadline.split('T')[0] : b.date.split('T')[0];
+    
     return new Date(deadlineA) - new Date(deadlineB);
   }
   
   if (sortBy === 'priority') {
-    // По приоритету (высокий -> средний -> низкий)
     const priorityOrder = { high: 1, medium: 2, low: 3 };
     return priorityOrder[a.priority] - priorityOrder[b.priority];
   }
   
   if (sortBy === 'title') {
-    // По названию (А -> Я)
     return a.title.localeCompare(b.title, 'ru');
   }
   
   return 0;
 });
+
 
 
 // Рендер одной задачи
@@ -404,30 +416,18 @@ const renderTask = ({ item }) => {
             <Text style={{ fontSize: 18 }}>✏️</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-  onPress={(e) => {
-    e.stopPropagation();
-    console.log('🗑️ Alert открывается для ID:', item.id);
-    Alert.alert(
-      'Удалить задачу?',
-      `"${item.title}" будет удалена навсегда`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        { 
-          text: 'Удалить', 
-          onPress: () => {
-            console.log('🔥 deleteTask ПРЯМО ЗДЕСЬ!');
-            deleteTask(item.id);
-          },
-          style: 'destructive' 
-        },
-      ]
-    );
+<TouchableOpacity
+  onPress={() => {
+    console.log('🗑️ Открываем модалку удаления для:', item.id, item.title);
+    setTaskToDelete(item); // Сохраняем задачу для удаления
   }}
-  style={styles.actionButton}
+  style={[styles.actionButton, { zIndex: 999 }]}
 >
   <Text style={{ fontSize: 18 }}>🗑️</Text>
 </TouchableOpacity>
+
+
+
         </View>
 
         <Text
@@ -692,19 +692,29 @@ const renderTask = ({ item }) => {
     onChangeText={(text) => setNewTask({ ...newTask, title: text })}
   />
 
- <Input
+<DatePicker
   label="Дата (когда планируете)"
   value={newTask.date}
-  onChangeText={(text) => setNewTask({ ...newTask, date: text })}
-  placeholder="03.02.2026"
+  onChangeDate={(date) => {
+    console.log('📅 Выбрана дата:', date);
+    // Автоматически ставим срок = дата
+    setNewTask({ 
+      ...newTask, 
+      date: date,
+      deadline: date, // ← Автоматически!
+    });
+  }}
 />
 
-<Input
+<DatePicker
   label="Срок (deadline)"
   value={newTask.deadline}
-  onChangeText={(text) => setNewTask({ ...newTask, deadline: text })}
-  placeholder="10.02.2026"
+  onChangeDate={(date) => {
+    console.log('⏰ Выбран срок:', date);
+    setNewTask({ ...newTask, deadline: date });
+  }}
 />
+
 
   {/* Приоритет */}
 <View style={styles.formGroup}>
@@ -833,6 +843,54 @@ const renderTask = ({ item }) => {
   }}
 />
 
+</Modal>
+
+{/* Модалка удаления */}
+<Modal
+  visible={!!taskToDelete}
+  onClose={() => setTaskToDelete(null)}
+  title="Удалить задачу?"
+>
+  <Text style={[styles.deleteModalText, { color: colors.textMain }]}>
+    Задача "{taskToDelete?.title}" будет удалена навсегда.
+  </Text>
+  
+  <Text style={[styles.deleteModalWarning, { color: colors.textMuted }]}>
+    Это действие нельзя отменить.
+  </Text>
+  
+  <View style={styles.deleteModalButtons}>
+    <TouchableOpacity
+      style={[styles.deleteModalButton, { 
+        backgroundColor: colors.surface,
+        borderColor: colors.borderSubtle,
+      }]}
+      onPress={() => {
+        console.log('❌ Отмена удаления');
+        setTaskToDelete(null);
+      }}
+    >
+      <Text style={[styles.deleteModalButtonText, { color: colors.textMain }]}>
+        Отмена
+      </Text>
+    </TouchableOpacity>
+    
+    <TouchableOpacity
+      style={[styles.deleteModalButton, { 
+        backgroundColor: colors.danger1,
+        borderColor: colors.danger1,
+      }]}
+      onPress={() => {
+        console.log('✅ Подтверждено удаление ID:', taskToDelete.id);
+        deleteTask(taskToDelete.id);
+        setTaskToDelete(null);
+      }}
+    >
+      <Text style={[styles.deleteModalButtonText, { color: '#020617' }]}>
+        Удалить
+      </Text>
+    </TouchableOpacity>
+  </View>
 </Modal>
 
     </Background>
@@ -1104,6 +1162,35 @@ filterMenuLabel: {
 filterMenuDivider: {
   height: 1,
   marginVertical: 4,
+},
+deleteModalText: {
+  fontSize: 15,
+  lineHeight: 22,
+  marginBottom: 12,
+  textAlign: 'center',
+},
+deleteModalWarning: {
+  fontSize: 12,
+  textAlign: 'center',
+  marginBottom: 24,
+},
+deleteModalButtons: {
+  flexDirection: 'row',
+  gap: 12,
+},
+deleteModalButton: {
+  flex: 1,
+  paddingVertical: 12,
+  borderRadius: 999,
+  borderWidth: 1,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+deleteModalButtonText: {
+  fontSize: 13,
+  fontWeight: '600',
+  textTransform: 'uppercase',
+  letterSpacing: 0.06,
 },
 
 });
