@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import { getToken } from './storage';
 
@@ -59,27 +58,36 @@ export const authAPI = {
   },
 };
 
-// API для задач
+// API методы для задач (используем axios!)
 export const tasksAPI = {
   getTasks: async () => {
+    console.log('📡 GET /api/tasks');
     const response = await api.get('/api/tasks');
+    console.log('📡 GET OK:', response.data.length, 'задач');
     return response.data;
   },
-  
+
   createTask: async (taskData) => {
+    console.log('📡 POST /api/tasks:', taskData.title);
     const response = await api.post('/api/tasks', taskData);
+    console.log('📡 POST OK:', response.data);
     return response.data;
   },
-  
+
   updateTask: async (taskId, taskData) => {
+    console.log('📡 PUT /api/tasks/' + taskId);
     const response = await api.put(`/api/tasks/${taskId}`, taskData);
+    console.log('📡 PUT OK');
     return response.data;
   },
-  
-  deleteTask: async (taskId) => {
-    const response = await api.delete(`/api/tasks/${taskId}`);
+
+  // ✅ ИСПРАВЛЕНО: используем axios (не fetch!), signal через config
+  deleteTask: async (id) => {
+    console.log('📡 DELETE /api/tasks/' + id);
+    const response = await api.delete(`/api/tasks/${id}`);
+    console.log('✅ DELETE OK');
     return response.data;
-  },
+  }
 };
 
 export default api;

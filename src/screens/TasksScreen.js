@@ -142,29 +142,44 @@ const toggleTask = async (taskId) => {
   }
 };
 
+useEffect(() => {
+  const checkToken = async () => {
+    try {
+      const token = await getToken();
+      console.log('🔑 TOKEN:', token ? 'OK ' + token.slice(0, 20) + '...' : 'NULL');
+      
+      // Тест API
+      const tasks = await tasksAPI.getTasks();
+      console.log('✅ GET работает:', tasks.length, 'задач');
+    } catch (err) {
+      console.error('❌ TOKEN/API ошибка:', err.message);
+    }
+  };
+  checkToken();
+}, []);
 
-
-const deleteTask = async (taskId) => {
-  console.log('🗑️ Попытка удаления задачи:', taskId);
+const deleteTask = useCallback((taskId) => {
+  const id = parseInt(taskId);  // ✅ Приводим к числу
+  console.log('🗑️ Удаляем ID:', id, 'typeof:', typeof id);
   
-  try {
-    // Удаляем на сервере
-    console.log('📡 Отправляем запрос на сервер...');
-    await tasksAPI.deleteTask(taskId);
-    console.log('✅ Задача удалена на сервере');
-    
-    // Удаляем из локального массива
-    setTasks(prevTasks => {
-      const newTasks = prevTasks.filter(t => t.id !== taskId);
-      console.log('🔄 Обновлён локальный список:', newTasks.length, 'задач');
-      return newTasks;
-    });
-    
-  } catch (err) {
-    console.error('❌ Ошибка удаления задачи:', err);
-    Alert.alert('Ошибка', 'Не удалось удалить задачу: ' + err.message);
-  }
-}; 
+  // ✅ IMMUTABLE update
+  setTasks((prevTasks) => {
+    const newTasks = prevTasks.filter(task => parseInt(task.id) !== id);
+    console.log('🔄 Новых задач:', newTasks.length);
+    return newTasks;
+  });
+  
+  // Stats (пример)
+  setStats((prev) => ({
+    ...prev,
+    pending: Math.max(0, prev.pending - 1)
+  }));
+  
+  console.log('✅ State обновлён');
+}, []);
+
+
+
 
   const handleEditTask = (task) => {
   setNewTask({
@@ -330,7 +345,6 @@ const sortedTasks = [...filteredTasks].sort((a, b) => {
 });
 
 
-
 // Рендер одной задачи
 const renderTask = ({ item }) => {
   const getPriorityColor = () => {
@@ -391,25 +405,29 @@ const renderTask = ({ item }) => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              Alert.alert(
-                'Удалить задачу?',
-                `"${item.title}" будет удалена навсегда`,
-                [
-                  { text: 'Отмена', style: 'cancel' },
-                  { 
-                    text: 'Удалить', 
-                    onPress: () => deleteTask(item.id),
-                    style: 'destructive' 
-                  },
-                ]
-              );
-            }}
-            style={styles.actionButton}
-          >
-            <Text style={{ fontSize: 18 }}>🗑️</Text>
-          </TouchableOpacity>
+  onPress={(e) => {
+    e.stopPropagation();
+    console.log('🗑️ Alert открывается для ID:', item.id);
+    Alert.alert(
+      'Удалить задачу?',
+      `"${item.title}" будет удалена навсегда`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        { 
+          text: 'Удалить', 
+          onPress: () => {
+            console.log('🔥 deleteTask ПРЯМО ЗДЕСЬ!');
+            deleteTask(item.id);
+          },
+          style: 'destructive' 
+        },
+      ]
+    );
+  }}
+  style={styles.actionButton}
+>
+  <Text style={{ fontSize: 18 }}>🗑️</Text>
+</TouchableOpacity>
         </View>
 
         <Text
