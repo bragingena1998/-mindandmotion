@@ -24,7 +24,7 @@ const HabitsScreen = () => {
 
   // Загрузка профиля и прогресса жизни
   useEffect(() => {
-    loadProfile();
+     // loadProfile(); // ← ОТКЛЮЧЕНО (404 на /user/profile)
     loadHabits();
   }, []);
 
@@ -35,47 +35,23 @@ const HabitsScreen = () => {
     }
   }, [year, month, habits]);
 
-  const loadProfile = async () => {
-    try {
-      const response = await api.get('/user/profile');
-      setProfile(response.data);
-      calculateLifeProgress(response.data.birthdate);
-    } catch (error) {
-      console.error('Ошибка загрузки профиля:', error);
-    }
-  };
+// const loadProfile = async () => {
+//   try {
+//     const response = await api.get('/user/profile');
+//     setProfile(response.data);
+//     calculateLifeProgress(response.data.birthdate);
+//   } catch (error) {
+//     console.error('Ошибка загрузки профиля:', error);
+//   }
+// };
 
-  const calculateLifeProgress = (birthdate) => {
-    if (!birthdate) return;
 
-    const today = new Date();
-    const birth = new Date(birthdate);
-    const lifeExpectancy = 64;
+ const calculateLifeProgress = (birthdate) => {
+  // ⚠️ ЗАГЛУШКА: Жёсткокод для теста (пока нет /user/profile)
+  setLifeProgress({ percent: 42, yearsLived: 27, yearsLeft: 37 });
+  setYearProgress({ percent: 55, daysPassed: 200, daysLeft: 165 });
+};
 
-    const ageMs = today - birth;
-    const ageYears = ageMs / (1000 * 60 * 60 * 24 * 365.25);
-    const lifePercent = Math.min(100, Math.round((ageYears / lifeExpectancy) * 100));
-    const yearsLived = Math.floor(ageYears);
-    const yearsLeft = Math.max(0, Math.round(lifeExpectancy - ageYears));
-
-    setLifeProgress({ percent: lifePercent, yearsLived, yearsLeft });
-
-    const birthMonth = birth.getMonth();
-    const birthDay = birth.getDate();
-    let yearStart = new Date(today.getFullYear(), birthMonth, birthDay);
-    
-    if (today < yearStart) {
-      yearStart = new Date(today.getFullYear() - 1, birthMonth, birthDay);
-    }
-    
-    const yearEnd = new Date(yearStart.getFullYear() + 1, birthMonth, birthDay - 1);
-    const daysInYear = Math.round((yearEnd - yearStart) / (1000 * 60 * 60 * 24)) + 1;
-    const daysPassed = Math.round((today - yearStart) / (1000 * 60 * 60 * 24));
-    const daysLeft = daysInYear - daysPassed;
-    const yearPercent = Math.min(100, Math.round((daysPassed / daysInYear) * 100));
-
-    setYearProgress({ percent: yearPercent, daysPassed, daysLeft });
-  };
 
   const loadHabits = async () => {
     try {

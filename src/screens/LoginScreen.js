@@ -8,6 +8,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
 import api from '../services/api';
+import axios from 'axios';
 import { saveToken } from '../services/storage';
 import Background from '../components/Background';
 
@@ -38,28 +39,32 @@ const LoginScreen = ({ navigation }) => {
   // Получаем текущую тему
   const currentTheme = themes.find(t => t.key === theme);
 
-  const handleLogin = async () => {
-    setError('');
-    
-    if (!email || !password) {
-      setError('Заполните все поля');
-      return;
-    }
-
+const handleLogin = async () => {
+  try {
     setLoading(true);
+    const response = await axios.post('http://85.198.96.149:5000/api/auth/login', {
+      email,
+      password,
+    });
+    
+    const { token } = response.data;
+    
+    // ✅ СОХРАНЯЕМ ТОКЕН
+    await saveToken(token);
+    localStorage.setItem('app-user-email', email);
+    
+    console.log('✅ Логин успешен, токен сохранён');
+    
+    // Переходим на экран задач
+    setScreen('tasks');
+    setLoading(false);
+  } catch (error) {
+    console.error('❌ Ошибка логина:', error);
+    setError('Неверный email или пароль');
+    setLoading(false);
+  }
+};
 
-    try {
-const response = await api.post('/login', { email, password });
-const { token, userId } = response.data; // ← Получаем userId из ответа
-
-await saveToken(token, userId); // ← Передаём оба параметра
-window.location.href = '/';
-    } catch (err) {
-      setError(err.response?.data?.message || 'Ошибка входа');
-    } finally {
-      setLoading(false);
-    }
-  };
 
 return (
   <Background>

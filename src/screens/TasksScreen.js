@@ -20,7 +20,27 @@ import Modal from '../components/Modal';
 import Input from '../components/Input';
 import api from '../services/api';
 import { getToken } from '../services/storage';
-import { tasksAPI } from '../services/api';
+
+// Используем api напрямую
+const tasksAPI = {
+  getTasks: async () => {
+    const response = await api.get('/tasks');
+    return response.data;
+  },
+  createTask: async (taskData) => {
+    const response = await api.post('/tasks', taskData);
+    return response.data;
+  },
+  updateTask: async (id, taskData) => {
+    const response = await api.put(`/tasks/${id}`, taskData);
+    return response.data;
+  },
+  deleteTask: async (id) => {
+    const response = await api.delete(`/tasks/${id}`);
+    return response.data;
+  },
+};
+
 import DatePicker from '../components/DatePicker';
 
 
@@ -73,12 +93,13 @@ const [newTask, setNewTask] = useState({
 const loadTasks = async () => {
   try {
     setError('');
-   const loadTasks = async () => {
-  if (!token) {
-    console.log('⚠️ Нет токена, возврат на логин');
-    window.location.href = '/';
-    return;
-  }
+    const token = await getToken();  // ← СРАЗУ ПРОВЕРКА ТОКЕНА
+    
+    if (!token) {
+      console.log('⚠️ Нет токена, возврат на логин');
+      window.location.href = '/';
+      return;
+    }
     // Загружаем реальные задачи с API
     const data = await tasksAPI.getTasks();
     console.log('🔍 RAW данные с API:', JSON.stringify(data, null, 2));
