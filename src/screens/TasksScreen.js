@@ -73,13 +73,12 @@ const [newTask, setNewTask] = useState({
 const loadTasks = async () => {
   try {
     setError('');
-    const token = await getToken();
-    
-    if (!token) {
-      navigation.replace('Login');
-      return;
-    }
-
+   const loadTasks = async () => {
+  if (!token) {
+    console.log('⚠️ Нет токена, возврат на логин');
+    window.location.href = '/';
+    return;
+  }
     // Загружаем реальные задачи с API
     const data = await tasksAPI.getTasks();
     console.log('🔍 RAW данные с API:', JSON.stringify(data, null, 2));
@@ -196,9 +195,11 @@ const deleteTask = useCallback(async (taskId) => {
 };
 
 // ← ДОБАВЬ ЭТУ ФУНКЦИЮ:
-const handleLogout = async () => {
-  await AsyncStorage.removeItem('token');
-  navigation.replace('Login');
+const handleLogout = () => {
+  localStorage.removeItem('app-auth-token');
+  localStorage.removeItem('app-user-email');
+  // Перезагружаем страницу
+  window.location.href = '/';
 };
 
 

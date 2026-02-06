@@ -49,11 +49,11 @@ const LoginScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-const response = await api.post('/api/login', { email, password });
+const response = await api.post('/login', { email, password });
 const { token, userId } = response.data; // ← Получаем userId из ответа
 
 await saveToken(token, userId); // ← Передаём оба параметра
-navigation.replace('Tasks');
+window.location.href = '/';
     } catch (err) {
       setError(err.response?.data?.message || 'Ошибка входа');
     } finally {
