@@ -972,9 +972,10 @@ const styles = StyleSheet.create({
     color: '#020617',
     textTransform: 'uppercase',
   },
-  listContent: {
-    padding: 16,
-  },
+ listContent: {
+  padding: 16,
+  paddingBottom: 100, // ← Отступ для навигации
+},
   taskItem: {
     flexDirection: 'row',
     alignItems: 'center',
