@@ -36,7 +36,7 @@ export default function App() {
   if (!isLoggedIn) {
     return (
       <ThemeProvider>
-        <LoginScreen />
+        <LoginScreen onLoginSuccess={() => setIsLoggedIn(true)} />
       </ThemeProvider>
     );
   }

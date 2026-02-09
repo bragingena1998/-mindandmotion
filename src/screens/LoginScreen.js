@@ -12,7 +12,7 @@ import axios from 'axios';
 import { saveToken } from '../services/storage';
 import Background from '../components/Background';
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = ({ navigation, onLoginSuccess }) => {
   const { colors, spacing, changeTheme, theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +42,7 @@ const LoginScreen = ({ navigation }) => {
 const handleLogin = async () => {
   try {
     setLoading(true);
-    const response = await axios.post('http://85.198.96.149:5000/api/auth/login', {
+    const response = await axios.post('http://85.198.96.149:5000/api/login', {
       email,
       password,
     });
@@ -56,7 +56,10 @@ const handleLogin = async () => {
     console.log('✅ Логин успешен, токен сохранён');
     
     // Переходим на экран задач
-    setScreen('tasks');
+  // Уведомляем App.js о успешном логине
+if (onLoginSuccess) {
+  onLoginSuccess();
+}
     setLoading(false);
   } catch (error) {
     console.error('❌ Ошибка логина:', error);
