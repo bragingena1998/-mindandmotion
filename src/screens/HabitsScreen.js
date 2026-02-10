@@ -160,13 +160,52 @@ const loadRecords = async () => {
     }
   };
 
-  const handleHabitEdit = (habit) => {
-    console.log('✏️ Редактирование привычки:', habit);
-  };
 
-  const handleHabitDelete = (habit) => {
-    console.log('🗑️ Удаление привычки:', habit);
-  };
+
+ const handleHabitDelete = async (habitId) => {
+  try {
+    console.log('🗑️ Удаление привычки:', habitId);
+    
+    await api.delete(`/habits/${habitId}`);
+    
+    // Удаляем из локального состояния
+    setHabits(habits.filter(h => h.id !== habitId));
+    
+    // Удаляем записи этой привычки
+    setRecords(records.filter(r => r.habitid !== habitId));
+    
+    console.log('✅ Привычка удалена');
+  } catch (error) {
+    console.error('❌ Ошибка удаления привычки:', error);
+    alert('Не удалось удалить привычку');
+  }
+};
+
+  
+  const handleHabitUpdate = async (habitId, updates) => {
+  try {
+    console.log('🔄 Обновление привычки:', habitId, updates);
+    
+    await api.put(`/habits/${habitId}`, {
+      name: updates.name,
+      unit: updates.unit,
+      plan: updates.plan,
+    });
+
+    // Обновляем локальное состояние
+    setHabits(habits.map(h => 
+      h.id === habitId 
+        ? { ...h, name: updates.name, unit: updates.unit, plan: updates.plan }
+        : h
+    ));
+
+    console.log('✅ Привычка обновлена');
+  } catch (error) {
+    console.error('❌ Ошибка обновления привычки:', error);
+    alert('Не удалось обновить привычку');
+  }
+};
+
 
   if (loading) {
     return (
@@ -267,14 +306,15 @@ const loadRecords = async () => {
           </View>
         ) : (
           <HabitTable
-            habits={habits}
-            year={year}
-            month={month}
-            records={records}
-            onCellChange={handleCellChange}
-            onHabitEdit={handleHabitEdit}
-            onHabitDelete={handleHabitDelete}
-          />
+  habits={habits}
+  year={year}
+  month={month}
+  records={records}
+  onCellChange={handleCellChange}
+  onHabitDelete={handleHabitDelete}
+  onHabitUpdate={handleHabitUpdate}
+/>
+
         )}
       </View>
 
