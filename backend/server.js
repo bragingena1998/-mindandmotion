@@ -317,24 +317,45 @@ app.put('/api/habits/:id', authenticateToken, async (req, res) => {
 // Delete habit
 app.delete('/api/habits/:id', authenticateToken, async (req, res) => {
   try {
-    // Удалить все записи привычки
-    await pool.query(
-      'DELETE FROM habit_records WHERE habit_id=? AND user_id=?',
-      [req.params.id, req.userId]
+    const habitId = req.params.id;
+    const userId = req.userId;
+
+    console.log('🗑️ Удаление привычки:', { habitId, userId });
+
+    // Проверяем, существует ли привычка
+    const [habits] = await pool.query(
+      'SELECT id FROM habits WHERE id = ? AND user_id = ?',
+      [habitId, userId]
     );
-    
-    // Удалить саму привычку
+
+    if (habits.length === 0) {
+      console.log('⚠️ Привычка не найдена');
+      return res.status(404).json({ error: 'Привычка не найдена' });
+    }
+
+    // Сначала удаляем все записи привычки
     await pool.query(
-      'DELETE FROM habits WHERE id=? AND user_id=?',
-      [req.params.id, req.userId]
+      'DELETE FROM habit_records WHERE habit_id = ? AND user_id = ?',
+      [habitId, userId]
     );
-    
-    res.json({ success: true });
+
+    console.log(`✅ Удалены записи привычки ${habitId}`);
+
+    // Потом удаляем саму привычку
+    await pool.query(
+      'DELETE FROM habits WHERE id = ? AND user_id = ?',
+      [habitId, userId]
+    );
+
+    console.log(`✅ Привычка ${habitId} удалена`);
+    res.json({ success: true, message: 'Привычка удалена' });
   } catch (err) {
+    console.error('❌ Ошибка удаления привычки:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
+// Get habit records for month
 app.get('/api/habits/records/:year/:month', authenticateToken, async (req, res) => {
   try {
     const { year, month } = req.params;
@@ -354,8 +375,6 @@ app.get('/api/habits/records/:year/:month', authenticateToken, async (req, res) 
     res.status(500).json({ error: 'Failed to load records' });
   }
 });
-
-
 
 // Save/update habit record (upsert)
 app.post('/api/habits/records', authenticateToken, async (req, res) => {
@@ -386,7 +405,7 @@ app.post('/api/habits/records', authenticateToken, async (req, res) => {
   }
 });
 
-// Удаление отметки
+// Delete habit record (by body)
 app.delete('/api/habits/records', authenticateToken, async (req, res) => {
   try {
     const { habit_id, year, month, day } = req.body;
@@ -434,11 +453,7 @@ app.delete('/api/habits/records', authenticateToken, async (req, res) => {
   }
 });
 
-
-
-
-
-// Delete habit record
+// Delete habit record (by params)
 app.delete('/api/habits/records/:habit_id/:year/:month/:day', authenticateToken, async (req, res) => {
   try {
     const { habit_id, year, month, day } = req.params;
@@ -684,25 +699,29 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// ✅ ИСПРАВЛЕНИЕ 4: Удалить задачу (добавлен authenticateToken и req.userId)
+// Удалить задачу
 app.delete('/api/tasks/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
+    console.log('🗑️ Запрос на удаление задачи:', id, 'от пользователя:', req.userId);
+    
     const [task] = await pool.query('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [id, req.userId]);
     
     if (task.length === 0) {
+      console.log('⚠️ Задача не найдена');
       return res.status(404).json({ error: 'Задача не найдена' });
     }
 
     await pool.query('DELETE FROM tasks WHERE id = ? AND user_id = ?', [id, req.userId]);
-    console.log(`✓ Task deleted: ${id}`);
+    console.log('✅ Задача успешно удалена:', id);
     res.json({ message: 'Задача удалена', task: task[0] });
   } catch (err) {
-    console.error('Ошибка удаления задачи:', err);
+    console.error('❌ Ошибка удаления задачи:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
+
 
 // ✅ ИСПРАВЛЕНИЕ 5: Массовое обновление задач (добавлен authenticateToken и req.userId)
 app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
