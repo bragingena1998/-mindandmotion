@@ -22,6 +22,10 @@ import api from '../services/api';
 import { getToken } from '../services/storage';
 
 // Используем api напрямую
+const toMysqlFormat = (date) => {
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+};
+
 const tasksAPI = {
   getTasks: async () => {
     const response = await api.get('/tasks');
@@ -50,6 +54,9 @@ const TasksScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date()); // Текущая дата
+const [isArchiveMode, setIsArchiveMode] = useState(false); // Режим архива
+const [showMonthPicker, setShowMonthPicker] = useState(false); // Модалка
 const [showAddModal, setShowAddModal] = useState(false);
 const [hideCompleted, setHideCompleted] = useState(true);
 const [editingTask, setEditingTask] = useState(null);
@@ -63,6 +70,20 @@ const [newTask, setNewTask] = useState({
   priority: 2,
   comment: '',
 });
+const [stats, setStats] = useState({
+  today: 0,
+  todayPlan: 0,
+  week: 0,
+  month: 0,
+  total: 0
+});
+    // Подзадачи
+  const [expandedTasks, setExpandedTasks] = useState({}); // { taskId: true/false }
+  const [subtasks, setSubtasks] = useState({}); // { taskId: [subtasks] }
+  const [loadingSubtasks, setLoadingSubtasks] = useState({});
+  const [showAddSubtaskModal, setShowAddSubtaskModal] = useState(false);
+  const [currentTaskForSubtask, setCurrentTaskForSubtask] = useState(null);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
 
 
@@ -90,33 +111,93 @@ const [newTask, setNewTask] = useState({
     loadTasks();
   }, []);
 
-const loadTasks = async () => {
+// 1. Сначала объявляем loadStats
+const loadStats = async () => {
+  try {
+    const response = await api.get('/tasks/stats');
+    setStats({
+      today: response.data.completed_today || 0,
+      todayPlan: response.data.total_today_plan || 0,
+      week: response.data.completed_week || 0,
+      month: response.data.completed_month || 0,
+      total: response.data.completed_total || 0
+    });
+  } catch (err) {
+    console.error('Ошибка загрузки статистики:', err);
+  }
+};
+
+// Загрузка задач (с учетом выбранного месяца)
+const loadTasks = async (date = selectedDate) => { // <-- Принимаем дату (по умолчанию текущая выбранная)
   try {
     setError('');
-    const token = await getToken();  // ← СРАЗУ ПРОВЕРКА ТОКЕНА
+    const token = await getToken();
     
     if (!token) {
       console.log('⚠️ Нет токена, возврат на логин');
       window.location.href = '/';
       return;
     }
-    // Загружаем реальные задачи с API
-    const data = await tasksAPI.getTasks();
-    console.log('🔍 RAW данные с API:', JSON.stringify(data, null, 2));
-    
-  // Преобразуем приоритеты из чисел (1,2,3) в строки (high, medium, low)
-const formattedTasks = data.map(task => ({
-  ...task,
-  priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
-  dueDate: task.deadline || task.date,
-  completed: task.done || false, // ← ДОБАВЬ ЭТУ СТРОКУ
-}));
 
+    // 1. Определяем, какой месяц грузить
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    const targetMonth = date.getMonth();
+    const targetYear = date.getFullYear();
+    
+    const isCurrentMonth = (targetMonth === currentMonth && targetYear === currentYear);
+
+    // 2. Готовим параметры для API
+    let params = {};
+    if (!isCurrentMonth) {
+      // Если месяц прошлый -> шлем параметры для фильтрации
+      params = { 
+        month: targetMonth, 
+        year: targetYear 
+      };
+      // Можно выставить флаг "Архив", чтобы показать юзеру, что это история
+      // setIsArchiveMode(true); 
+    } else {
+      // setIsArchiveMode(false);
+    }
+
+    console.log(`📡 Загружаем задачи за: ${targetMonth + 1}.${targetYear} (params:`, params, ')');
+
+    // 3. Загружаем данные
+    // Если месяц текущий -> грузим задачи + статистику
+    // Если прошлый -> только задачи (статистику не трогаем или можно обнулить)
+    
+    let tasksData = [];
+    
+    if (isCurrentMonth) {
+      // Грузим всё параллельно
+      const [tasksRes, _] = await Promise.all([
+        api.get('/tasks', { params }), // Используем api.get напрямую для передачи params
+        loadStats()
+      ]);
+      tasksData = tasksRes.data;
+    } else {
+      // Грузим только задачи (архив)
+      const response = await api.get('/tasks', { params });
+      tasksData = response.data;
+    }
+
+    console.log(`✅ Загружено ${tasksData.length} задач`);
+    
+    // 4. Форматируем данные
+    const formattedTasks = tasksData.map(task => ({
+      ...task,
+      priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
+      dueDate: task.deadline || task.date,
+      completed: task.done || false,
+    }));
     
     setTasks(formattedTasks);
     setLoading(false);
+    
   } catch (err) {
-    console.error('Ошибка загрузки задач:', err);
+    console.error('❌ Ошибка загрузки задач:', err);
     setError('Ошибка загрузки задач');
     setTasks([]);
     setLoading(false);
@@ -130,32 +211,41 @@ const formattedTasks = data.map(task => ({
     setRefreshing(false);
   };
 
-  // Переключение статуса задачи
+// Переключение статуса задачи
 const toggleTask = async (taskId) => {
   try {
     const taskToUpdate = tasks.find(t => t.id === taskId);
     if (!taskToUpdate) return;
 
-    // Оптимистичное обновление UI
+    // 1. Оптимистичное обновление UI (чтобы галочка сработала мгновенно)
     setTasks(prevTasks =>
       prevTasks.map(task =>
         task.id === taskId ? { ...task, completed: !task.completed } : task
       )
     );
 
-    // Формируем данные для отправки (как бэкенд ожидает)
+    // 2. Формируем данные
+    // Если помечаем выполненной -> ставим ТЕКУЩЕЕ время
+    // Если снимаем галочку -> null
+    const newDoneState = !taskToUpdate.completed;
+    // Используем toISOString(), чтобы сохранить точное время (UTC)
+    const newDoneDate = newDoneState ? toMysqlFormat(new Date()) : null;
+
     const updatedTaskData = {
       title: taskToUpdate.title,
       date: taskToUpdate.date,
       deadline: taskToUpdate.deadline,
       priority: taskToUpdate.priority === 'high' ? 1 : taskToUpdate.priority === 'low' ? 3 : 2,
       comment: taskToUpdate.comment || '',
-      done: !taskToUpdate.completed, // Переключаем
-      doneDate: !taskToUpdate.completed ? new Date().toISOString().split('T')[0] : null,
+      done: newDoneState, 
+      doneDate: newDoneDate, // <--- ОТПРАВЛЯЕМ ПОЛНУЮ ДАТУ
     };
 
-    // Отправляем на сервер через updateTask
+    // 3. Отправляем на сервер
     await tasksAPI.updateTask(taskId, updatedTaskData);
+    
+    // 4. ОБНОВЛЯЕМ СТАТИСТИКУ (чтобы счетчики пересчитались)
+    await loadStats(); // <--- ВАЖНО!
     
   } catch (error) {
     console.error('❌ Ошибка переключения задачи:', error);
@@ -163,6 +253,7 @@ const toggleTask = async (taskId) => {
     loadTasks();
   }
 };
+
 
 useEffect(() => {
   const checkToken = async () => {
@@ -200,6 +291,82 @@ const deleteTask = useCallback(async (taskId) => {
   }
 }, []);
 
+// Загрузка подзадач
+const loadSubtasks = async (taskId) => {
+  try {
+    setLoadingSubtasks(prev => ({ ...prev, [taskId]: true }));
+    const response = await api.get(`/tasks/${taskId}/subtasks`);
+    setSubtasks(prev => ({ ...prev, [taskId]: response.data }));
+    setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
+  } catch (err) {
+    console.error('Ошибка загрузки подзадач:', err);
+    setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
+  }
+};
+
+// Раскрытие/скрытие подзадач
+const toggleExpand = (taskId) => {
+  const isExpanded = expandedTasks[taskId];
+  
+  if (!isExpanded) {
+    // Раскрываем - загружаем подзадачи
+    loadSubtasks(taskId);
+  }
+  
+  setExpandedTasks(prev => ({ ...prev, [taskId]: !isExpanded }));
+};
+
+// Переключение статуса подзадачи
+const toggleSubtask = async (subtaskId, taskId) => {
+  try {
+    await api.put(`/subtasks/${subtaskId}/toggle`);
+    // Обновляем локально
+    setSubtasks(prev => ({
+      ...prev,
+      [taskId]: prev[taskId].map(st => 
+        st.id === subtaskId ? { ...st, completed: !st.completed } : st
+      )
+    }));
+  } catch (err) {
+    console.error('Ошибка переключения подзадачи:', err);
+  }
+};
+
+// Добавление подзадачи
+const addSubtask = async () => {
+  if (!newSubtaskTitle.trim() || !currentTaskForSubtask) return;
+  
+  try {
+    const response = await api.post(`/tasks/${currentTaskForSubtask}/subtasks`, {
+      title: newSubtaskTitle
+    });
+    
+    // Добавляем в локальный стейт
+    setSubtasks(prev => ({
+      ...prev,
+      [currentTaskForSubtask]: [...(prev[currentTaskForSubtask] || []), response.data]
+    }));
+    
+    setNewSubtaskTitle('');
+    setShowAddSubtaskModal(false);
+    setCurrentTaskForSubtask(null);
+  } catch (err) {
+    console.error('Ошибка добавления подзадачи:', err);
+  }
+};
+
+// Удаление подзадачи
+const deleteSubtask = async (subtaskId, taskId) => {
+  try {
+    await api.delete(`/subtasks/${subtaskId}`);
+    setSubtasks(prev => ({
+      ...prev,
+      [taskId]: prev[taskId].filter(st => st.id !== subtaskId)
+    }));
+  } catch (err) {
+    console.error('Ошибка удаления подзадачи:', err);
+  }
+};
 
 
 
@@ -224,46 +391,42 @@ const handleLogout = () => {
 };
 
 
-// Расчёт статистики (как на сайте)
-const today = new Date();
-const todayStr = today.toISOString().split('T')[0]; // '2026-02-03'
+  // --- ИСПРАВЛЕННАЯ СТАТИСТИКА ---
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  
+  // Хелпер для получения начала недели
+  const getStartOfWeek = (d) => {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(date.setDate(diff));
+  };
+  const startOfWeek = getStartOfWeek(new Date()).toISOString().split('T')[0];
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
 
-// Начало недели (понедельник)
-const getStartOfWeek = (date) => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.setDate(diff));
-};
+  // Считаем правильно
+  const completedToday = tasks.filter(t => {
+    if (!t.completed || !t.doneDate) return false;
+    // Берем только первые 10 символов (YYYY-MM-DD)
+    const d = typeof t.doneDate === 'string' ? t.doneDate.substring(0, 10) : ''; 
+    return d === todayStr;
+  }).length;
 
-const startOfWeek = getStartOfWeek(today);
-const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
+  const completedWeek = tasks.filter(t => {
+    if (!t.completed || !t.doneDate) return false;
+    const d = typeof t.doneDate === 'string' ? t.doneDate.substring(0, 10) : ''; 
+    return d >= startOfWeekStr;
+  }).length;
 
-// Начало месяца
-const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-const startOfMonthStr = startOfMonth.toISOString().split('T')[0];
+  const completedMonth = tasks.filter(t => {
+    if (!t.completed || !t.doneDate) return false;
+    const d = typeof t.doneDate === 'string' ? t.doneDate.substring(0, 10) : ''; 
+    return d >= startOfMonth;
+  }).length;
 
-// Подсчёт (используем doneDate из БД!)
-const completedToday = tasks.filter(t => {
-  if (!t.completed || !t.doneDate) return false;
-  const doneDate = new Date(t.doneDate).toISOString().split('T')[0];
-  return doneDate === todayStr;
-}).length;
+  const completedTotal = tasks.filter(t => t.completed).length;
 
-const completedWeek = tasks.filter(t => {
-  if (!t.completed || !t.doneDate) return false;
-  const doneDate = new Date(t.doneDate).toISOString().split('T')[0];
-  return doneDate >= startOfWeekStr;
-}).length;
-
-const completedMonth = tasks.filter(t => {
-  if (!t.completed || !t.doneDate) return false;
-  const doneDate = new Date(t.doneDate);
-  return doneDate.getMonth() === today.getMonth() && 
-         doneDate.getFullYear() === today.getFullYear();
-}).length;
-
-const completedTotal = tasks.filter(t => t.completed).length;
 
 
 /// Форматирование даты для отображения (как на сайте)
@@ -379,8 +542,13 @@ const sortedTasks = [...filteredTasks].sort((a, b) => {
 
 
 
-// Рендер одной задачи
+// Рендер одной задачи (КРАСИВЫЙ + НОВЫЙ UX)
 const renderTask = ({ item }) => {
+  const isExpanded = expandedTasks[item.id];
+  const taskSubtasks = subtasks[item.id] || [];
+  const isLoadingSubtasks = loadingSubtasks[item.id];
+  
+  // Цвета приоритета
   const getPriorityColor = () => {
     switch (item.priority) {
       case 'high': return colors.danger1;
@@ -390,119 +558,195 @@ const renderTask = ({ item }) => {
     }
   };
   
+  // Статус и цвета
   const taskStatus = getTaskStatus(item);
-  
   const getStatusColor = () => {
     if (item.completed) return colors.borderSubtle;
     if (taskStatus === 'overdue') return colors.danger1;
     if (taskStatus === 'today') return colors.ok1;
     return colors.borderSubtle;
   };
-  
+
+  // Обработчик долгого нажатия
+  const handleLongPress = () => {
+    handleEditTask(item);
+  };
+
   return (
-    <TouchableOpacity
-      style={[
-        styles.taskItem,
-        {
-          backgroundColor: colors.surface,
-          borderColor: getStatusColor(),
-          borderWidth: taskStatus === 'future' ? 1 : 2,
-          opacity: item.completed ? 0.5 : (taskStatus === 'future' ? 0.6 : 1),
-        },
-        item.completed && styles.taskCompleted,
-      ]}
-      onPress={() => toggleTask(item.id)}
-    >
-      <View
+    <View style={{ marginBottom: 12 }}>
+      <TouchableOpacity
         style={[
-          styles.checkbox,
+          styles.taskItem,
           {
-            borderColor: item.completed ? colors.ok1 : colors.borderSubtle,
-            backgroundColor: item.completed ? colors.ok1 : 'transparent',
+            backgroundColor: colors.surface,
+            borderColor: getStatusColor(),
+            borderWidth: taskStatus === 'future' ? 1 : 2, // Тонкая рамка для будущих
+            opacity: item.completed ? 0.6 : 1,
           },
+          item.completed && styles.taskCompleted,
         ]}
+        activeOpacity={0.7}
+        onPress={() => toggleExpand(item.id)} // ТАП -> Раскрыть
+        onLongPress={handleLongPress}         // ДОЛГИЙ ТАП -> Редактировать
       >
-        {item.completed && <Text style={styles.checkmark}>✓</Text>}
-      </View>
-
-      <View style={styles.taskContent}>
-        {/* ← КНОПКИ СВЕРХУ СПРАВА */}
-        <View style={styles.taskActions}>
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              handleEditTask(item);
-            }}
-            style={styles.actionButton}
-          >
-            <Text style={{ fontSize: 18 }}>✏️</Text>
-          </TouchableOpacity>
-
-<TouchableOpacity
-  onPress={() => {
-    console.log('🗑️ Открываем модалку удаления для:', item.id, item.title);
-    setTaskToDelete(item); // Сохраняем задачу для удаления
-  }}
-  style={[styles.actionButton, { zIndex: 999 }]}
->
-  <Text style={{ fontSize: 18 }}>🗑️</Text>
-</TouchableOpacity>
-
-
-
-        </View>
-
-        <Text
-          style={[
-            styles.taskTitle,
-            { color: item.completed ? colors.textMuted : colors.textMain },
-            item.completed && styles.taskTitleCompleted,
-          ]}
-        >
-          {item.title}
-        </Text>
         
-        {!item.completed && (
-          <View style={styles.statusBadge}>
-            {taskStatus === 'overdue' && (
-              <Text style={[styles.statusText, { color: colors.danger1 }]}>
-                🔥 ПРОСРОЧЕНО
-              </Text>
-            )}
-            {taskStatus === 'today' && (
-              <Text style={[styles.statusText, { color: colors.ok1 }]}>
-                ⚡ СЕГОДНЯ
-              </Text>
-            )}
-            {taskStatus === 'future' && (
-              <Text style={[styles.statusText, { color: colors.textMuted }]}>
-                📅 В ПЛАНЕ
-              </Text>
-            )}
-          </View>
-        )}
-
-        <View style={styles.taskMeta}>
+        {/* ЧЕКБОКС (Слева) */}
+        <TouchableOpacity 
+          style={styles.checkboxArea}
+          onPress={(e) => {
+            e.stopPropagation();
+            toggleTask(item.id);
+          }}
+        >
           <View
             style={[
-              styles.priorityBadge,
-              { backgroundColor: getPriorityColor() },
+              styles.checkbox,
+              {
+                borderColor: item.completed ? colors.ok1 : colors.borderSubtle,
+                backgroundColor: item.completed ? colors.ok1 : 'transparent',
+              },
             ]}
           >
-            <Text style={styles.priorityText}>
-              {item.priority === 'high' ? 'Высокий' : 
-               item.priority === 'medium' ? 'Средний' : 'Низкий'}
-            </Text>
+            {item.completed && <Text style={styles.checkmark}>✓</Text>}
           </View>
-          
-          <Text style={[styles.taskDate, { color: colors.textMuted }]}>
-            {formatTaskDate(item)}
+        </TouchableOpacity>
+
+        {/* КОНТЕНТ */}
+        <View style={styles.taskContent}>
+          <Text
+            style={[
+              styles.taskTitle,
+              { color: item.completed ? colors.textMuted : colors.textMain },
+              item.completed && styles.taskTitleCompleted,
+            ]}
+            numberOfLines={isExpanded ? 0 : 2}
+          >
+            {item.title}
+          </Text>
+
+          {/* БЕЙДЖИКИ (Статус, Приоритет, Дата) */}
+          {!item.completed && (
+            <View style={styles.statusBadge}>
+              {taskStatus === 'overdue' && (
+                <Text style={[styles.statusText, { color: colors.danger1 }]}>
+                  🔥 ПРОСРОЧЕНО
+                </Text>
+              )}
+              {taskStatus === 'today' && (
+                <Text style={[styles.statusText, { color: colors.ok1 }]}>
+                  ⚡ СЕГОДНЯ
+                </Text>
+              )}
+              {taskStatus === 'future' && (
+                <Text style={[styles.statusText, { color: colors.textMuted }]}>
+                  📅 В ПЛАНЕ
+                </Text>
+              )}
+            </View>
+          )}
+
+          <View style={styles.taskMeta}>
+            {/* Приоритет */}
+            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
+              <Text style={styles.priorityText}>
+                {item.priority === 'high' ? 'Высокий' : 
+                 item.priority === 'medium' ? 'Средний' : 'Низкий'}
+              </Text>
+            </View>
+            
+            {/* Дата */}
+            <Text style={[styles.taskDate, { color: colors.textMuted }]}>
+              {formatTaskDate(item)}
+            </Text>
+
+            {/* Кол-во подзадач (если есть) */}
+            {!isExpanded && (item.subtasks_count > 0 || taskSubtasks.length > 0) && (
+               <Text style={{fontSize: 10, color: colors.textMuted, marginLeft: 4}}>
+                 📋 {taskSubtasks.length > 0 ? taskSubtasks.length : '...'}
+               </Text>
+            )}
+          </View>
+        </View>
+
+        {/* Стрелочка раскрытия */}
+        <View style={{ paddingLeft: 8, justifyContent: 'center' }}>
+          <Text style={{ fontSize: 12, color: colors.textMuted }}>
+            {isExpanded ? '▲' : '▼'}
           </Text>
         </View>
-      </View>
-    </TouchableOpacity>
+
+      </TouchableOpacity>
+
+      {/* ПОДЗАДАЧИ */}
+      {isExpanded && (
+        <View style={[styles.subtasksContainer, { backgroundColor: colors.surface }]}>
+          {isLoadingSubtasks ? (
+            <ActivityIndicator size="small" color={colors.accent1} />
+          ) : (
+            <>
+              {taskSubtasks.length === 0 && (
+                <Text style={{color: colors.textMuted, fontSize: 12, marginBottom: 8}}>Нет подзадач</Text>
+              )}
+              
+              {taskSubtasks.map(subtask => (
+                <View key={subtask.id} style={styles.subtaskItem}>
+                  <TouchableOpacity
+                    onPress={() => toggleSubtask(subtask.id, item.id)}
+                    style={styles.subtaskCheckbox}
+                  >
+                    <View
+                      style={[
+                        styles.checkbox,
+                        {
+                          width: 20, height: 20,
+                          borderColor: subtask.completed ? colors.ok1 : colors.borderSubtle,
+                          backgroundColor: subtask.completed ? colors.ok1 : 'transparent',
+                        },
+                      ]}
+                    >
+                      {subtask.completed && <Text style={[styles.checkmark, { fontSize: 12 }]}>✓</Text>}
+                    </View>
+                  </TouchableOpacity>
+
+                  <Text
+                    style={[
+                      styles.subtaskTitle,
+                      { color: subtask.completed ? colors.textMuted : colors.textMain },
+                      subtask.completed && { textDecorationLine: 'line-through' }
+                    ]}
+                  >
+                    {subtask.title}
+                  </Text>
+
+                  <TouchableOpacity
+                    onPress={() => deleteSubtask(subtask.id, item.id)}
+                    style={styles.subtaskDeleteBtn}
+                  >
+                    <Text style={{ fontSize: 14 }}>🗑️</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <TouchableOpacity
+                style={styles.addSubtaskBtn}
+                onPress={() => {
+                  setCurrentTaskForSubtask(item.id);
+                  setShowAddSubtaskModal(true);
+                }}
+              >
+                <Text style={[styles.addSubtaskBtnText, { color: colors.accent1 }]}>
+                  + Добавить подзадачу
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
+    </View>
   );
 };
+
+
 
 
 
@@ -526,6 +770,17 @@ const renderTask = ({ item }) => {
           </Text>
           
           <View style={styles.headerButtons}>
+          
+          <TouchableOpacity 
+  onPress={() => setShowMonthPicker(true)}
+  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+>
+  <Text style={[styles.headerTitle, { color: colors.accentText }]}>
+    {selectedDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase()}
+  </Text>
+  <Text style={{ fontSize: 12, color: colors.textMuted }}>▼</Text>
+</TouchableOpacity>
+
             {/* Кнопка темы */}
             <TouchableOpacity
               style={[
@@ -555,29 +810,32 @@ const renderTask = ({ item }) => {
             </TouchableOpacity>
           </View>
         </View>
-{/* Статистика */}
+
+{/* Статистика (Серверная) */}
 <View style={styles.statsContainer}>
   <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-    <Text style={[styles.statNumber, { color: colors.accentText }]}>{completedToday}</Text>
+    {/* СЕГОДНЯ: Выполнено / План */}
+    <Text style={[styles.statNumber, { color: colors.accentText }]}>
+      {stats.today}/{stats.todayPlan}
+    </Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>СЕГОДНЯ</Text>
   </View>
   
   <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-    <Text style={[styles.statNumber, { color: colors.accentText }]}>{completedWeek}</Text>
+    <Text style={[styles.statNumber, { color: colors.accentText }]}>{stats.week}</Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>НЕДЕЛЯ</Text>
   </View>
   
   <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-    <Text style={[styles.statNumber, { color: colors.accentText }]}>{completedMonth}</Text>
+    <Text style={[styles.statNumber, { color: colors.accentText }]}>{stats.month}</Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>МЕСЯЦ</Text>
   </View>
   
   <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-    <Text style={[styles.statNumber, { color: colors.accentText }]}>{completedTotal}</Text>
+    <Text style={[styles.statNumber, { color: colors.accentText }]}>{stats.total}</Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>ВСЕГО</Text>
   </View>
 </View>
-
 
 {/* Кнопка фильтра/сортировки */}
 <View style={styles.filterContainer}>
@@ -680,15 +938,17 @@ const renderTask = ({ item }) => {
           }
         />
 
-         {/* Кнопка добавления задачи */}
-        <View style={styles.buttonContainer}>
-          <Button
-            title="+ Добавить задачу"
-            onPress={() => setShowAddModal(true)}
-          />
-        </View>
-      </View> 
-
+         {/* Плавающая кнопка добавления (FAB) */}
+      <TouchableOpacity
+  style={[
+    styles.fab, 
+    { backgroundColor: colors.accent1 }
+  ]}
+  onPress={() => setShowAddModal(true)}
+>
+  <Text style={[styles.fabIcon, { color: colors.background }]}>+</Text>
+</TouchableOpacity>
+</View>
 
  {/* Модалка добавления задачи */}
 <Modal
@@ -865,6 +1125,18 @@ const renderTask = ({ item }) => {
   }}
 />
 
+{/* Кнопка удаления (только при редактировании) */}
+{editingTask && (
+  <TouchableOpacity
+    style={[styles.deleteButton, { marginTop: 12, backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.danger1 }]}
+    onPress={() => {
+      setShowAddModal(false); // Закрываем редактор
+      setTaskToDelete(editingTask); // Открываем подтверждение удаления
+    }}
+  >
+    <Text style={{ color: colors.danger1, textAlign: 'center' }}>🗑️ Удалить задачу</Text>
+  </TouchableOpacity>
+)}
 </Modal>
 
 {/* Модалка удаления */}
@@ -911,6 +1183,89 @@ const renderTask = ({ item }) => {
       <Text style={[styles.deleteModalButtonText, { color: '#020617' }]}>
         Удалить
       </Text>
+    </TouchableOpacity>
+  </View>
+</Modal>
+
+{/* Модалка добавления подзадачи */}
+<Modal
+  visible={showAddSubtaskModal}
+  onClose={() => {
+    setShowAddSubtaskModal(false);
+    setNewSubtaskTitle('');
+    setCurrentTaskForSubtask(null);
+  }}
+  title="Новая подзадача"
+>
+  <Input
+    label="Название"
+    placeholder="Например: Купить молоко"
+    value={newSubtaskTitle}
+    onChangeText={setNewSubtaskTitle}
+  />
+  
+  <Button
+    title="Добавить"
+    onPress={addSubtask}
+  />
+</Modal>
+
+<Modal
+  visible={showMonthPicker}
+  onClose={() => setShowMonthPicker(false)}
+  title="Выберите месяц"
+>
+  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+    {Array.from({ length: 12 }).map((_, i) => {
+       const date = new Date(selectedDate.getFullYear(), i, 1);
+       const isSelected = i === selectedDate.getMonth();
+       return (
+         <TouchableOpacity
+           key={i}
+           style={{
+             padding: 10,
+             backgroundColor: isSelected ? colors.accent1 : colors.surface,
+             borderRadius: 8,
+             borderWidth: 1,
+             borderColor: colors.borderSubtle,
+             width: '30%',
+             alignItems: 'center'
+           }}
+           onPress={() => {
+             const newDate = new Date(selectedDate.getFullYear(), i, 1);
+             setSelectedDate(newDate);
+             loadTasks(newDate); // Грузим задачи за этот месяц
+             setShowMonthPicker(false);
+           }}
+         >
+           <Text style={{ 
+             color: isSelected ? '#000' : colors.textMain, 
+             fontWeight: isSelected ? 'bold' : 'normal',
+             textTransform: 'capitalize'
+           }}>
+             {date.toLocaleString('ru-RU', { month: 'short' })}
+           </Text>
+         </TouchableOpacity>
+       );
+    })}
+  </View>
+  
+  {/* Переключатель года (простой) */}
+  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, alignItems: 'center' }}>
+    <TouchableOpacity onPress={() => {
+       const newDate = new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth(), 1);
+       setSelectedDate(newDate);
+    }}>
+       <Text style={{ fontSize: 24, color: colors.textMain }}>←</Text>
+    </TouchableOpacity>
+    <Text style={{ fontSize: 18, color: colors.textMain, fontWeight: 'bold' }}>
+       {selectedDate.getFullYear()}
+    </Text>
+    <TouchableOpacity onPress={() => {
+       const newDate = new Date(selectedDate.getFullYear() + 1, selectedDate.getMonth(), 1);
+       setSelectedDate(newDate);
+    }}>
+       <Text style={{ fontSize: 24, color: colors.textMain }}>→</Text>
     </TouchableOpacity>
   </View>
 </Modal>
@@ -1210,6 +1565,66 @@ deleteModalButton: {
   justifyContent: 'center',
 },
 deleteModalButtonText: {
+  fontSize: 13,
+  fontWeight: '600',
+  textTransform: 'uppercase',
+  letterSpacing: 0.06,
+},
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 90, // Отступ снизу (подбери под свой экран)
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F59E0B', // Твой акцентный цвет (colors.accent1)
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6, // Тень для Android
+    shadowColor: '#000', // Тень для iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    zIndex: 100,
+  },
+  fabIcon: {
+    fontSize: 32,
+    color: '#020617', // Цвет плюсика
+    fontWeight: 'bold',
+    marginTop: -4, // Немного выровнять по центру визуально
+  },
+subtasksContainer: {
+  marginLeft: 20,
+  marginRight: 20,
+  marginTop: -8,
+  marginBottom: 12,
+  padding: 12,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: 'rgba(148, 163, 184, 0.2)',
+},
+subtaskItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 8,
+  gap: 8,
+},
+subtaskCheckbox: {
+  marginRight: 4,
+},
+subtaskTitle: {
+  flex: 1,
+  fontSize: 14,
+},
+subtaskDeleteBtn: {
+  padding: 4,
+},
+addSubtaskBtn: {
+  marginTop: 8,
+  paddingVertical: 8,
+  alignItems: 'center',
+},
+addSubtaskBtnText: {
   fontSize: 13,
   fontWeight: '600',
   textTransform: 'uppercase',
