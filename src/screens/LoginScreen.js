@@ -1,15 +1,13 @@
 // src/screens/LoginScreen.js
-// Экран авторизации с компактным переключателем тем
-
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react'; // Добавил useEffect
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
 import api from '../services/api';
 import axios from 'axios';
-import { saveToken } from '../services/storage';
+import { saveToken, saveUserEmail, getUserEmail } from '../services/storage'; // Импортируем новые методы
 import Background from '../components/Background';
 
 const LoginScreen = ({ navigation, onLoginSuccess }) => {
@@ -19,7 +17,17 @@ const LoginScreen = ({ navigation, onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Список тем для переключения
+  // Загружаем сохраненный email при монтировании
+  useEffect(() => {
+    const loadEmail = async () => {
+      const savedEmail = await getUserEmail();
+      if (savedEmail) {
+        setEmail(savedEmail);
+      }
+    };
+    loadEmail();
+  }, []);
+
   const themes = [
     { key: 'default', emoji: '🎨', name: 'Default' },
     { key: 'storm', emoji: '⚡', name: 'Storm' },
@@ -29,113 +37,102 @@ const LoginScreen = ({ navigation, onLoginSuccess }) => {
     { key: 'glitch', emoji: '👾', name: 'Glitch' },
   ];
 
-  // Циклическое переключение тем
+  const currentTheme = themes.find(t => t.key === theme) || themes[0];
+
   const cycleTheme = () => {
     const currentIndex = themes.findIndex(t => t.key === theme);
     const nextIndex = (currentIndex + 1) % themes.length;
     changeTheme(themes[nextIndex].key);
   };
 
-  // Получаем текущую тему
-  const currentTheme = themes.find(t => t.key === theme);
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError('Заполните все поля');
+      return;
+    }
 
-const handleLogin = async () => {
-  try {
-    setLoading(true);
-    const response = await axios.post('http://85.198.96.149:5000/api/login', {
-      email,
-      password,
-    });
-    
-    const { token } = response.data;
-    
-    // ✅ СОХРАНЯЕМ ТОКЕН
-    await saveToken(token);
-    localStorage.setItem('app-user-email', email);
-    
-    console.log('✅ Логин успешен, токен сохранён');
-    
-    // Переходим на экран задач
-  // Уведомляем App.js о успешном логине
-if (onLoginSuccess) {
-  onLoginSuccess();
-}
-    setLoading(false);
-  } catch (error) {
-    console.error('❌ Ошибка логина:', error);
-    setError('Неверный email или пароль');
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await axios.post('http://85.198.96.149:5000/api/login', {
+        email,
+        password,
+      });
 
+      const { token, userId } = response.data; // Предполагаем, что userId тоже возвращается
 
-return (
-  <Background>
-    <View style={styles.container}>
-      {/* Кнопка переключения темы (в правом верхнем углу) */}
-      <TouchableOpacity
-        style={[
-          styles.themeToggle,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.accentBorder,
-          },
-        ]}
-        onPress={cycleTheme}
-      >
-        <Text style={styles.themeEmoji}>{currentTheme?.emoji}</Text>
-      </TouchableOpacity>
+      // ✅ СОХРАНЯЕМ ТОКЕН и EMAIL через асинхронное хранилище
+      await saveToken(token, userId);
+      await saveUserEmail(email);
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Заголовок */}
-        <Text style={[styles.title, { color: colors.accentText }]}>
-          MINDANDMOTION
-        </Text>
+      console.log('✅ Логин успешен, токен сохранён');
 
-        {/* Карточка с формой */}
-        <Card style={styles.card}>
-          <Input
-            label="Email"
-            placeholder="your@email.com"
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              setError('');
-            }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
+    } catch (error) {
+      console.error('❌ Ошибка логина:', error);
+      setError(error.response?.data?.error || 'Неверный email или пароль');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-          <Input
-            label="Пароль"
-            placeholder="••••••••"
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              setError('');
-            }}
-            secureTextEntry
-          />
+  return (
+    <Background>
+      <View style={styles.container}>
+        <TouchableOpacity 
+          style={[styles.themeToggle, { borderColor: colors.border, backgroundColor: colors.surface }]} 
+          onPress={cycleTheme}
+        >
+          <Text style={styles.themeEmoji}>{currentTheme.emoji}</Text>
+        </TouchableOpacity>
 
-          {error ? (
-            <Text style={[styles.errorText, { color: colors.danger1 }]}>
-              {error}
-            </Text>
-          ) : null}
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={[styles.title, { color: colors.textMain }]}>
+            MIND<Text style={{ color: colors.accent1 }}>AND</Text>MOTION
+          </Text>
 
-          <Button
-            title="Войти"
-            onPress={handleLogin}
-            loading={loading}
-            style={styles.button}
-          />
-        </Card>
-      </ScrollView>
-    </View>
-</Background>
+          <Card style={styles.card}>
+            <Input
+              label="Email"
+              placeholder="name@example.com"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                setError('');
+              }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            
+            <Input
+              label="Пароль"
+              placeholder="••••••••"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                setError('');
+              }}
+              secureTextEntry
+              style={{ marginTop: 16 }}
+            />
+
+            {error ? (
+              <Text style={[styles.errorText, { color: colors.danger1 }]}>{error}</Text>
+            ) : null}
+
+            <Button 
+              title="Войти" 
+              onPress={handleLogin} 
+              loading={loading}
+              style={styles.button}
+            />
+          </Card>
+        </ScrollView>
+      </View>
+    </Background>
   );
 };
 
@@ -148,20 +145,20 @@ const styles = StyleSheet.create({
     top: 50,
     right: 20,
     zIndex: 10,
-    width: 50,
-    height: 50,
-    borderRadius: 999,
-    borderWidth: 2,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   themeEmoji: {
-    fontSize: 24,
+    fontSize: 20,
   },
   scrollContent: {
     flexGrow: 1,
@@ -170,25 +167,25 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '800',
     marginBottom: 40,
     textAlign: 'center',
-    letterSpacing: 0.12,
+    letterSpacing: 2,
     textTransform: 'uppercase',
   },
   card: {
-    marginBottom: 24,
+    padding: 24,
   },
   errorText: {
     fontSize: 13,
-    marginBottom: 12,
+    marginTop: 12,
     textAlign: 'center',
+    fontWeight: '500',
   },
   button: {
-    marginTop: 8,
+    marginTop: 24,
   },
 });
 
 export default LoginScreen;
-

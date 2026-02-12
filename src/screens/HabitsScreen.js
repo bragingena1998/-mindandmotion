@@ -14,6 +14,9 @@ import HabitTable from '../components/HabitTable';
 import Modal from '../components/Modal';
 import Input from '../components/Input';
 import Button from '../components/Button';
+import ReorderHabitsModal from '../components/ReorderHabitsModal';
+import MonthPickerModal from '../components/MonthPickerModal';
+
 
 const HabitsScreen = () => {
   const { colors } = useTheme();
@@ -25,6 +28,7 @@ const HabitsScreen = () => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [records, setRecords] = useState([]);
+  const [showDateModal, setShowDateModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState(null);
 const [newHabit, setNewHabit] = useState({
@@ -33,6 +37,8 @@ const [newHabit, setNewHabit] = useState({
   plan: '',
 });
   const [showCustomUnit, setShowCustomUnit] = useState(false);
+  const [showReorderModal, setShowReorderModal] = useState(false);
+
 
 
   useEffect(() => {
@@ -40,11 +46,18 @@ const [newHabit, setNewHabit] = useState({
     loadHabits();
   }, []);
 
- useEffect(() => {
-  if (habits.length > 0) {
-    loadRecords();
-  }
-}, [year, month, habits]);
+   // 1. При смене месяца загружаем настройки привычек
+  useEffect(() => {
+    loadHabits();
+  }, [year, month]);
+
+  // 2. Когда привычки загрузились (или сменился месяц), загружаем галочки
+  useEffect(() => {
+    if (habits.length > 0) {
+      loadRecords();
+    }
+  }, [habits, year, month]);
+
 
 // Дополнительно: перезагружать при изменении records (если с сервера пришли новые)
 useEffect(() => {
@@ -101,15 +114,22 @@ useEffect(() => {
   const loadHabits = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/habits');
-      setHabits(response.data);
-      console.log('Привычек загружено:', response.data.length);
+      // Передаем текущий год и месяц!
+      const response = await api.get(`/habits?year=${year}&month=${month}`);
+      
+      // Фильтруем привычки: показываем только те, у которых shouldShow = true
+      // (Это свойство мы добавили на бэкенде)
+      const visibleHabits = response.data.filter(h => h.shouldShow !== false);
+      
+      setHabits(visibleHabits);
+      console.log('Привычек загружено:', visibleHabits.length);
     } catch (error) {
       console.error('Ошибка загрузки привычек:', error);
     } finally {
       setLoading(false);
     }
   };
+
 
 const loadRecords = async () => {
   try {
@@ -162,47 +182,68 @@ const loadRecords = async () => {
 
 
 
- const handleHabitDelete = async (habitId) => {
-  try {
-    console.log('🗑️ Удаление привычки:', habitId);
-    
-    await api.delete(`/habits/${habitId}`);
-    
-    // Удаляем из локального состояния
-    setHabits(habits.filter(h => h.id !== habitId));
-    
-    // Удаляем записи этой привычки
-    setRecords(records.filter(r => r.habitid !== habitId));
-    
-    console.log('✅ Привычка удалена');
-  } catch (error) {
-    console.error('❌ Ошибка удаления привычки:', error);
-    alert('Не удалось удалить привычку');
-  }
-};
+  const handleHabitDelete = async (habitId) => {
+    try {
+      console.log('🗑️ Архивация привычки:', habitId);
+      // Передаем year и month в query params
+      await api.delete(`/habits/${habitId}?year=${year}&month=${month}`);
+      
+      setHabits(habits.filter(h => h.id !== habitId));
+      setRecords(records.filter(r => r.habitid !== habitId));
+      console.log('✅ Привычка скрыта в этом месяце');
+    } catch (error) {
+      console.error('❌ Ошибка удаления привычки:', error);
+      alert('Не удалось удалить привычку');
+    }
+  };
+
 
   
-  const handleHabitUpdate = async (habitId, updates) => {
+   const handleHabitUpdate = async (habitId, updates) => {
+    try {
+      console.log('🔄 Обновление привычки:', habitId, updates);
+      await api.put(`/habits/${habitId}`, {
+        name: updates.name,
+        unit: updates.unit,
+        plan: updates.plan,
+        year,  // <--- ДОБАВЛЯЕМ ГОД
+        month, // <--- ДОБАВЛЯЕМ МЕСЯЦ
+      });
+
+      // Обновляем локально
+      setHabits(habits.map(h =>
+        h.id === habitId
+          ? { ...h, name: updates.name, unit: updates.unit, plan: updates.plan }
+          : h
+      ));
+      console.log('✅ Привычка обновлена');
+    } catch (error) {
+      console.error('❌ Ошибка обновления привычки:', error);
+      alert('Не удалось обновить привычку');
+    }
+  };
+
+
+const handleReorderSave = async (newOrderHabits) => {
   try {
-    console.log('🔄 Обновление привычки:', habitId, updates);
-    
-    await api.put(`/habits/${habitId}`, {
-      name: updates.name,
-      unit: updates.unit,
-      plan: updates.plan,
-    });
+    // 1. Оптимистично обновляем UI
+    setHabits(newOrderHabits);
+    setShowReorderModal(false);
 
-    // Обновляем локальное состояние
-    setHabits(habits.map(h => 
-      h.id === habitId 
-        ? { ...h, name: updates.name, unit: updates.unit, plan: updates.plan }
-        : h
-    ));
+    // 2. Готовим данные для сервера
+    const payload = newOrderHabits.map((habit, index) => ({
+      id: habit.id,
+      order_index: index
+    }));
 
-    console.log('✅ Привычка обновлена');
+    // 3. Отправляем на сервер
+    console.log('🔄 Saving new order...', payload);
+    await api.put('/habits/reorder', { habits: payload });
+    console.log('✅ Order saved');
   } catch (error) {
-    console.error('❌ Ошибка обновления привычки:', error);
-    alert('Не удалось обновить привычку');
+    console.error('❌ Failed to save order:', error);
+    alert('Ошибка при сохранении порядка');
+    loadHabits(); // Откат при ошибке
   }
 };
 
@@ -277,26 +318,58 @@ const loadRecords = async () => {
       </View>
 
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.textMain }]}>
-            ПРИВЫЧКИ
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={[styles.monthLabel, { color: colors.textSecondary }]}>
-              {String(month).padStart(2, '0')}.{year}
-            </Text>
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: colors.accent1, borderColor: colors.accent1 }]}
+               <View style={styles.sectionHeader}>
+          <TouchableOpacity onPress={() => setShowDateModal(true)}>
+  <Text style={[styles.sectionTitle, { color: colors.accent1, textDecorationLine: 'underline' }]}>
+     {new Date(year, month - 1).toLocaleString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase()} ▼
+  </Text>
+</TouchableOpacity>
+
+          
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {/* НОВАЯ КНОПКА СОРТИРОВКИ */}
+            {habits.length > 1 && (
+              <TouchableOpacity 
+                style={[styles.addButton, { borderColor: colors.borderSubtle, width: 32, height: 32 }]} 
+                onPress={() => setShowReorderModal(true)}
+              >
+                <Text style={{ fontSize: 16, color: colors.textMuted }}>⇅</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Старая кнопка добавления */}
+            <TouchableOpacity 
+              style={[styles.addButton, { borderColor: colors.borderSubtle }]} 
               onPress={() => {
-                setNewHabit({ name: '', unit: 'раз', plan: 1 });
-                setEditingHabit(null);
-                setShowAddModal(true);
+                  setNewHabit({ name: '', unit: 'Дни', plan: '' });
+                  setEditingHabit(null);
+                  setShowAddModal(true);
               }}
             >
-              <Text style={styles.addButtonText}>+</Text>
+              <Text style={[styles.addButtonText, { color: colors.textMain }]}>+</Text>
             </TouchableOpacity>
           </View>
+                {/* Модалка сортировки */}
+      <ReorderHabitsModal
+        visible={showReorderModal}
+        habits={habits}
+        onClose={() => setShowReorderModal(false)}
+        onSave={handleReorderSave}
+      />
+  {/* Модалка выбора даты */}
+  <MonthPickerModal
+    visible={showDateModal}
+    selectedYear={year}
+    selectedMonth={month}
+    onClose={() => setShowDateModal(false)}
+    onSelect={(newYear, newMonth) => {
+      setYear(newYear);
+      setMonth(newMonth);
+    }}
+  />
+
         </View>
+
 
         {habits.length === 0 ? (
           <View style={[styles.placeholder, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
@@ -411,43 +484,61 @@ const loadRecords = async () => {
 
         <Button
           title={editingHabit ? "Сохранить" : "Добавить"}
-          onPress={async () => {
+                    onPress={async () => {
+            // 1. Валидация
             if (!newHabit.name.trim()) {
               alert('Введите название привычки');
               return;
             }
 
-            if (!newHabit.unit || newHabit.unit.trim() === '') {
+            if (!newHabit.unit || (!newHabit.unit.trim() && !showCustomUnit)) {
               alert('Выберите или введите единицу измерения');
               return;
             }
 
+            // 2. Подготовка данных
             const planValue = newHabit.plan === '' ? 1 : parseInt(newHabit.plan) || 1;
+            
+            // Данные для отправки
+            const habitPayload = {
+              name: newHabit.name,
+              unit: newHabit.unit,
+              plan: planValue,
+              year,   // Текущий год (из стейта HabitsScreen)
+              month,  // Текущий месяц (из стейта HabitsScreen)
+            };
 
             try {
-              const habitData = {
-                name: newHabit.name,
-                unit: newHabit.unit,
-                plan: planValue,
-              };
-
               if (editingHabit) {
-                await api.put(`/habits/${editingHabit.id}`, habitData);
-                setHabits(habits.map(h => h.id === editingHabit.id ? { ...h, ...habitData } : h));
+                // --- РЕДАКТИРОВАНИЕ ---
+                console.log('🔄 Updating habit:', editingHabit.id);
+                await api.put(`/habits/${editingHabit.id}`, habitPayload);
+                
+                // Обновляем список привычек локально
+                setHabits(habits.map(h => 
+                  h.id === editingHabit.id ? { ...h, ...habitPayload } : h
+                ));
               } else {
-                const response = await api.post('/habits', habitData);
+                // --- СОЗДАНИЕ НОВОЙ ---
+                console.log('✨ Creating new habit:', habitPayload);
+                const response = await api.post('/habits', habitPayload);
+                
+                // Добавляем новую привычку в список локально
                 setHabits([...habits, response.data]);
               }
 
+              // 3. Очистка и закрытие
               setNewHabit({ name: '', unit: 'Дни', plan: '' });
               setEditingHabit(null);
               setShowAddModal(false);
               setShowCustomUnit(false);
+              
             } catch (error) {
-              console.error('Ошибка сохранения привычки:', error);
+              console.error('❌ Ошибка сохранения привычки:', error);
               alert('Не удалось сохранить привычку');
             }
           }}
+
         />
       </Modal>
     </ScrollView>

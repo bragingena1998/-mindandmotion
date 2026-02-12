@@ -7,6 +7,8 @@ import Modal from './Modal';
 import Input from './Input';
 import Button from './Button';
 
+
+
 const HOLIDAYS_2026 = {
   1: [1, 2, 3, 4, 5, 6, 7, 8],
   2: [23],
@@ -34,6 +36,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
 const [editingHabit, setEditingHabit] = useState(null);
 const [editHabitName, setEditHabitName] = useState('');
 const [editHabitPlan, setEditHabitPlan] = useState('');
+
 
 
   if (!records || records.length === 0) {
@@ -67,14 +70,22 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
   };
 
   // АВТОСКРОЛЛ на сегодняшний день
-  useEffect(() => {
+  const scrollToToday = () => {
     if (isCurrentMonth && headerScrollRef.current) {
+      const scrollX = Math.max(0, (today - 3) * 36); // Чуть сместил (today - 3), чтобы день был не у самого края
+      
+      // Пробуем скроллить с небольшой задержкой для надежности
       setTimeout(() => {
-        const scrollX = Math.max(0, (today - 4) * 36 + 90);
-        headerScrollRef.current.scrollTo({ x: scrollX, animated: true });
-      }, 500);
+        headerScrollRef.current?.scrollTo({ x: scrollX, animated: true });
+      }, 100);
     }
-  }, [month, year, isCurrentMonth, today]);
+  };
+
+  // Вызываем при смене месяца или загрузке данных
+  useEffect(() => {
+    scrollToToday();
+  }, [month, year, isCurrentMonth, today, records]); // Добавил records в зависимости
+
 
   const getDayOfWeek = (year, month, day) => {
     const date = new Date(year, month - 1, day);
@@ -104,12 +115,16 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
   };
 
   const getCellType = (unit) => {
+    // 🛡️ ЗАЩИТА: Если unit пустой или null, считаем что это 'count'
+    if (!unit) return 'count';
+    
     const unitLower = unit.toLowerCase();
     if (unitLower.includes('час')) return 'time';
     if (unitLower.includes('кол-во') || unitLower.includes('раз')) return 'count';
     if (unitLower.includes('дн') || unitLower.includes('дни')) return 'check';
     return 'count';
   };
+
 
   const handleCellClick = (habitId, day) => {
     const currentValue = getValue(habitId, day);
@@ -131,6 +146,10 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
   const calculateStats = (habitId) => {
     const habitRecords = records.filter((r) => r.habitid === habitId);
     const habit = habits.find((h) => h.id === habitId);
+    
+    // 🛡️ ЗАЩИТА: Если привычка не найдена (например, удалена, но records остались), не падаем
+    if (!habit) return { total: 0, percent: 0 };
+
     const cellType = getCellType(habit.unit);
     
     if (cellType === 'check') {
@@ -231,6 +250,7 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
     );
   };
 
+
   const handleDeleteHabit = (habit) => {
     Alert.alert(
       'Удалить привычку?',
@@ -266,7 +286,7 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
             <Text style={[styles.headerText, { color: colors.accent1 }]}>ЗАДАЧА</Text>
           </View>
 
-          {/* СКРОЛЛ: Остальные столбцы */}
+      {/* СКРОЛЛ: Остальные столбцы */}
           <ScrollView
             ref={headerScrollRef}
             horizontal
@@ -274,6 +294,10 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
             scrollEventThrottle={16}
             onScroll={handleScroll}
             style={styles.scrollArea}
+            onContentSizeChange={() => {
+              // Когда размер контента изменился (отрисовались дни), скроллим
+              if (isCurrentMonth) scrollToToday();
+            }}
           >
             <View style={{ flexDirection: 'row', width: contentWidth }}>
               {/* Ед.изм */}
