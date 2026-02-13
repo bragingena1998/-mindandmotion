@@ -1,12 +1,9 @@
-// src/components/Modal.js
-// Модальное окно (как на вашем сайте)
-
 import React from 'react';
 import { View, Text, Modal as RNModal, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Modal = ({ visible, onClose, title, children }) => {
-  const { colors, spacing } = useTheme();
+  const { colors } = useTheme();
 
   return (
     <RNModal
@@ -21,37 +18,38 @@ const Modal = ({ visible, onClose, title, children }) => {
         activeOpacity={1}
         onPress={onClose}
       >
-        {/* Контент модалки (не закрывается при клике) */}
+        {/* Контент модалки (не закрывается при клике внутри) */}
         <TouchableOpacity 
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
+          style={{ width: '100%', alignItems: 'center' }}
         >
           <View
             style={[
               styles.modal,
               {
                 backgroundColor: colors.surface,
-                borderColor: colors.accentBorder,
-                borderRadius: spacing.radiusLg,
+                borderColor: colors.accent1 || '#333', // Fallback цвет
+                borderRadius: 20, // <-- ЖЕСТКО ЗАДАЕМ РАДИУС ВМЕСТО spacing.radiusLg
               },
             ]}
           >
             {/* Заголовок */}
-            <View style={styles.header}>
-              <Text style={[styles.title, { color: colors.accentText }]}>
-                {title}
-              </Text>
-              
-              {/* Кнопка закрытия */}
-              <TouchableOpacity
-                style={[styles.closeButton, { borderColor: colors.borderSubtle }]}
-                onPress={onClose}
-              >
-                <Text style={[styles.closeIcon, { color: colors.textMain }]}>
-                  ✕
+            {title && (
+              <View style={styles.header}>
+                <Text style={[styles.title, { color: colors.textMain }]}>
+                  {title}
                 </Text>
-              </TouchableOpacity>
-            </View>
+                
+                {/* Кнопка закрытия */}
+                <TouchableOpacity
+                  style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
+                  onPress={onClose}
+                >
+                  <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Контент */}
             <View style={styles.content}>
@@ -78,9 +76,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 24 },
-    shadowOpacity: 0.95,
-    shadowRadius: 60,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
     elevation: 24,
   },
   header: {
@@ -90,27 +88,28 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.08,
+    letterSpacing: 1,
+    maxWidth: '80%',
   },
   closeButton: {
     width: 32,
     height: 32,
-    borderRadius: 999,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeIcon: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: -2,
   },
   content: {
-    // Контент внутри модалки
+    width: '100%',
   },
 });
 
 export default Modal;
-

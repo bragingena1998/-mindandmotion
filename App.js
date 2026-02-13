@@ -1,44 +1,44 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, StatusBar, Text, View, TouchableOpacity } from 'react-native';
+import { SafeAreaView, StatusBar, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { getToken } from './services/storage';
+// ВАЖНО: Убедись, что путь ./contexts/ThemeContext правильный!
+import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { getToken } from './src/services/storage';
 
 // Screens
-import HabitsScreen from './screens/HabitsScreen';
-import TasksScreen from './screens/TasksScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import LoginScreen from './screens/LoginScreen';
-import RegisterScreen from './screens/RegisterScreen';
-import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
-import SecretChatScreen from './screens/SecretChatScreen';
+import HabitsScreen from './src/screens/HabitsScreen';
+import TasksScreen from './src/screens/TasksScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
+import SecretChatScreen from './src/screens/SecretChatScreen';
 
 const Tab = createBottomTabNavigator();
 
-// --- КОМПОНЕНТ ВКЛАДОК (С ЛОГИКОЙ ТРОЙНОГО ТАПА) ---
+// --- Вкладки с логикой тройного тапа ---
 const MainTabs = ({ onLogout, onOpenSecret }) => {
   const { colors } = useTheme();
   
-  // Ref для хранения времени последнего тапа, чтобы не сбрасывалось при рендере
-  const tapState = useRef({ count: 0, lastTime: 0 });
+  // Ref для подсчета тапов (чтобы не сбрасывался при ререндере)
+  const tapCounter = useRef({ count: 0, lastTime: 0 });
 
-  const handleProfilePress = (e) => {
+  const handleTabPress = (e) => {
     const now = Date.now();
-    // Если прошло меньше 500мс
-    if (now - tapState.current.lastTime < 500) {
-      tapState.current.count += 1;
+    // Если между тапами меньше 500 мс, считаем их
+    if (now - tapCounter.current.lastTime < 500) {
+      tapCounter.current.count += 1;
     } else {
-      tapState.current.count = 1;
+      tapCounter.current.count = 1;
     }
-    tapState.current.lastTime = now;
+    tapCounter.current.lastTime = now;
 
-    console.log('Tap count:', tapState.current.count); // Debug
-
-    if (tapState.current.count >= 3) {
-      e.preventDefault(); // Отменяем переход
-      tapState.current.count = 0;
-      onOpenSecret(); // Открываем секрет
+    // Если 3 тапа подряд
+    if (tapCounter.current.count >= 3) {
+      e.preventDefault(); // Отменяем переход в профиль
+      tapCounter.current.count = 0; // Сброс
+      onOpenSecret(); // Открываем секретку
     }
   };
 
@@ -71,7 +71,7 @@ const MainTabs = ({ onLogout, onOpenSecret }) => {
         name="Profile"
         children={() => <ProfileScreen onLogout={onLogout} />}
         listeners={{
-          tabPress: handleProfilePress, // Вешаем обработчик
+          tabPress: handleTabPress, // Вешаем обработчик на нажатие вкладки
         }}
         options={{ tabBarLabel: 'ПРОФИЛЬ', tabBarIcon: () => null }}
       />
@@ -79,37 +79,46 @@ const MainTabs = ({ onLogout, onOpenSecret }) => {
   );
 };
 
-// --- ВНУТРЕННИЙ КОНТЕНТ (ЧТОБЫ РАБОТАЛ useTheme) ---
+// --- Внутренний контент приложения ---
 const AppContent = () => {
   const { colors } = useTheme();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [currentScreen, setCurrentScreen] = useState('login'); // login, register, forgot, main, secret
+  const [currentScreen, setCurrentScreen] = useState('login'); 
 
   useEffect(() => {
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
-    const token = await getToken();
-    if (token) {
-      setIsAuthenticated(true);
-      setCurrentScreen('main');
-    } else {
+    try {
+      const token = await getToken();
+      if (token) {
+        setIsAuthenticated(true);
+        setCurrentScreen('main');
+      } else {
+        setIsAuthenticated(false);
+        setCurrentScreen('login');
+      }
+    } catch(e) {
       setIsAuthenticated(false);
-      setCurrentScreen('login');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (loading) return null;
 
-  // 1. Секретный чат (поверх всего)
+  // 1. Секретный чат
   if (currentScreen === 'secret') {
-    return <SecretChatScreen onExit={() => setCurrentScreen('main')} />;
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+         <SecretChatScreen onExit={() => setCurrentScreen('main')} />
+      </SafeAreaView>
+    );
   }
 
-  // 2. Экраны авторизации
+  // 2. Авторизация
   if (!isAuthenticated) {
     if (currentScreen === 'register') {
       return <RegisterScreen onNavigate={setCurrentScreen} onLoginSuccess={() => { setIsAuthenticated(true); setCurrentScreen('main'); }} />;
@@ -117,10 +126,11 @@ const AppContent = () => {
     if (currentScreen === 'forgot-password') {
       return <ForgotPasswordScreen onNavigate={setCurrentScreen} />;
     }
+    // Login
     return <LoginScreen onNavigate={setCurrentScreen} onLoginSuccess={() => { setIsAuthenticated(true); setCurrentScreen('main'); }} />;
   }
 
-  // 3. Главное приложение (Табы)
+  // 3. Главный экран
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
@@ -134,7 +144,6 @@ const AppContent = () => {
   );
 };
 
-// --- ГЛАВНЫЙ КОМПОНЕНТ ---
 export default function App() {
   return (
     <ThemeProvider>
