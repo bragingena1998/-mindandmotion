@@ -31,12 +31,14 @@
 
 .react-datepicker__day:hover {
   background: rgba(148, 163, 184, 0.2) !important;
+  color: #ffffff !important;
 }
 
+/* Выбранный день */
 .react-datepicker__day--selected {
   background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
-  color: #fff !important;
-  font-weight: 600 !important;
+  color: #000000 !important; /* Текст на активной кнопке можно темным */
+  font-weight: 700 !important;
 }
 
 .react-datepicker__day--today {
@@ -48,8 +50,20 @@
   top: 16px !important;
 }
 
+/* Кнопки навигации (стрелочки) */
 .react-datepicker__navigation-icon::before {
-  border-color: #8b5cf6 !important;
-  border-width: 2px 2px 0 0 !important;
+  border-color: #94a3b8 !important; /* Цвет стрелок */
+}
+/* День вне месяца (серый) */
+.react-datepicker__day--outside-month {
+  color: #475569 !important; 
 }
 
+/* Цвет текста месяца и дней недели */
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker-year-header,
+.react-datepicker__day-name,
+.react-datepicker__day {
+  color: #e2e8f0 !important; /* Светлый текст (почти белый) */
+}

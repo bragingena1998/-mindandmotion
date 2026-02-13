@@ -17,6 +17,25 @@ import Button from '../components/Button';
 import ReorderHabitsModal from '../components/ReorderHabitsModal';
 import MonthPickerModal from '../components/MonthPickerModal';
 
+// --- НОВЫЙ КОМПОНЕНТ ПРОГРЕСС-БАРА ---
+const LifeProgressBar = ({ label, value, color }) => {
+  const percent = Math.min(Math.max(value, 0), 100);
+  
+  return (
+    <View style={styles.barContainer}>
+      <View style={styles.barBackground}>
+        <View style={[styles.barFill, { width: `${percent}%`, backgroundColor: color }]} />
+        
+        {/* Текст поверх бара, по центру */}
+        <View style={styles.barTextContainer}>
+          <Text style={styles.barLabel}>
+            {label}: {percent.toFixed(1)}%
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
 
 const HabitsScreen = () => {
   const { colors } = useTheme();
@@ -69,13 +88,14 @@ useEffect(() => {
     try {
       const response = await api.get('/user/profile');
       setProfile(response.data);
-      calculateLifeProgress(response.data.birthdate);
+      // Передаем дату И пол
+      calculateLifeProgress(response.data.birthdate, response.data.gender);
     } catch (error) {
       console.error('Ошибка загрузки профиля:', error);
     }
   };
 
-  const calculateLifeProgress = (birthdate) => {
+  const calculateLifeProgress = (birthdate, gender = 'male') => {
     if (!birthdate) {
       setLifeProgress({ percent: 0, yearsLived: 0, yearsLeft: 64 });
       setYearProgress({ percent: 0, daysPassed: 0, daysLeft: 365 });
@@ -84,7 +104,9 @@ useEffect(() => {
 
     const today = new Date();
     const birth = new Date(birthdate);
-    const lifeExpectancy = 64;
+    
+    // --- УЧЕТ ПОЛА ---
+    const lifeExpectancy = gender === 'female' ? 78.5 : 67.0;
 
     const ageMs = today - birth;
     const ageYears = ageMs / (1000 * 60 * 60 * 24 * 365.25);
@@ -94,6 +116,7 @@ useEffect(() => {
 
     setLifeProgress({ percent: lifePercent, yearsLived, yearsLeft });
 
+    // --- ГОД ---
     const birthMonth = birth.getMonth();
     const birthDay = birth.getDate();
     let yearStart = new Date(today.getFullYear(), birthMonth, birthDay);
@@ -110,6 +133,7 @@ useEffect(() => {
 
     setYearProgress({ percent: yearPercent, daysPassed, daysLeft });
   };
+
 
   const loadHabits = async () => {
     try {
@@ -256,66 +280,105 @@ const handleReorderSave = async (newOrderHabits) => {
     );
   }
 
+  // --- РАСЧЕТ СТАТИСТИКИ НА СЕГОДНЯ ---
+  const today = new Date();
+  const currentDay = today.getDate();
+  const isCurrentMonthView = year === today.getFullYear() && month === (today.getMonth() + 1);
+
+  // Сколько привычек всего
+  const totalHabits = habits.length;
+  
+  // Сколько выполнено сегодня (ищем в records записи за текущий день с value > 0)
+  const completedToday = records.filter(r => r.day === currentDay && r.value > 0).length;
+  
+  // Процент выполнения
+  const dailyPercent = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
+  
+  // Цитаты (можно вынести в отдельный файл потом)
+  const quotes = [
+    "Мы — это то, что мы делаем постоянно.",
+    "Дисциплина — это решение делать то, чего очень не хочется.",
+    "Путь в тысячу ли начинается с первого шага.",
+    "Привычка — вторая натура.",
+    "Не жди вдохновения, стань дисциплинированным."
+  ];
+  // Берем цитату на основе дня года, чтобы она менялась раз в сутки
+  const quoteIndex = Math.floor(yearProgress.daysPassed % quotes.length);
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
     >
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.textMain }]}>
-          ЖИЗНЕННОЕ ВРЕМЯ
-        </Text>
-
-        <View style={[styles.progressCard, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-          <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-            Прожито
-          </Text>
-          <Text style={[styles.progressValue, { color: colors.textMain }]}>
-            {lifeProgress.percent}%
-          </Text>
-          <View style={[styles.progressBar, { backgroundColor: colors.borderSubtle }]}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${lifeProgress.percent}%`,
-                  backgroundColor: colors.accent1,
-                },
-              ]}
-            >
-              <Text style={styles.progressText}>{lifeProgress.percent}%</Text>
-            </View>
-          </View>
-          <Text style={[styles.progressDetails, { color: colors.textMuted }]}>
-            {lifeProgress.yearsLived} лет прожито, {lifeProgress.yearsLeft} осталось
+                  <View style={styles.section}>
+        
+        {/* 1. ЦИТАТА ДНЯ (Заполняет пустоту смыслом) */}
+        <View style={{ marginBottom: 20, paddingHorizontal: 4 }}>
+          <Text style={{ 
+            fontSize: 14, 
+            fontStyle: 'italic', 
+            color: colors.textMuted, 
+            textAlign: 'center',
+            lineHeight: 20
+          }}>
+            "{quotes[quoteIndex]}"
           </Text>
         </View>
 
-        <View style={[styles.progressCard, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-          <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-            Год (с ДР)
-          </Text>
-          <Text style={[styles.progressValue, { color: colors.textMain }]}>
-            {yearProgress.daysPassed} дней
-          </Text>
-          <View style={[styles.progressBar, { backgroundColor: colors.borderSubtle }]}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${yearProgress.percent}%`,
-                  backgroundColor: colors.accent2,
-                },
-              ]}
-            >
-              <Text style={styles.progressText}>{yearProgress.percent}%</Text>
+        {/* 2. КАРТОЧКА "СЕГОДНЯ" (Новый блок) */}
+        {isCurrentMonthView && (
+          <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View>
+                <Text style={[styles.statsTitle, { color: colors.textMain }]}>СЕГОДНЯ</Text>
+                <Text style={[styles.statsValue, { color: colors.textMain }]}>
+                  {completedToday} <Text style={{ fontSize: 16, color: colors.textMuted }}>/ {totalHabits}</Text>
+                </Text>
+              </View>
+              
+              {/* Круговой индикатор (простой) */}
+              <View style={{ alignItems: 'center', justifyContent: 'center', width: 50, height: 50 }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.accent1 }}>
+                  {dailyPercent}%
+                </Text>
+              </View>
             </View>
+            
+            {/* Текст мотивации */}
+            <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 8 }}>
+              {dailyPercent === 100 ? "🔥 Все привычки выполнены!" : 
+               dailyPercent >= 50 ? "👍 Отличный темп!" : "⏳ Поднажми!"}
+            </Text>
           </View>
-          <Text style={[styles.progressDetails, { color: colors.textMuted }]}>
-            {yearProgress.daysPassed} дней прошло, {yearProgress.daysLeft} осталось
-          </Text>
+        )}
+
+        {/* 3. КАРТОЧКА "ЖИЗНЬ" (Бары теперь внутри карточки) */}
+        <View style={[styles.lifeCard, { backgroundColor: 'rgba(148, 163, 184, 0.05)', borderColor: colors.borderSubtle }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+             <Text style={[styles.cardTitle, { color: colors.textMain }]}>ВРЕМЯ</Text>
+             <Text style={{ fontSize: 10, color: colors.textMuted }}>MEMENTO MORI</Text>
+          </View>
+
+          <View style={styles.lifeBlock}>
+            {/* ПРОЖИТО */}
+            <LifeProgressBar 
+              label={`ПРОЖИТО (${profile?.gender === 'female' ? 'Ж' : 'М'} / ${lifeProgress.yearsLived} ЛЕТ)`} 
+              value={lifeProgress.percent} 
+              color={colors.danger1} 
+            />
+
+            {/* ДО ДР */}
+            <LifeProgressBar 
+              label={`ГОД (${yearProgress.daysLeft} ДН. ОСТАЛОСЬ)`} 
+              value={yearProgress.percent} 
+              color={colors.accent1} 
+            />
+          </View>
         </View>
+
       </View>
+
+
 
       <View style={styles.section}>
                <View style={styles.sectionHeader}>
@@ -659,7 +722,81 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
   },
-
+  // --- НОВЫЕ СТИЛИ ДЛЯ БАРОВ ---
+  lifeBlock: {
+    paddingHorizontal: 0, // Убрали отступ, чтобы было по ширине контента
+    marginTop: 10,
+    gap: 12,
+  },
+  barContainer: {
+    height: 24,
+    width: '100%',
+  },
+  barBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(148, 163, 184, 0.2)', // Универсальный полупрозрачный
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 12,
+  },
+  barTextContainer: {
+    position: 'absolute',
+    top: 0, bottom: 0, left: 0, right: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  barLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: '#FFFFFF', // Белый текст всегда
+    textShadowColor: 'rgba(0, 0, 0, 0.5)', // Тень для читаемости
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+// Карточка статистики (Сегодня)
+  statsCard: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+    // Тень для объема
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  statsTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  statsValue: {
+    fontSize: 32,
+    fontWeight: '800',
+  },
+  
+  // Карточка жизни
+  lifeCard: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  cardTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
 });
 
 export default HabitsScreen;
