@@ -10,7 +10,7 @@ import axios from 'axios';
 import { saveToken, saveUserEmail, getUserEmail } from '../services/storage'; // Импортируем новые методы
 import Background from '../components/Background';
 
-const LoginScreen = ({ navigation, onLoginSuccess }) => {
+const LoginScreen = ({ onLoginSuccess, onNavigate }) => {
   const { colors, spacing, changeTheme, theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -99,10 +99,7 @@ const LoginScreen = ({ navigation, onLoginSuccess }) => {
               label="Email"
               placeholder="name@example.com"
               value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setError('');
-              }}
+              onChangeText={(text) => { setEmail(text); setError(''); }}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -111,13 +108,18 @@ const LoginScreen = ({ navigation, onLoginSuccess }) => {
               label="Пароль"
               placeholder="••••••••"
               value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setError('');
-              }}
+              onChangeText={(text) => { setPassword(text); setError(''); }}
               secureTextEntry
               style={{ marginTop: 16 }}
             />
+
+           {/* Кнопка "Забыли пароль" (над кнопкой Войти или где удобно) */}
+     <TouchableOpacity 
+       onPress={() => onNavigate('forgot-password')} 
+       style={{ alignSelf: 'flex-end', marginBottom: 12 }}
+     >
+       <Text style={{ color: colors.accent1, fontSize: 12 }}>Забыли пароль?</Text>
+     </TouchableOpacity>
 
             {error ? (
               <Text style={[styles.errorText, { color: colors.danger1 }]}>{error}</Text>
@@ -129,6 +131,14 @@ const LoginScreen = ({ navigation, onLoginSuccess }) => {
               loading={loading}
               style={styles.button}
             />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 24 }}>
+        <Text style={{ color: colors.textMuted }}>Нет аккаунта? </Text>
+        <TouchableOpacity onPress={() => onNavigate('register')}>
+          <Text style={{ color: colors.accent1, fontWeight: 'bold' }}>Создать</Text>
+        </TouchableOpacity>
+     </View>
+
           </Card>
         </ScrollView>
       </View>

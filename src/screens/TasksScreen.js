@@ -781,33 +781,7 @@ const renderTask = ({ item }) => {
   <Text style={{ fontSize: 12, color: colors.textMuted }}>▼</Text>
 </TouchableOpacity>
 
-            {/* Кнопка темы */}
-            <TouchableOpacity
-              style={[
-                styles.themeButton,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.accentBorder,
-                },
-              ]}
-              onPress={cycleTheme}
-            >
-              <Text style={styles.themeEmoji}>{currentTheme?.emoji}</Text>
-            </TouchableOpacity>
-
-            {/* Кнопка выхода */}
-            <TouchableOpacity
-              style={[
-                styles.logoutButton,
-                {
-                  backgroundColor: colors.danger1,
-                  borderColor: colors.danger1,
-                },
-              ]}
-              onPress={handleLogout}
-            >
-              <Text style={styles.logoutText}>Выйти</Text>
-            </TouchableOpacity>
+        
           </View>
         </View>
 

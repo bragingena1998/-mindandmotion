@@ -96,6 +96,7 @@ useEffect(() => {
   };
 
   const calculateLifeProgress = (birthdate, gender = 'male') => {
+    // Если даты нет, сбрасываем прогресс и выходим
     if (!birthdate) {
       setLifeProgress({ percent: 0, yearsLived: 0, yearsLeft: 64 });
       setYearProgress({ percent: 0, daysPassed: 0, daysLeft: 365 });
@@ -105,7 +106,7 @@ useEffect(() => {
     const today = new Date();
     const birth = new Date(birthdate);
     
-    // --- УЧЕТ ПОЛА ---
+    // --- УЧЕТ ПОЛА ---\
     const lifeExpectancy = gender === 'female' ? 78.5 : 67.0;
 
     const ageMs = today - birth;
@@ -116,7 +117,7 @@ useEffect(() => {
 
     setLifeProgress({ percent: lifePercent, yearsLived, yearsLeft });
 
-    // --- ГОД ---
+    // --- ГОД ---\
     const birthMonth = birth.getMonth();
     const birthDay = birth.getDate();
     let yearStart = new Date(today.getFullYear(), birthMonth, birthDay);
@@ -133,6 +134,7 @@ useEffect(() => {
 
     setYearProgress({ percent: yearPercent, daysPassed, daysLeft });
   };
+
 
 
   const loadHabits = async () => {

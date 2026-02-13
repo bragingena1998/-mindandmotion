@@ -1,337 +1,230 @@
-// src/screens/ProfileScreen.js
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator 
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
-import { getToken, removeToken } from '../services/storage';
+// Убрали removeUserEmail, так как он вызывает ошибку
+import { removeToken } from '../services/storage';
 import Modal from '../components/Modal';
 import Input from '../components/Input';
 import Button from '../components/Button';
+import AlertModal from '../components/AlertModal';
+import DatePickerModal from '../components/DatePickerModal';
 
-const ProfileScreen = () => {
+const formatDateDisplay = (dateStr) => {
+  if (!dateStr) return '';
+  const cleanDate = dateStr.split('T')[0];
+  const [y, m, d] = cleanDate.split('-');
+  return `${d}.${m}.${y}`;
+};
+
+const ProfileScreen = ({ onLogout }) => {
   const { colors, theme, changeTheme } = useTheme();
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [stats, setStats] = useState({ tasks: 0, habits: 0 });
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   
-  // Загрузка данных
-  useEffect(() => {
-    loadProfileData();
-  }, []);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Состояния модалок
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'success' });
 
-  const loadProfileData = async () => {
+  const showAlert = (title, message, type = 'success') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
+
+  useEffect(() => { loadProfile(); }, []);
+
+  const loadProfile = async () => {
     try {
-      const token = await getToken();
-      if (!token) return;
-
-      // 1. Профиль
-      const userRes = await api.get('/user/profile'); // Используем тот роут, что мы правили утром
-      setUser(userRes.data);
-
-      // 2. Статистика (нужно добавить роут или посчитать примерно)
-      // Пока заглушка или реальный запрос, если есть
-      // const statsRes = await api.get('/user/stats/total'); 
-      // setStats(statsRes.data);
-      
-    } catch (err) {
-      console.error('Ошибка профиля:', err);
-    } finally {
-      setLoading(false);
-    }
+      const response = await api.get('/user/profile');
+      setUser(response.data);
+    } catch (error) { console.error(error); } finally { setLoading(false); }
   };
 
-  const handleLogout = async () => {
-    await removeToken();
-    window.location.href = '/'; // Перезагрузка на логин
+  const handleUpdateProfile = async (updates) => {
+    try {
+      const res = await api.put('/user/profile', updates);
+      setUser(res.data);
+    } catch (error) { showAlert('Ошибка', 'Не удалось обновить профиль', 'error'); }
   };
 
-  const toggleGender = async () => {
-    const newGender = user.gender === 'male' ? 'female' : 'male';
-    // Оптимистичное обновление
-    setUser({ ...user, gender: newGender });
+  const handleChangePassword = async () => {
+    if (passwordData.new !== passwordData.confirm) return showAlert('Ошибка', 'Пароли не совпадают', 'error');
+    if (passwordData.new.length < 6) return showAlert('Ошибка', 'Минимум 6 символов', 'error');
     
     try {
-      // Отправляем на сервер (нужен роут PUT /api/user/profile)
-      // Если роута нет, то просто визуально поменяется до перезагрузки
-      await api.put('/user/profile', { gender: newGender });
-    } catch (err) {
-      console.error('Ошибка смены пола:', err);
-      // alert('Не удалось сохранить пол');
-    }
-  };
-
-  // Темы для переключателя
-  const themes = [
-    { key: 'default', label: 'Обычная 🌑' },
-    { key: 'storm', label: 'Шторм ⚡' },
-    { key: 'ice', label: 'Лед ❄️' },
-    { key: 'blood', label: 'Кровь 🔥' },
-    { key: 'toxic', label: 'Токсик ☢️' },
-    { key: 'glitch', label: 'Глитч 👾' },
-  ];
-// Функция смены пароля
-  const handleChangePassword = async () => {
-    if (passwords.new !== passwords.confirm) {
-      alert('Новые пароли не совпадают');
-      return;
-    }
-    if (passwords.new.length < 6) {
-      alert('Пароль должен быть минимум 6 символов');
-      return;
-    }
-
-    try {
-      await api.put('/user/password', {
-        currentPassword: passwords.current,
-        newPassword: passwords.new
-      });
-      alert('Пароль успешно изменен!');
+      await api.put('/user/password', { currentPassword: passwordData.current, newPassword: passwordData.new });
       setShowPasswordModal(false);
-      setPasswords({ current: '', new: '', confirm: '' });
-    } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.error || 'Ошибка смены пароля');
+      setPasswordData({ current: '', new: '', confirm: '' });
+      showAlert('Успешно', 'Пароль изменен');
+    } catch (error) {
+      showAlert('Ошибка', error.response?.data?.error || 'Не удалось сменить пароль', 'error');
     }
   };
-  
-  if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.accent1} />
-      </View>
-    );
-  }
+
+  // ИСПРАВЛЕНИЕ ОШИБКИ ВЫХОДА
+  const handleLogout = async () => {
+    await removeToken();
+    // Убрали removeUserEmail(), так как этой функции нет в storage.js
+    onLogout();
+  };
+
+  // Вернули эмодзи для красивой карусели
+  const themes = [
+    { key: 'default', emoji: '🌑', name: 'Default' },
+    { key: 'storm', emoji: '⚡', name: 'Storm' },
+    { key: 'ice', emoji: '❄️', name: 'Ice' },
+    { key: 'blood', emoji: '🔥', name: 'Blood' },
+    { key: 'toxic', emoji: '☢️', name: 'Toxic' },
+    { key: 'glitch', emoji: '👾', name: 'Glitch' },
+  ];
+
+  if (loading) return <View style={[styles.center, { backgroundColor: colors.background }]}><ActivityIndicator size="large" color={colors.accent1} /></View>;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       
-           {/* 1. ШАПКА ПРОФИЛЯ */}
+      {/* 1. ШАПКА ПРОФИЛЯ */}
       <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
-        
-        {/* Стильный аватар с инициалами */}
-        <View style={[styles.avatarContainer, { 
-          backgroundColor: colors.surface,
-          borderColor: colors.accent1,
-          shadowColor: colors.accent1,
-          shadowOpacity: 0.3,
-          shadowRadius: 10,
-          elevation: 5
-        }]}>
+        <View style={[styles.avatarContainer, { backgroundColor: colors.surface, borderColor: colors.accent1, shadowColor: colors.accent1 }]}>
           <Text style={[styles.avatarText, { color: colors.accent1 }]}>
             {user?.name ? user.name.charAt(0).toUpperCase() : 'M'}
           </Text>
         </View>
 
-        <Text style={[styles.userName, { color: colors.textMain }]}>
-          {user?.name || 'Пользователь'}
-        </Text>
-
-        <Text style={[styles.userEmail, { color: colors.textMuted }]}>
-          {user?.email}
-        </Text>
+        <Text style={[styles.userName, { color: colors.textMain }]}>{user?.name || 'Пользователь'}</Text>
+        <Text style={[styles.userEmail, { color: colors.textMuted }]}>{user?.email}</Text>
+        
         <View style={[styles.badge, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
           <Text style={[styles.badgeText, { color: colors.textSecondary }]}>
-            В ПУТИ С {new Date(user?.created_at).getFullYear()} ГОДА
+            В ПУТИ С {user?.created_at ? new Date(user.created_at).getFullYear() : '2026'} ГОДА
           </Text>
         </View>
       </View>
 
       {/* 2. НАСТРОЙКИ */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>НАСТРОЙКИ</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>ЛИЧНЫЕ ДАННЫЕ</Text>
         
-        {/* Пол (Влияет на статистику жизни) */}
+        {/* Имя */}
         <View style={[styles.row, { borderBottomColor: colors.borderSubtle }]}>
-          <Text style={[styles.rowLabel, { color: colors.textMain }]}>Пол (для статистики)</Text>
+          <Text style={[styles.rowLabel, { color: colors.textMain }]}>Имя</Text>
+          <View style={{ width: 160 }}>
+            <Input 
+               value={user?.name || ''} 
+               onChangeText={(text) => setUser({...user, name: text})} 
+               onEndEditing={(e) => handleUpdateProfile({ name: e.nativeEvent.text })}
+               style={{ height: 40, paddingVertical: 0 }}
+            />
+          </View>
+        </View>
+
+        {/* Дата рождения - СТИЛЬ КАК У INPUT */}
+        <View style={[styles.row, { borderBottomColor: colors.borderSubtle }]}>
+          <Text style={[styles.rowLabel, { color: colors.textMain }]}>Дата рождения</Text>
           <TouchableOpacity 
-            onPress={toggleGender}
-            style={[styles.genderButton, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}
+            onPress={() => setShowDatePicker(true)}
+            style={{ 
+               width: 160,
+               height: 40,
+               backgroundColor: colors.surface,
+               borderWidth: 1,
+               borderColor: colors.border,
+               borderRadius: 12, // Такой же радиус как у Input
+               justifyContent: 'center',
+               paddingHorizontal: 16
+            }}
           >
-            <Text style={{ color: colors.textMain, fontWeight: 'bold' }}>
-              {user?.gender === 'female' ? 'ЖЕНСКИЙ' : 'МУЖСКОЙ'}
+            <Text style={{ color: user?.birthdate ? colors.textMain : colors.textMuted, fontSize: 16 }}>
+              {user?.birthdate ? formatDateDisplay(user.birthdate) : 'Выбрать'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Выбор Темы */}
-        <View style={[styles.row, { borderBottomColor: 'transparent', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
-          <Text style={[styles.rowLabel, { color: colors.textMain }]}>Тема оформления</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {themes.map((t) => (
-              <TouchableOpacity
-                key={t.key}
-                style={[
-                  styles.themeChip,
-                  { 
-                    backgroundColor: theme === t.key ? colors.accent1 : colors.surface,
-                    borderColor: theme === t.key ? colors.accent1 : colors.borderSubtle
-                  }
-                ]}
-                onPress={() => changeTheme(t.key)}
-              >
-                <Text style={{ 
-                  fontSize: 12, 
-                  fontWeight: '600',
-                  color: theme === t.key ? '#020617' : colors.textMain 
-                }}>
-                  {t.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        {/* Пол */}
+        <View style={[styles.row, { borderBottomColor: colors.borderSubtle }]}>
+          <Text style={[styles.rowLabel, { color: colors.textMain }]}>Пол</Text>
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity onPress={() => handleUpdateProfile({ gender: 'male' })} style={[styles.genderBtn, { marginRight: 8, backgroundColor: user?.gender === 'male' ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}>
+              <Text style={{ color: user?.gender === 'male' ? '#FFF' : colors.textMuted, fontWeight: 'bold' }}>М</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleUpdateProfile({ gender: 'female' })} style={[styles.genderBtn, { backgroundColor: user?.gender === 'female' ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}>
+              <Text style={{ color: user?.gender === 'female' ? '#FFF' : colors.textMuted, fontWeight: 'bold' }}>Ж</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      {/* 3. АККАУНТ */}
+      {/* 3. ОФОРМЛЕНИЕ (ВЕРНУЛИ КАРУСЕЛЬ) */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>АККАУНТ</Text>
-        
-        <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
-          // onPress={() => alert('Функция смены пароля в разработке')}
-        >
+        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>ОФОРМЛЕНИЕ</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+          {themes.map((t) => (
+            <TouchableOpacity
+              key={t.key}
+              style={[
+                styles.themeCard, // Используем стиль карточки, а не чипа
+                { 
+                  backgroundColor: colors.surface, 
+                  borderColor: theme === t.key ? colors.accent1 : colors.borderSubtle 
+                }
+              ]}
+              onPress={() => changeTheme(t.key)}
+            >
+              <Text style={{ fontSize: 24 }}>{t.emoji}</Text>
+              <Text style={{ color: colors.textMain, fontSize: 12, marginTop: 4, fontWeight: '600' }}>{t.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* 4. АККАУНТ */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>БЕЗОПАСНОСТЬ</Text>
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]} onPress={() => setShowPasswordModal(true)}>
           <Text style={[styles.actionText, { color: colors.textMain }]}>🔒 Сменить пароль</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: colors.danger1, marginTop: 12 }]}
-          onPress={handleLogout}
-        >
+        <TouchableOpacity style={[styles.actionButton, { marginTop: 12, borderColor: colors.danger1, borderWidth: 1, backgroundColor: 'rgba(239, 68, 68, 0.05)' }]} onPress={handleLogout}>
           <Text style={[styles.actionText, { color: colors.danger1 }]}>🚪 Выйти</Text>
         </TouchableOpacity>
       </View>
 
       <View style={{ height: 40 }} />
-      <Text style={{ textAlign: 'center', color: colors.textMuted, fontSize: 10 }}>
-        MIND & MOTION v1.0.2
-      </Text>
-      <View style={{ height: 40 }} />
 
-      {/* Модалка смены пароля */}
-      <Modal
-        visible={showPasswordModal}
-        onClose={() => setShowPasswordModal(false)}
-        title="Смена пароля"
-      >
-        <Input
-          label="Текущий пароль"
-          secureTextEntry
-          value={passwords.current}
-          onChangeText={(t) => setPasswords({ ...passwords, current: t })}
-        />
-        <Input
-          label="Новый пароль"
-          secureTextEntry
-          value={passwords.new}
-          onChangeText={(t) => setPasswords({ ...passwords, new: t })}
-        />
-        <Input
-          label="Повторите новый пароль"
-          secureTextEntry
-          value={passwords.confirm}
-          onChangeText={(t) => setPasswords({ ...passwords, confirm: t })}
-        />
-        <Button title="Сохранить новый пароль" onPress={handleChangePassword} />
+      {/* --- MODALS --- */}
+      <Modal visible={showPasswordModal} onClose={() => setShowPasswordModal(false)} title="Смена пароля">
+        <Input label="Текущий пароль" secureTextEntry value={passwordData.current} onChangeText={t => setPasswordData({...passwordData, current: t})} />
+        <Input label="Новый пароль" secureTextEntry value={passwordData.new} onChangeText={t => setPasswordData({...passwordData, new: t})} style={{ marginTop: 10 }} />
+        <Input label="Повторите пароль" secureTextEntry value={passwordData.confirm} onChangeText={t => setPasswordData({...passwordData, confirm: t})} style={{ marginTop: 10 }} />
+        <Button title="Сохранить" onPress={handleChangePassword} style={{ marginTop: 20 }} />
       </Modal>
 
+      <DatePickerModal visible={showDatePicker} initialDate={user?.birthdate ? user.birthdate.split('T')[0] : ''} onClose={() => setShowDatePicker(false)} onSelect={(date) => handleUpdateProfile({ birthdate: date })} />
+      <AlertModal visible={alertConfig.visible} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, visible: false })} />
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    borderBottomWidth: 1,
-  },
-  avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  section: {
-    marginTop: 32,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 16,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  rowLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  genderButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  themeChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginBottom: 4,
-  },
-  actionButton: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  actionText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-    avatarText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-  },
-
+  container: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { alignItems: 'center', paddingVertical: 40, borderBottomWidth: 1 },
+  avatarContainer: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: 16, elevation: 5 },
+  avatarText: { fontSize: 36, fontWeight: 'bold' },
+  userName: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
+  userEmail: { fontSize: 14, marginBottom: 16 },
+  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
+  badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  section: { marginTop: 32, paddingHorizontal: 20 },
+  sectionTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1 },
+  rowLabel: { fontSize: 16, fontWeight: '500' },
+  genderBtn: { width: 44, height: 44, borderRadius: 8, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  // Вернули стиль ThemeCard
+  themeCard: { width: 80, height: 80, borderRadius: 12, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  actionButton: { padding: 16, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
+  actionText: { fontSize: 16, fontWeight: '600' }
 });
 
 export default ProfileScreen;
