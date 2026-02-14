@@ -1547,7 +1547,7 @@ deleteModalButtonText: {
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 90, // Отступ снизу (подбери под свой экран)
+    bottom: 20, // Отступ снизу (подбери под свой экран)
     width: 56,
     height: 56,
     borderRadius: 28,
