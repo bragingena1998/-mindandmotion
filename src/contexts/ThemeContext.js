@@ -3,103 +3,108 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ThemeContext = createContext();
 
-// ПОЛНЫЕ ТЕМЫ СО ВСЕМИ НУЖНЫМИ ЦВЕТАМИ
+// Размеры (оставляем как есть, TasksScreen их использует)
+const spacing = {
+  radiusXs: 4,
+  radiusSm: 8,
+  radiusMd: 12,
+  radiusLg: 16,
+  radiusXl: 24,
+  radiusRound: 999,
+  gutter: 16,
+};
+
+// Тени
+const shadows = {
+  primary: { shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
+  glow: { shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 15, elevation: 10 }
+};
+
+// БАЗОВАЯ ПАЛИТРА (Темный фон для всех)
+const BASE_DARK = {
+  background: '#0f0f11', // Глубокий черный (как на сайте)
+  surface: '#18181b',    // Чуть светлее для карточек
+  textMain: '#ffffff',
+  textMuted: '#888888',
+  border: '#333333',
+  borderSubtle: '#222222',
+  inputBackground: '#202022',
+  inputBorder: '#444444',
+  gradientBackground: ['#0f0f11', '#0f0f11'],
+  
+  // ЦВЕТА СТАТУСОВ (КРИТИЧНО ДЛЯ ЗАДАЧ)
+  danger1: '#ff4444',  // Красный (Просрочено / Высокий приоритет)
+  ok1: '#22c55e',      // Зеленый (Сегодня / Низкий приоритет) <-- ДОБАВИЛ
+  success: '#22c55e',  // Дублируем для совместимости
+};
+
 const themes = {
   default: {
-    background: '#09090b',
-    surface: '#18181b',
-    textMain: '#fafafa',
-    textMuted: '#a1a1aa',
-    textSecondary: '#71717a',
-    border: '#27272a',
-    borderSubtle: '#3f3f46',
-    accent1: '#facc15',
-    accentText: '#000000',
-    accentBorder: '#fef08a',
-    danger1: '#ef4444',
-    success: '#22c55e',
-    gradientStart: '#09090b',
-    gradientEnd: '#18181b',
+    ...BASE_DARK,
+    accent1: '#FFD700', // Желтый неон
+    
+    // ИСПРАВИЛ: Был черный, стал Желтый. 
+    // Теперь заголовок месяца и цифры статистики будут светиться желтым.
+    accentText: '#FFD700', 
+    
+    accentBorder: '#FFD700',
+    gradientPrimary: ['#FFD700', '#D4AF37'],
   },
   storm: {
-    background: '#020617',
-    surface: '#1e293b',
-    textMain: '#f8fafc',
-    textMuted: '#94a3b8',
-    textSecondary: '#64748b',
-    border: '#334155',
-    borderSubtle: '#475569',
-    accent1: '#38bdf8',
-    accentText: '#0f172a',
-    accentBorder: '#7dd3fc',
-    danger1: '#f87171',
-    success: '#4ade80',
-    gradientStart: '#020617',
-    gradientEnd: '#0f172a',
+    ...BASE_DARK,
+    background: '#0b1015',
+    surface: '#121820',
+    accent1: '#0ea5e9', // Голубой
+    
+    // Исправил на голубой, чтобы текст светился
+    accentText: '#0ea5e9', 
+    
+    accentBorder: '#0ea5e9',
+    gradientPrimary: ['#0ea5e9', '#0284c7'],
   },
   ice: {
-    background: '#f0f9ff',
-    surface: '#ffffff',
-    textMain: '#0c4a6e',
-    textMuted: '#64748b',
-    textSecondary: '#475569',
-    border: '#bae6fd',
-    borderSubtle: '#e0f2fe',
-    accent1: '#0ea5e9',
-    accentText: '#ffffff',
-    accentBorder: '#38bdf8',
-    danger1: '#ef4444',
-    success: '#10b981',
-    gradientStart: '#f0f9ff',
-    gradientEnd: '#e0f2fe',
+    ...BASE_DARK,
+    background: '#081015',
+    surface: '#0c1620',
+    accent1: '#38bdf8', // Светло-голубой
+    
+    accentText: '#38bdf8',
+    
+    accentBorder: '#7dd3fc',
+    gradientPrimary: ['#38bdf8', '#0ea5e9'],
   },
   blood: {
-    background: '#450a0a',
-    surface: '#7f1d1d',
-    textMain: '#fef2f2',
-    textMuted: '#fca5a5',
-    textSecondary: '#f87171',
-    border: '#991b1b',
-    borderSubtle: '#b91c1c',
-    accent1: '#fca5a5',
-    accentText: '#450a0a',
-    accentBorder: '#fecaca',
-    danger1: '#f87171',
-    success: '#4ade80',
-    gradientStart: '#450a0a',
-    gradientEnd: '#7f1d1d',
+    ...BASE_DARK,
+    background: '#120505', // Темный (не красный фон!)
+    surface: '#1a0a0a',
+    accent1: '#ff3333', // Красный неон
+    
+    accentText: '#ff3333',
+    
+    accentBorder: '#ff3333',
+    gradientPrimary: ['#ff3333', '#cc0000'],
   },
   toxic: {
-    background: '#052e16',
-    surface: '#14532d',
-    textMain: '#f0fdf4',
-    textMuted: '#86efac',
-    textSecondary: '#4ade80',
-    border: '#166534',
-    borderSubtle: '#15803d',
-    accent1: '#4ade80',
-    accentText: '#052e16',
-    accentBorder: '#86efac',
-    danger1: '#ef4444',
-    success: '#22c55e',
-    gradientStart: '#052e16',
-    gradientEnd: '#14532d',
+    ...BASE_DARK,
+    background: '#051005',
+    surface: '#0a1a0d',
+    accent1: '#4ade80', // Зеленый неон
+    
+    accentText: '#4ade80',
+    
+    accentBorder: '#4ade80',
+    gradientPrimary: ['#4ade80', '#16a34a'],
   },
   glitch: {
-    background: '#2e1065',
-    surface: '#4c1d95',
-    textMain: '#faf5ff',
-    textMuted: '#a78bfa',
-    textSecondary: '#8b5cf6',
-    border: '#5b21b6',
-    borderSubtle: '#6d28d9',
-    accent1: '#d8b4fe',
-    accentText: '#2e1065',
-    accentBorder: '#e9d5ff',
-    danger1: '#f472b6',
-    success: '#34d399',
-    gradientStart: '#2e1065',
-    gradientEnd: '#4c1d95',
+    ...BASE_DARK,
+    background: '#10051a',
+    surface: '#180a26',
+    accent1: '#d8b4fe', // Фиолетовый
+    
+    accentText: '#d8b4fe',
+    
+    accentBorder: '#d8b4fe',
+    gradientPrimary: ['#d8b4fe', '#9333ea'],
   }
 };
 
@@ -136,6 +141,8 @@ export const ThemeProvider = ({ children }) => {
   const value = {
     theme: currentTheme,
     colors: themes[currentTheme],
+    spacing,
+    shadows,
     changeTheme
   };
 

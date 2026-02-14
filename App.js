@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, StatusBar, View } from 'react-native';
+import { SafeAreaView, StatusBar, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-// ВАЖНО: Убедись, что путь ./contexts/ThemeContext правильный!
+import { Feather } from '@expo/vector-icons'; 
+
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { getToken } from './src/services/storage';
 
@@ -17,16 +18,12 @@ import SecretChatScreen from './src/screens/SecretChatScreen';
 
 const Tab = createBottomTabNavigator();
 
-// --- Вкладки с логикой тройного тапа ---
 const MainTabs = ({ onLogout, onOpenSecret }) => {
   const { colors } = useTheme();
-  
-  // Ref для подсчета тапов (чтобы не сбрасывался при ререндере)
   const tapCounter = useRef({ count: 0, lastTime: 0 });
 
   const handleTabPress = (e) => {
     const now = Date.now();
-    // Если между тапами меньше 500 мс, считаем их
     if (now - tapCounter.current.lastTime < 500) {
       tapCounter.current.count += 1;
     } else {
@@ -34,52 +31,63 @@ const MainTabs = ({ onLogout, onOpenSecret }) => {
     }
     tapCounter.current.lastTime = now;
 
-    // Если 3 тапа подряд
     if (tapCounter.current.count >= 3) {
-      e.preventDefault(); // Отменяем переход в профиль
-      tapCounter.current.count = 0; // Сброс
-      onOpenSecret(); // Открываем секретку
+      e.preventDefault();
+      tapCounter.current.count = 0;
+      onOpenSecret();
     }
   };
 
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.borderSubtle,
+          backgroundColor: '#0f0f11', 
+          borderTopWidth: 1,
+          borderTopColor: '#333',
           height: 60,
+          paddingTop: 10,
           paddingBottom: 10,
         },
         tabBarActiveTintColor: colors.accent1,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: 'bold', marginBottom: 15 }
-      }}
+        tabBarInactiveTintColor: '#555',
+        tabBarShowLabel: false,
+        
+        tabBarIcon: ({ color, size, focused }) => {
+          let iconName;
+          if (route.name === 'Tasks') iconName = 'check-square';
+          else if (route.name === 'Habits') iconName = 'zap';
+          else if (route.name === 'Profile') iconName = 'user';
+
+          // УБРАЛ КВАДРАТНУЮ ТЕНЬ КОНТЕЙНЕРА
+          // ТЕПЕРЬ ПРОСТО ИКОНКА БЕЗ ФОНА
+          return (
+             <Feather 
+               name={iconName} 
+               size={28} 
+               color={color} 
+               // Добавляем свечение самой иконке (для веба работает как textShadow)
+               style={focused ? {
+                 textShadowColor: colors.accent1,
+                 textShadowRadius: 10,
+               } : {}}
+             />
+          );
+        },
+      })}
     >
-      <Tab.Screen 
-        name="Tasks" 
-        component={TasksScreen}
-        options={{ tabBarLabel: 'ЗАДАЧИ', tabBarIcon: () => null }}
-      />
-      <Tab.Screen 
-        name="Habits" 
-        component={HabitsScreen}
-        options={{ tabBarLabel: 'ПРИВЫЧКИ', tabBarIcon: () => null }}
-      />
+      <Tab.Screen name="Tasks" component={TasksScreen} />
+      <Tab.Screen name="Habits" component={HabitsScreen} />
       <Tab.Screen 
         name="Profile"
         children={() => <ProfileScreen onLogout={onLogout} />}
-        listeners={{
-          tabPress: handleTabPress, // Вешаем обработчик на нажатие вкладки
-        }}
-        options={{ tabBarLabel: 'ПРОФИЛЬ', tabBarIcon: () => null }}
+        listeners={{ tabPress: handleTabPress }}
       />
     </Tab.Navigator>
   );
 };
 
-// --- Внутренний контент приложения ---
 const AppContent = () => {
   const { colors } = useTheme();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -109,7 +117,6 @@ const AppContent = () => {
 
   if (loading) return null;
 
-  // 1. Секретный чат
   if (currentScreen === 'secret') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
@@ -118,27 +125,17 @@ const AppContent = () => {
     );
   }
 
-  // 2. Авторизация
   if (!isAuthenticated) {
-    if (currentScreen === 'register') {
-      return <RegisterScreen onNavigate={setCurrentScreen} onLoginSuccess={() => { setIsAuthenticated(true); setCurrentScreen('main'); }} />;
-    }
-    if (currentScreen === 'forgot-password') {
-      return <ForgotPasswordScreen onNavigate={setCurrentScreen} />;
-    }
-    // Login
+    if (currentScreen === 'register') return <RegisterScreen onNavigate={setCurrentScreen} onLoginSuccess={() => { setIsAuthenticated(true); setCurrentScreen('main'); }} />;
+    if (currentScreen === 'forgot-password') return <ForgotPasswordScreen onNavigate={setCurrentScreen} />;
     return <LoginScreen onNavigate={setCurrentScreen} onLoginSuccess={() => { setIsAuthenticated(true); setCurrentScreen('main'); }} />;
   }
 
-  // 3. Главный экран
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <NavigationContainer>
-         <MainTabs 
-            onLogout={() => { setIsAuthenticated(false); setCurrentScreen('login'); }} 
-            onOpenSecret={() => setCurrentScreen('secret')}
-         />
+         <MainTabs onLogout={() => { setIsAuthenticated(false); setCurrentScreen('login'); }} onOpenSecret={() => setCurrentScreen('secret')} />
       </NavigationContainer>
     </SafeAreaView>
   );
