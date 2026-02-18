@@ -135,7 +135,10 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
     
     if (!token) {
       console.log('⚠️ Нет токена, возврат на логин');
-      window.location.href = '/';
+      // TODO: заменить на navigation.navigate('Login') для RN
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
       return;
     }
 
@@ -384,10 +387,14 @@ const deleteSubtask = async (subtaskId, taskId) => {
 
 // ← ДОБАВЬ ЭТУ ФУНКЦИЮ:
 const handleLogout = () => {
-  localStorage.removeItem('app-auth-token');
-  localStorage.removeItem('app-user-email');
-  // Перезагружаем страницу
-  window.location.href = '/';
+  // TODO: заменить на navigation.navigate('Login') + AsyncStorage.removeItem для RN
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('app-auth-token');
+    localStorage.removeItem('app-user-email');
+  }
+  if (typeof window !== 'undefined') {
+    window.location.href = '/';
+  }
 };
 
 
@@ -403,6 +410,7 @@ const handleLogout = () => {
     return new Date(date.setDate(diff));
   };
   const startOfWeek = getStartOfWeek(new Date()).toISOString().split('T')[0];
+  const startOfWeekStr = startOfWeek; // ← FIX: Объявляем переменную явно
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
 
   // Считаем правильно
@@ -924,9 +932,12 @@ const renderTask = ({ item }) => {
 </TouchableOpacity>
 </View>
 
+ {/* ========== МОДАЛКИ (МОНТИРУЕМ ТОЛЬКО КОГДА visible=true) ========== */}
+
  {/* Модалка добавления задачи */}
+{showAddModal && (
 <Modal
-  visible={showAddModal}
+  visible
   onClose={() => {
     setNewTask({ 
       title: '', 
@@ -935,10 +946,10 @@ const renderTask = ({ item }) => {
       priority: 2,
       comment: '',
     });
-    setEditingTask(null); // ← ДОБАВИЛИ
+    setEditingTask(null);
     setShowAddModal(false);
   }}
-  title={editingTask ? "Редактировать задачу" : "Новая задача"} // ← ИЗМЕНИЛИ
+  title={editingTask ? "Редактировать задачу" : "Новая задача"}
 >
 
   <Input
@@ -953,11 +964,10 @@ const renderTask = ({ item }) => {
   value={newTask.date}
   onChangeDate={(date) => {
     console.log('📅 Выбрана дата:', date);
-    // Автоматически ставим срок = дата
     setNewTask({ 
       ...newTask, 
       date: date,
-      deadline: date, // ← Автоматически!
+      deadline: date,
     });
   }}
 />
@@ -1027,7 +1037,7 @@ const renderTask = ({ item }) => {
 
 
   <Button
-  title={editingTask ? "Сохранить" : "Добавить"} // ← ИЗМЕНИЛИ ТЕКСТ
+  title={editingTask ? "Сохранить" : "Добавить"}
   onPress={async () => {
     if (!newTask.title.trim()) {
       setError('Название задачи не может быть пусто');
@@ -1104,23 +1114,25 @@ const renderTask = ({ item }) => {
   <TouchableOpacity
     style={[styles.deleteButton, { marginTop: 12, backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.danger1 }]}
     onPress={() => {
-      setShowAddModal(false); // Закрываем редактор
-      setTaskToDelete(editingTask); // Открываем подтверждение удаления
+      setShowAddModal(false);
+      setTaskToDelete(editingTask);
     }}
   >
     <Text style={{ color: colors.danger1, textAlign: 'center' }}>🗑️ Удалить задачу</Text>
   </TouchableOpacity>
 )}
 </Modal>
+)}
 
 {/* Модалка удаления */}
+{taskToDelete && (
 <Modal
-  visible={!!taskToDelete}
+  visible
   onClose={() => setTaskToDelete(null)}
   title="Удалить задачу?"
 >
   <Text style={[styles.deleteModalText, { color: colors.textMain }]}>
-    Задача "{taskToDelete?.title}" будет удалена навсегда.
+    Задача "{taskToDelete.title}" будет удалена навсегда.
   </Text>
   
   <Text style={[styles.deleteModalWarning, { color: colors.textMuted }]}>
@@ -1160,10 +1172,12 @@ const renderTask = ({ item }) => {
     </TouchableOpacity>
   </View>
 </Modal>
+)}
 
 {/* Модалка добавления подзадачи */}
+{showAddSubtaskModal && (
 <Modal
-  visible={showAddSubtaskModal}
+  visible
   onClose={() => {
     setShowAddSubtaskModal(false);
     setNewSubtaskTitle('');
@@ -1183,9 +1197,12 @@ const renderTask = ({ item }) => {
     onPress={addSubtask}
   />
 </Modal>
+)}
 
+{/* Модалка выбора месяца */}
+{showMonthPicker && (
 <Modal
-  visible={showMonthPicker}
+  visible
   onClose={() => setShowMonthPicker(false)}
   title="Выберите месяц"
 >
@@ -1208,7 +1225,7 @@ const renderTask = ({ item }) => {
            onPress={() => {
              const newDate = new Date(selectedDate.getFullYear(), i, 1);
              setSelectedDate(newDate);
-             loadTasks(newDate); // Грузим задачи за этот месяц
+             loadTasks(newDate);
              setShowMonthPicker(false);
            }}
          >
@@ -1224,7 +1241,7 @@ const renderTask = ({ item }) => {
     })}
   </View>
   
-  {/* Переключатель года (простой) */}
+  {/* Переключатель года */}
   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, alignItems: 'center' }}>
     <TouchableOpacity onPress={() => {
        const newDate = new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth(), 1);
@@ -1243,6 +1260,7 @@ const renderTask = ({ item }) => {
     </TouchableOpacity>
   </View>
 </Modal>
+)}
 
     </Background>
   );
@@ -1303,7 +1321,7 @@ const styles = StyleSheet.create({
   },
  listContent: {
   padding: 16,
-  paddingBottom: 100, // ← Отступ для навигации
+  paddingBottom: 100,
 },
   taskItem: {
     flexDirection: 'row',
@@ -1377,7 +1395,7 @@ priorityText: {
 statsContainer: {
   flexDirection: 'row',
   padding: 16,
-  gap: 8, // Уменьшили с 12 до 8
+  gap: 8,
 },
 filterContainer: {
   paddingHorizontal: 16,
@@ -1547,15 +1565,15 @@ deleteModalButtonText: {
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 20, // Отступ снизу (подбери под свой экран)
+    bottom: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#F59E0B', // Твой акцентный цвет (colors.accent1)
+    backgroundColor: '#F59E0B',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 6, // Тень для Android
-    shadowColor: '#000', // Тень для iOS
+    elevation: 6,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1563,9 +1581,9 @@ deleteModalButtonText: {
   },
   fabIcon: {
     fontSize: 32,
-    color: '#020617', // Цвет плюсика
+    color: '#020617',
     fontWeight: 'bold',
-    marginTop: -4, // Немного выровнять по центру визуально
+    marginTop: -4,
   },
 subtasksContainer: {
   marginLeft: 20,
@@ -1608,4 +1626,3 @@ addSubtaskBtnText: {
 });
 
 export default TasksScreen;
-
