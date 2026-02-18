@@ -294,15 +294,21 @@ const deleteTask = useCallback(async (taskId) => {
   }
 }, []);
 
-// Загрузка подзадач
+// Загрузка подзадач (FIX: добавлена валидация массива)
 const loadSubtasks = async (taskId) => {
   try {
     setLoadingSubtasks(prev => ({ ...prev, [taskId]: true }));
     const response = await api.get(`/tasks/${taskId}/subtasks`);
-    setSubtasks(prev => ({ ...prev, [taskId]: response.data }));
+    
+    // ЗАЩИТА: Проверяем, что response.data — это массив
+    const data = Array.isArray(response.data) ? response.data : [];
+    console.log(`📋 Загружено ${data.length} подзадач для задачи ${taskId}`);
+    
+    setSubtasks(prev => ({ ...prev, [taskId]: data }));
     setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
   } catch (err) {
     console.error('Ошибка загрузки подзадач:', err);
+    setSubtasks(prev => ({ ...prev, [taskId]: [] })); // Пустой массив при ошибке
     setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
   }
 };
@@ -723,7 +729,7 @@ const renderTask = ({ item }) => {
                       subtask.completed && { textDecorationLine: 'line-through' }
                     ]}
                   >
-                    {subtask.title}
+                    {subtask.title || '(без названия)'}
                   </Text>
 
                   <TouchableOpacity
