@@ -247,7 +247,6 @@ const HabitsScreen = () => {
      
      const planValue = habitForm.plan === '' ? 1 : parseInt(habitForm.plan) || 1;
      
-     // IMPORTANT: Backend must handle these fields in PUT and POST
      const payload = {
        name: habitForm.name,
        unit: habitForm.unit,
@@ -291,6 +290,10 @@ const HabitsScreen = () => {
   const completedToday = records.filter(r => r.day === currentDay && r.value > 0).length;
   const dailyPercent = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
   const quotes = ["Действуй.", "Просто делай.", "Шаг за шагом.", "Не сдавайся.", "Ты сможешь."];
+
+  const confirmDeleteHabit = (habit) => {
+    setHabitToDelete(habit);
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
@@ -361,8 +364,8 @@ const HabitsScreen = () => {
       <ReorderHabitsModal visible={showReorderModal} habits={habits} onClose={() => setShowReorderModal(false)} onSave={handleReorderSave} />
       <MonthPickerModal visible={showDateModal} selectedYear={year} selectedMonth={month} onClose={() => setShowDateModal(false)} onSelect={(y, m) => { setYear(y); setMonth(m); }} />
 
-      <Modal visible={showHabitModal} onClose={() => { setShowHabitModal(false); setShowCustomUnit(false); }} title={editingHabitId ? \"Редактировать\" : \"Новая привычка\"}>
-        <Input label=\"Название\" placeholder=\"Например: Чтение\" value={habitForm.name} onChangeText={t => setHabitForm({...habitForm, name: t})} />
+      <Modal visible={showHabitModal} onClose={() => { setShowHabitModal(false); setShowCustomUnit(false); }} title={editingHabitId ? "Редактировать" : "Новая привычка"}>
+        <Input label="Название" placeholder="Например: Чтение" value={habitForm.name} onChangeText={t => setHabitForm({...habitForm, name: t})} />
         <View style={{ marginBottom: 16 }}>
            <Text style={[styles.formLabel, { color: colors.textMain }]}>Тип цели</Text>
            <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -374,8 +377,8 @@ const HabitsScreen = () => {
            </View>
         </View>
         <View style={{ marginBottom: 16, flexDirection: 'row', gap: 12 }}>
-           <View style={{ flex: 1 }}><DatePicker label=\"Начало\" value={habitForm.startDate} onChangeDate={d => setHabitForm({...habitForm, startDate: d})} /></View>
-           <View style={{ flex: 1 }}><DatePicker label=\"Конец\" value={habitForm.endDate} onChangeDate={d => setHabitForm({...habitForm, endDate: d})} /></View>
+           <View style={{ flex: 1 }}><DatePicker label="Начало" value={habitForm.startDate} onChangeDate={d => setHabitForm({...habitForm, startDate: d})} /></View>
+           <View style={{ flex: 1 }}><DatePicker label="Конец" value={habitForm.endDate} onChangeDate={d => setHabitForm({...habitForm, endDate: d})} /></View>
         </View>
         <View style={{ marginBottom: 16 }}>
            <Text style={[styles.formLabel, { color: colors.textMain }]}>Дни недели (если пусто = все)</Text>
@@ -393,18 +396,18 @@ const HabitsScreen = () => {
                  <Text style={{ color: showCustomUnit ? '#020617' : colors.textMain }}>Другое...</Text>
               </TouchableOpacity>
            </View>
-           {showCustomUnit && <Input placeholder=\"Своя единица\" value={habitForm.unit} onChangeText={t => setHabitForm({...habitForm, unit: t})} />}
-           <Input placeholder=\"Число (План)\" value={String(habitForm.plan)} onChangeText={t => setHabitForm({...habitForm, plan: t.replace(/[^0-9]/g, '')})} keyboardType=\"numeric\" />
+           {showCustomUnit && <Input placeholder="Своя единица" value={habitForm.unit} onChangeText={t => setHabitForm({...habitForm, unit: t})} />}
+           <Input placeholder="Число (План)" value={String(habitForm.plan)} onChangeText={t => setHabitForm({...habitForm, plan: t.replace(/[^0-9]/g, '')})} keyboardType="numeric" />
         </View>
-        <Button title=\"Сохранить\" onPress={saveHabit} />
+        <Button title="Сохранить" onPress={saveHabit} />
       </Modal>
 
-      <Modal visible={!!habitToDelete} onClose={() => setHabitToDelete(null)} title=\"Удалить привычку?\">
+      <Modal visible={!!habitToDelete} onClose={() => setHabitToDelete(null)} title="Удалить привычку?">
          <View style={{ padding: 10 }}>
-            <Text style={{ color: colors.textMain, marginBottom: 20, textAlign: 'center' }}>Вы уверены, что хотите удалить \"{habitToDelete?.name}\"?{'\n'}Все данные будут потеряны.</Text>
+            <Text style={{ color: colors.textMain, marginBottom: 20, textAlign: 'center' }}>Вы уверены, что хотите удалить "{habitToDelete?.name}"?{'\n'}Все данные будут потеряны.</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-               <Button title=\"Отмена\" variant=\"outline\" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
-               <Button title=\"Удалить\" onPress={executeDelete} style={{ flex: 1, backgroundColor: colors.danger1 }} />
+               <Button title="Отмена" variant="outline" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
+               <Button title="Удалить" onPress={executeDelete} style={{ flex: 1, backgroundColor: colors.danger1 }} />
             </View>
          </View>
       </Modal>
