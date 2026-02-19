@@ -1,5 +1,5 @@
 // src/screens/TasksScreen.js
-// Экран задач с вашими стилями
+// Экран задач с исправленным свайпом, чекбоксами и модалкой очистки
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
@@ -136,6 +136,9 @@ const [stats, setStats] = useState({
   const [currentTaskForSubtask, setCurrentTaskForSubtask] = useState(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
+  // Модалка "Чистка старых задач"
+  const [showOverdueCleanupModal, setShowOverdueCleanupModal] = useState(false);
+  const [overdueTasksList, setOverdueTasksList] = useState([]);
 
 
   // Список тем для кнопки
@@ -248,6 +251,13 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
     }));
     
     setTasks(formattedTasks);
+    
+    // --- ПРОВЕРКА НА СТАРЫЕ ЗАДАЧИ (> 7 дней просрочки) ---
+    // Выполняем 1 раз при первой загрузке (когда loading был true)
+    if (loading) {
+       checkOverdueTasks(formattedTasks);
+    }
+
     setLoading(false);
     
   } catch (err) {
@@ -257,6 +267,63 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
     setLoading(false);
   }
 };
+
+  // Проверка просроченных задач
+  const checkOverdueTasks = async (allTasks) => {
+    try {
+      const lastCheckStr = await AsyncStorage.getItem('lastOverdueCheckDate');
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // Если сегодня уже проверяли - не показываем
+      if (lastCheckStr === todayStr) {
+        console.log('✅ Проверка просроченных задач уже была сегодня');
+        return;
+      }
+
+      // Фильтруем задачи: не выполненные И просроченные > 7 дней
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
+
+      const oldTasks = allTasks.filter(t => {
+        if (t.completed) return false;
+        const deadline = t.deadline ? t.deadline.split('T')[0] : (t.date ? t.date.split('T')[0] : null);
+        // Если deadline < (сегодня - 7 дней)
+        return deadline && deadline < oneWeekAgoStr;
+      });
+
+      if (oldTasks.length > 0) {
+        console.log(`🔥 Найдено ${oldTasks.length} старых задач! Показываем модалку.`);
+        setOverdueTasksList(oldTasks);
+        setShowOverdueCleanupModal(true);
+        // Запоминаем, что сегодня показали
+        await AsyncStorage.setItem('lastOverdueCheckDate', todayStr);
+      }
+    } catch (e) {
+      console.error('Ошибка проверки просрочки:', e);
+    }
+  };
+
+  // Удаление старых задач (всех разом)
+  const handleDeleteOldTasks = async () => {
+    try {
+      setLoading(true);
+      // Удаляем параллельно
+      await Promise.all(overdueTasksList.map(t => tasksAPI.deleteTask(t.id)));
+      
+      console.log('🗑️ Старые задачи удалены');
+      setShowOverdueCleanupModal(false);
+      setOverdueTasksList([]);
+      
+      // Перезагружаем список
+      await loadTasks(); 
+    } catch (err) {
+      console.error('❌ Ошибка удаления старых задач:', err);
+      Alert.alert('Ошибка', 'Не удалось удалить все задачи');
+      setLoading(false);
+    }
+  };
+
 
   // Обновление списка
   const onRefresh = async () => {
@@ -553,22 +620,22 @@ const getTaskStatus = (task) => {
   const startDate = task.date ? task.date.split('T')[0] : today;
   const endDate = task.deadline ? task.deadline.split('T')[0] : startDate;
   
-  console.log('📅 getTaskStatus:', task.title, '| today:', today, '| start:', startDate, '| end:', endDate);
+  // console.log('📅 getTaskStatus:', task.title, '| today:', today, '| start:', startDate, '| end:', endDate);
   
   // Если сегодня попадает в диапазон [startDate, endDate] - задача актуальна
   if (today >= startDate && today <= endDate) {
-    console.log('✅ Статус: today');
+    // console.log('✅ Статус: today');
     return 'today';
   }
   
   // Если дедлайн уже прошёл - просрочено
   if (endDate < today) {
-    console.log('🔥 Статус: overdue');
+    // console.log('🔥 Статус: overdue');
     return 'overdue';
   }
   
   // Если задача ещё в будущем
-  console.log('📆 Статус: future');
+  // console.log('📆 Статус: future');
   return 'future';
 };
 
@@ -586,7 +653,7 @@ const sortedTasks = [...filteredTasks].sort((a, b) => {
     const categoryA = categoryOrder[statusA];
     const categoryB = categoryOrder[statusB];
     
-    console.log('🔀 Сортировка:', a.title, '(', statusA, categoryA, ') vs', b.title, '(', statusB, categoryB, ')');
+    // console.log('🔀 Сортировка:', a.title, '(', statusA, categoryA, ') vs', b.title, '(', statusB, categoryB, ')');
     
     // Сначала сортируем по категориям
     if (categoryA !== categoryB) {
@@ -633,7 +700,7 @@ const renderTask = ({ item }) => {
   // Статус и цвета
   const taskStatus = getTaskStatus(item);
   const getStatusColor = () => {
-    if (item.completed) return colors.borderSubtle;
+    if (item.completed) return colors.textMuted; // Серый если выполнено
     if (taskStatus === 'overdue') return colors.danger1;
     if (taskStatus === 'today') return colors.ok1;
     return colors.borderSubtle;
@@ -648,14 +715,11 @@ const renderTask = ({ item }) => {
     });
     
     return (
-      <TouchableOpacity
-        style={styles.swipeActionRight}
-        onPress={() => setTaskToDelete(item)}
-      >
+      <View style={styles.swipeActionRight}>
         <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>
           🗑️
         </Animated.Text>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -667,15 +731,22 @@ const renderTask = ({ item }) => {
     });
     
     return (
-      <TouchableOpacity
-        style={styles.swipeActionLeft}
-        onPress={() => toggleTask(item.id)}
-      >
+      <View style={styles.swipeActionLeft}>
         <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>
           ✓
         </Animated.Text>
-      </TouchableOpacity>
+      </View>
     );
+  };
+
+  const onSwipeableOpen = (direction) => {
+    if (direction === 'left') {
+      // Свайп вправо (зеленый) -> Выполнить
+      toggleTask(item.id);
+    } else if (direction === 'right') {
+      // Свайп влево (красный) -> Удалить
+      setTaskToDelete(item);
+    }
   };
 
   // Обработчик долгого нажатия
@@ -688,20 +759,21 @@ const renderTask = ({ item }) => {
       <Swipeable
         renderRightActions={renderRightActions}
         renderLeftActions={renderLeftActions}
+        onSwipeableOpen={onSwipeableOpen} // <--- АВТО-ДЕЙСТВИЕ
         containerStyle={{ borderRadius: 12, overflow: 'hidden' }}
       >
       <TouchableOpacity
         style={[
           styles.taskItem,
-        {
-          backgroundColor: colors.surface,
-          borderColor: getStatusColor(),
-          borderWidth: taskStatus === 'future' ? 1 : 2, // Тонкая рамка для будущих
-          opacity: item.completed ? 0.6 : 1,
-          marginBottom: 0, // Убираем марджин у самого айтема, так как он внутри свайпа
-          borderRadius: 0, // Скругляем контейнер свайпа, а не айтем (для красивого фона свайпа)
-        },
-        item.completed && styles.taskCompleted,
+          {
+            backgroundColor: colors.surface,
+            borderColor: getStatusColor(), // Цвет рамки теперь всегда актуальный
+            borderWidth: 2, // Всегда жирная рамка
+            opacity: item.completed ? 0.6 : 1,
+            marginBottom: 0,
+            borderRadius: 0, 
+          },
+          item.completed && styles.taskCompleted,
         ]}
         activeOpacity={0.7}
         onPress={() => toggleExpand(item.id)} // ТАП -> Раскрыть
@@ -720,8 +792,9 @@ const renderTask = ({ item }) => {
             style={[
               styles.checkbox,
               {
-                borderColor: item.completed ? colors.ok1 : colors.borderSubtle,
-                backgroundColor: item.completed ? colors.ok1 : 'transparent',
+                // Цвет чекбокса совпадает с цветом рамки (статуса)
+                borderColor: getStatusColor(),
+                backgroundColor: item.completed ? getStatusColor() : 'transparent',
               },
             ]}
           >
@@ -880,8 +953,7 @@ const renderTask = ({ item }) => {
 {/* Статистика (Серверная) */}
 <View style={styles.statsContainer}>
   <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-    {/* СЕГОДНЯ: Выполнено / План */}
-    <Text style={[styles.statNumber, { color: colors.accentText }]}>
+    {/* СЕГОДНЯ: Выполнено / План */}\n    <Text style={[styles.statNumber, { color: colors.accentText }]}>
       {stats.today}/{stats.todayPlan}
     </Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>СЕГОДНЯ</Text>
@@ -918,7 +990,7 @@ const renderTask = ({ item }) => {
   >
     <Text style={[
       styles.chipText, 
-      { color: hideCompleted ? '#020617' : colors.textMuted }
+      { color: hideCompleted ? '#020617' : colors.textMuted, fontSize: 13, fontWeight: '700' } // УВЕЛИЧИЛ
     ]}>
       {hideCompleted ? 'Скрыты ✅' : 'Все задачи'}
     </Text>
@@ -936,7 +1008,7 @@ const renderTask = ({ item }) => {
       setSortBy(nextSort);
     }}
   >
-    <Text style={[styles.chipText, { color: colors.textMain }]}>
+    <Text style={[styles.chipText, { color: colors.textMain, fontSize: 13, fontWeight: '700' }]}> {/* УВЕЛИЧИЛ */}
       {sortBy === 'date' && '📅 По дате'}
       {sortBy === 'priority' && '🔥 По важности'}
       {sortBy === 'title' && 'abc По имени'}
@@ -980,7 +1052,52 @@ const renderTask = ({ item }) => {
 </View>
 </GestureHandlerRootView>
 
- {/* ========== МОДАЛКИ (МОНТИРУЕМ ТОЛЬКО КОГДА visible=true) ========== */}
+ {/* ========== МОДАЛКИ ========== */}
+
+ {/* Модалка "Чистка просроченных" */}
+{showOverdueCleanupModal && (
+<Modal
+  visible
+  onClose={() => setShowOverdueCleanupModal(false)}
+  title="🔥 Старые задачи"
+>
+  <Text style={[styles.deleteModalText, { color: colors.textMain, textAlign: 'left', marginBottom: 4 }]}>
+    У вас накопились просроченные задачи (более 7 дней).
+  </Text>
+  <Text style={{color: colors.textMuted, fontSize: 13, marginBottom: 16}}>
+    Всего: {overdueTasksList.length} шт. Рекомендуем очистить список для мотивации.
+  </Text>
+
+  <View style={{maxHeight: 200, marginBottom: 16}}>
+     <FlatList 
+       data={overdueTasksList}
+       keyExtractor={item => item.id.toString()}
+       renderItem={({item}) => (
+         <View style={{flexDirection: 'row', gap: 8, marginBottom: 8, alignItems: 'center'}}>
+            <Text style={{color: colors.danger1}}>•</Text>
+            <Text style={{color: colors.textMain, fontSize: 14}} numberOfLines={1}>{item.title}</Text>
+         </View>
+       )}
+     />
+  </View>
+
+  <View style={styles.deleteModalButtons}>
+    <TouchableOpacity
+      style={[styles.deleteModalButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
+      onPress={() => setShowOverdueCleanupModal(false)}
+    >
+      <Text style={[styles.deleteModalButtonText, { color: colors.textMain }]}>Оставить</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={[styles.deleteModalButton, { backgroundColor: colors.danger1, borderColor: colors.danger1 }]}
+      onPress={handleDeleteOldTasks}
+    >
+      <Text style={[styles.deleteModalButtonText, { color: '#020617' }]}>Удалить все</Text>
+    </TouchableOpacity>
+  </View>
+</Modal>
+)}
 
  {/* Модалка добавления задачи */}
 {showAddModal && (
@@ -1698,7 +1815,7 @@ chipsContainer: {
 },
 chip: {
   paddingHorizontal: 12,
-  paddingVertical: 6,
+  paddingVertical: 8,
   borderRadius: 20,
   borderWidth: 1,
 },
