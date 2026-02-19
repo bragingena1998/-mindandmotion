@@ -270,27 +270,19 @@ const HabitsScreen = () => {
      };
 
      try {
-       let savedHabit;
        if (editingHabitId) {
          await api.put(`/habits/${editingHabitId}`, payload);
-         // Оптимистичное обновление: обновляем состояние
-         savedHabit = { 
-             ...habits.find(h => h.id === editingHabitId),
-             ...payload 
-         };
-         setHabits(habits.map(h => h.id === editingHabitId ? savedHabit : h));
        } else {
-         const response = await api.post('/habits', payload);
-         // Сервер может вернуть days_of_week как JSON-строку или массив, парсим его
-         savedHabit = parseHabitData(response.data);
-         setHabits([...habits, savedHabit]);
+         await api.post('/habits', payload);
        }
+       // ПОЛНАЯ ПЕРЕЗАГРУЗКА ДАННЫХ ДЛЯ ГАРАНТИИ КОРРЕКТНОСТИ
+       await loadHabits(); 
+       
        setShowHabitModal(false);
        setShowCustomUnit(false);
      } catch (e) {
        console.error(e);
        if (e.response && e.response.status === 500) {
-            // Если ошибка с сервера вернулась как JSON с сообщением
            const serverMsg = e.response.data?.message || e.response.data?.sqlMessage || 'Ошибка сервера';
            alert(`Ошибка: ${serverMsg}`);
        } else {
@@ -306,6 +298,15 @@ const HabitsScreen = () => {
         await api.put('/habits/reorder', { habits: newOrderHabits.map((h, i) => ({ id: h.id, order_index: i })) });
       } catch (e) { loadHabits(); }
   };
+  
+  // MOTIVATION LOGIC
+  const getMotivation = (percent) => {
+    if (percent >= 100) return "🔥 ТЫ МОНСТР! 🔥";
+    if (percent >= 80) return "💪 МОЩНЫЙ ТЕМП!";
+    if (percent >= 50) return "⚡ ХОРОШЕЕ НАЧАЛО";
+    if (percent > 0) return "🚀 ПОГНАЛИ!";
+    return "💤 ПОРА ПРОСЫПАТЬСЯ";
+  };
 
   if (loading) return <View style={[styles.container, { backgroundColor: colors.background }]}><ActivityIndicator size="large" color={colors.accent1}/></View>;
 
@@ -314,9 +315,7 @@ const HabitsScreen = () => {
   const currentMonthIdx = todayDate.getMonth() + 1;
   const currentYearVal = todayDate.getFullYear();
   
-  // STATS LOGIC: Filter only ACTIVE habits for today
   const activeHabitsToday = habits.filter(h => {
-     // Check date range
      const dateObj = new Date(year, month - 1, currentDay);
      if (h.start_date) {
          const s = new Date(h.start_date); s.setHours(0,0,0,0);
@@ -326,7 +325,6 @@ const HabitsScreen = () => {
          const e = new Date(h.end_date); e.setHours(23,59,59,999);
          if (dateObj > e) return false;
      }
-     // Check day of week
      if (h.days_of_week && h.days_of_week.length > 0) {
          if (!h.days_of_week.includes(dateObj.getDay())) return false;
      }
@@ -338,6 +336,7 @@ const HabitsScreen = () => {
   
   const dailyPercent = totalHabitsToday > 0 ? Math.round((completedToday / totalHabitsToday) * 100) : (totalHabitsToday === 0 ? 100 : 0);
   const quotes = ["Действуй.", "Просто делай.", "Шаг за шагом.", "Не сдавайся.", "Ты сможешь."];
+  const motivationText = getMotivation(dailyPercent);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
@@ -348,10 +347,11 @@ const HabitsScreen = () => {
 
          {year === currentYearVal && month === currentMonthIdx && (
            <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
-             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                <View>
                  <Text style={[styles.statsTitle, { color: colors.textMain }]}>СЕГОДНЯ</Text>
                  <Text style={[styles.statsValue, { color: colors.textMain }]}>{completedToday} <Text style={{ fontSize: 16, color: colors.textMuted }}>/ {totalHabitsToday}</Text></Text>
+                 <Text style={{ color: colors.accent1, fontSize: 12, fontWeight: '700', marginTop: 4 }}>{motivationText}</Text>
                </View>
                <Text style={{ fontSize: 32, fontWeight: 'bold', color: colors.accent1 }}>{dailyPercent}%</Text>
              </View>
