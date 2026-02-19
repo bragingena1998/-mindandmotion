@@ -862,8 +862,7 @@ const renderTask = ({ item }) => {
         {/* Стрелочка раскрытия */}
         <View style={{ paddingLeft: 8, justifyContent: 'center' }}>
           <Text style={{ fontSize: 12, color: colors.textMuted }}>
-            {isExpanded ? '▲' : '▼'}
-          </Text>
+            {isExpanded ? '▲' : '▼'}\n          </Text>
         </View>
 
       </TouchableOpacity>
@@ -1018,7 +1017,8 @@ const renderTask = ({ item }) => {
 </View>
 
 
-        {/* Список задач */}\n        <FlatList
+        {/* Список задач */}
+        <FlatList
           data={sortedTasks}
           renderItem={renderTask}
           keyExtractor={(item) => item.id.toString()}
@@ -1231,7 +1231,8 @@ const renderTask = ({ item }) => {
         setTasks(tasks.map(t => 
           t.id === editingTask.id 
             ? {
-                ...t,\n                ...taskToSend,
+                ...t,
+                ...taskToSend,
                 priority: taskToSend.priority === 1 ? 'high' : taskToSend.priority === 3 ? 'low' : 'medium',
                 dueDate: taskToSend.deadline,
               }
@@ -1344,7 +1345,8 @@ const renderTask = ({ item }) => {
   visible
   onClose={() => {
     setShowAddSubtaskModal(false);
-    setNewSubtaskTitle('');\n    setCurrentTaskForSubtask(null);
+    setNewSubtaskTitle('');
+    setCurrentTaskForSubtask(null);
   }}
   title="Новая подзадача"
 >
@@ -1523,7 +1525,8 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   taskMeta: {
-    flexDirection: 'row',\n    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
 priorityBadge: {
@@ -1685,7 +1688,8 @@ filterMenuItemText: {
   fontWeight: '500',
 },
 filterMenuLabel: {
-  fontSize: 11,\n  fontWeight: '600',
+  fontSize: 11,
+  fontWeight: '600',
   textTransform: 'uppercase',
   letterSpacing: 0.08,
   marginTop: 4,
@@ -1735,7 +1739,8 @@ deleteModalButtonText: {
     alignItems: 'center',
     elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },\n    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     zIndex: 100,
   },
