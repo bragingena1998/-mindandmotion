@@ -1,13 +1,13 @@
 // src/components/HabitTable.js
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform, Animated } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import Modal from './Modal';
 import Input from './Input';
 import Button from './Button';
-
-
+import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const HOLIDAYS_2026 = {
   1: [1, 2, 3, 4, 5, 6, 7, 8],
@@ -19,12 +19,13 @@ const HOLIDAYS_2026 = {
 };
 
 const DAYS_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const ROW_HEIGHT = 50; // Фиксированная высота строки для синхронизации
 
 const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete, onHabitUpdate }) => {
   const { colors } = useTheme();
-  const headerScrollRef = useRef(null);
-  const rowScrollRefs = useRef({});
-  const bottomScrollRef = useRef(null);
+  // Нам нужен только ОДИН реф для горизонтального скролла
+  const horizontalScrollRef = useRef(null);
+  
   const [showInputModal, setShowInputModal] = useState(false);
   const [editingCell, setEditingCell] = useState(null);
   const [inputValue, setInputValue] = useState('');
@@ -33,16 +34,10 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
   const [timerSeconds, setTimerSeconds] = useState(0);
   const timerIntervalRef = useRef(null);
   const [showEditModal, setShowEditModal] = useState(false);
-const [editingHabit, setEditingHabit] = useState(null);
-const [editHabitName, setEditHabitName] = useState('');
-const [editHabitPlan, setEditHabitPlan] = useState('');
+  const [editingHabit, setEditingHabit] = useState(null);
+  const [editHabitName, setEditHabitName] = useState('');
+  const [editHabitPlan, setEditHabitPlan] = useState('');
 
-
-
-  if (!records || records.length === 0) {
-    console.log('⏳ Ожидание загрузки records...');
-  }
-  
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const today = new Date().getDate();
@@ -50,41 +45,21 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
   const currentYear = new Date().getFullYear();
   const isCurrentMonth = month === currentMonth && year === currentYear;
 
-  // СИНХРОНИЗАЦИЯ СКРОЛЛА
-  const handleScroll = (event) => {
-    const scrollX = event.nativeEvent.contentOffset.x;
-    
-    if (headerScrollRef.current) {
-      headerScrollRef.current.scrollTo({ x: scrollX, animated: false });
-    }
-    
-    Object.values(rowScrollRefs.current).forEach(ref => {
-      if (ref) {
-        ref.scrollTo({ x: scrollX, animated: false });
-      }
-    });
-
-    if (bottomScrollRef.current) {
-      bottomScrollRef.current.scrollTo({ x: scrollX, animated: false });
-    }
-  };
-
   // АВТОСКРОЛЛ на сегодняшний день
-  const scrollToToday = () => {
-    if (isCurrentMonth && headerScrollRef.current) {
-      const scrollX = Math.max(0, (today - 3) * 36); // Чуть сместил (today - 3), чтобы день был не у самого края
-      
-      // Пробуем скроллить с небольшой задержкой для надежности
-      setTimeout(() => {
-        headerScrollRef.current?.scrollTo({ x: scrollX, animated: true });
-      }, 100);
-    }
-  };
-
-  // Вызываем при смене месяца или загрузке данных
   useEffect(() => {
-    scrollToToday();
-  }, [month, year, isCurrentMonth, today, records]); // Добавил records в зависимости
+    if (isCurrentMonth && horizontalScrollRef.current) {
+      // Скроллим так, чтобы сегодня было по центру
+      // Ширина дня = 36. 
+      // Центр экрана ~ width / 2.
+      // Смещение = (today * 36) - (screenWidth / 2) + (half_of_day_width)
+      // Упрощенно: (today - 2) * 36
+      const scrollX = Math.max(0, (today - 3) * 36); 
+      
+      setTimeout(() => {
+        horizontalScrollRef.current?.scrollTo({ x: scrollX, animated: true });
+      }, 500); // Даем время на рендер
+    }
+  }, [month, year, isCurrentMonth, habits.length]); // Добавил habits.length чтобы скроллить при загрузке
 
 
   const getDayOfWeek = (year, month, day) => {
@@ -104,27 +79,24 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
   };
 
   const getValue = (habitId, day) => {
+    if (!records) return 0;
     const record = records.find((r) => r.habitid === habitId && r.day === day);
     if (!record) return 0;
     
     if (record.value === '✓' || record.value === 'v' || record.value === '√') {
       return 1;
     }
-    
     return parseFloat(record.value) || 0;
   };
 
   const getCellType = (unit) => {
-    // 🛡️ ЗАЩИТА: Если unit пустой или null, считаем что это 'count'
     if (!unit) return 'count';
-    
     const unitLower = unit.toLowerCase();
     if (unitLower.includes('час')) return 'time';
     if (unitLower.includes('кол-во') || unitLower.includes('раз')) return 'count';
     if (unitLower.includes('дн') || unitLower.includes('дни')) return 'check';
     return 'count';
   };
-
 
   const handleCellClick = (habitId, day) => {
     const currentValue = getValue(habitId, day);
@@ -144,10 +116,9 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
   };
 
   const calculateStats = (habitId) => {
+    if (!records) return { total: 0, percent: 0 };
     const habitRecords = records.filter((r) => r.habitid === habitId);
     const habit = habits.find((h) => h.id === habitId);
-    
-    // 🛡️ ЗАЩИТА: Если привычка не найдена (например, удалена, но records остались), не падаем
     if (!habit) return { total: 0, percent: 0 };
 
     const cellType = getCellType(habit.unit);
@@ -196,11 +167,7 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
         cellContent = '✓';
         showValue = true;
       } else if (cellType === 'time') {
-        if (value >= 1) {
-          cellContent = `${Math.floor(value)}ч`;
-        } else {
-          cellContent = `${value.toFixed(1)}ч`;
-        }
+        cellContent = value >= 1 ? `${Math.floor(value)}ч` : `${value.toFixed(1)}ч`;
         showValue = true;
       } else {
         cellContent = Math.round(value);
@@ -208,18 +175,14 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
       }
     }
 
-    // БОГАТЫЕ ГРАДИЕНТЫ
     let gradientColors = [colors.surface, colors.surface];
     if (showValue) {
       gradientColors = [colors.accent1 + 'A0', colors.accent1 + '60', colors.accent1 + '30'];
     } else if (isToday) {
-      // ИСПРАВЛЕНО: Яркий неон для сегодняшнего дня (было accent2 который undefined/бледный)
       gradientColors = [colors.accent1 + '40', colors.accent1 + '20', colors.accent1 + '05'];
     } else if (isHolidayDay) {
-      // Золотой градиент для праздников
       gradientColors = ['rgba(251, 191, 36, 0.5)', 'rgba(245, 158, 11, 0.35)', 'rgba(217, 119, 6, 0.2)'];
     } else if (isWeekendDay) {
-      // Нежный розово-красный градиент для выходных
       gradientColors = ['rgba(251, 113, 133, 0.4)', 'rgba(244, 63, 94, 0.25)', 'rgba(225, 29, 72, 0.15)'];
     }
 
@@ -240,7 +203,6 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
           style={[
             styles.dayCell,
             { borderColor: colors.borderSubtle },
-            // ИСПРАВЛЕНО: Яркая обводка accent1 для "сегодня"
             isToday && { borderColor: colors.accent1, borderWidth: 2 }
           ]}
         >
@@ -252,201 +214,147 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
     );
   };
 
+  // --- SWIPE ACTIONS ---
+  const renderRightActions = (progress, dragX, habit) => {
+    const scale = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+    
+    return (
+      <View style={{ width: 80, flexDirection: 'row' }}>
+         {/* Edit Button */}
+        <TouchableOpacity
+          onPress={() => {
+             setEditingHabit(habit);
+             setEditHabitName(habit.name);
+             setEditHabitPlan(String(habit.plan));
+             setShowEditModal(true);
+          }}
+          style={[styles.swipeActionBtn, { backgroundColor: colors.accent1 }]}
+        >
+          <Animated.Text style={{ color: '#020617', transform: [{ scale }] }}>✎</Animated.Text>
+        </TouchableOpacity>
 
-  const handleDeleteHabit = (habit) => {
-    Alert.alert(
-      'Удалить привычку?',
-      `Вы уверены что хотите удалить "${habit.name}"?\nВсе данные будут потеряны.`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: () => {
-            console.log('🗑️ Удаление привычки:', habit.id);
-            if (onHabitDelete) {
-              onHabitDelete(habit.id);
-            } else {
-              Alert.alert('Ошибка', 'Функция удаления не подключена');
-            }
-          },
-        },
-      ]
+        {/* Delete Button */}
+        <TouchableOpacity
+          onPress={() => {
+              if (onHabitDelete) onHabitDelete(habit.id);
+          }}
+          style={[styles.swipeActionBtn, { backgroundColor: colors.danger1 }]}
+        >
+          <Animated.Text style={{ color: '#020617', transform: [{ scale }] }}>🗑️</Animated.Text>
+        </TouchableOpacity>
+      </View>
     );
   };
+
 
   const contentWidth = 45 + 45 + (daysInMonth * 36) + 45;
 
   return (
-    <View style={styles.container}>
-      {/* ТАБЛИЦА */}
-      <View style={[styles.tableWrapper, { borderColor: colors.accentBorder }]}>
-        {/* HEADER */}
-        <View style={[styles.tableRow, { borderBottomWidth: 2, borderBottomColor: colors.accentBorder }]}>
-          {/* ФИКС: Задача */}
-          <View style={[styles.fixedColumn, styles.taskColumn, { backgroundColor: colors.surface, borderRightColor: colors.accentBorder, borderRightWidth: 2 }]}>
-            <Text style={[styles.headerText, { color: colors.accent1 }]}>ЗАДАЧА</Text>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={[styles.tableContainer, { borderColor: colors.accentBorder }]}>
+        
+        {/* --- ЛЕВАЯ ФИКСИРОВАННАЯ КОЛОНКА (НАЗВАНИЯ) --- */}
+        <View style={[styles.fixedColumnContainer, { borderRightColor: colors.accentBorder, backgroundColor: colors.surface }]}>
+          {/* Header */}
+          <View style={[styles.fixedHeaderCell, { height: ROW_HEIGHT, borderBottomColor: colors.accentBorder }]}>
+             <Text style={[styles.headerText, { color: colors.accent1 }]}>ЗАДАЧА</Text>
           </View>
-
-      {/* СКРОЛЛ: Остальные столбцы */}
-          <ScrollView
-            ref={headerScrollRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            scrollEventThrottle={16}
-            onScroll={handleScroll}
-            style={styles.scrollArea}
-            onContentSizeChange={() => {
-              // Когда размер контента изменился (отрисовались дни), скроллим
-              if (isCurrentMonth) scrollToToday();
-            }}
-          >
-            <View style={{ flexDirection: 'row', width: contentWidth }}>
-              {/* Ед.изм */}
-              <View style={[styles.columnCell, { backgroundColor: colors.surface, borderRightColor: colors.accentBorder, borderRightWidth: 2 }]}>
-                <Text style={[styles.headerText, { color: colors.textMain }]}>ЕД.</Text>
-              </View>
-
-              {/* План */}
-              <View style={[styles.columnCell, { backgroundColor: colors.surface, borderRightColor: colors.accentBorder, borderRightWidth: 2 }]}>
-                <Text style={[styles.headerText, { color: colors.textMain }]}>ПЛАН</Text>
-              </View>
-
-              {/* Дни 1-31 */}
-              {days.map(day => {
-                const isHolidayDay = isHoliday(year, month, day);
-                const isWeekendDay = isWeekend(year, month, day);
-                const dayOfWeek = getDayOfWeek(year, month, day);
-                const dayColor = (isHolidayDay || isWeekendDay) ? colors.danger1 : colors.textMain;
-                
-                return (
-                  <View 
-                    key={day} 
-                    style={[styles.dayColumn, { backgroundColor: colors.surface, borderRightColor: colors.borderSubtle }]}
-                  >
-                    <Text style={[styles.dayNumber, { color: dayColor }]}>{day}</Text>
-                    <Text style={[styles.dayName, { color: colors.textMain }]}>{dayOfWeek}</Text>
-                  </View>
-                );
-              })}
-
-              {/* Итог */}
-              <View style={[styles.columnCell, { backgroundColor: colors.surface, borderRightWidth: 2, borderRightColor: colors.accentBorder, borderLeftWidth: 2, borderLeftColor: colors.accentBorder }]}>
-                <Text style={[styles.headerText, { color: colors.textMain }]}>ИТОГ</Text>
-              </View>
-            </View>
-          </ScrollView>
-
-          {/* ФИКС: % */}
-          <View style={[styles.fixedColumn, styles.percentColumn, { backgroundColor: colors.surface, borderLeftColor: colors.accentBorder, borderLeftWidth: 2 }]}>
-            <Text style={[styles.headerText, { color: colors.accent1 }]}>%</Text>
-          </View>
+          
+          {/* Rows */}
+          {habits.map((habit, index) => (
+             <Swipeable
+                key={habit.id}
+                renderRightActions={(p, d) => renderRightActions(p, d, habit)}
+                containerStyle={{ height: ROW_HEIGHT, borderTopWidth: index > 0 ? 1 : 0, borderTopColor: colors.borderSubtle }}
+             >
+                <View style={[styles.fixedRowCell, { height: ROW_HEIGHT, backgroundColor: colors.surface }]}>
+                   <Text style={[styles.habitName, { color: colors.textMain }]} numberOfLines={2}>
+                     {habit.name}
+                   </Text>
+                </View>
+             </Swipeable>
+          ))}
         </View>
 
-        {/* BODY */}
-        <ScrollView style={styles.tableBody}>
-          {habits.map((habit, index) => {
-            const stats = calculateStats(habit.id);
-
-            return (
-              <View 
-                key={habit.id} 
-                style={[
-                  styles.tableRow, 
-                  { borderTopColor: colors.borderSubtle, borderTopWidth: index > 0 ? 1 : 0 }
-                ]}
-              >
-                {/* ФИКС: Название */}
-               <TouchableOpacity
-  style={[styles.fixedColumn, styles.taskColumn, { backgroundColor: colors.surface, borderRightColor: colors.accentBorder, borderRightWidth: 2 }]}
-  onLongPress={() => {
-    setEditingHabit(habit);
-    setEditHabitName(habit.name);
-    setEditHabitPlan(String(habit.plan));
-    setShowEditModal(true);
-  }}
-  delayLongPress={800}
->
-                  {/* ИСПРАВЛЕНО: Размер шрифта увеличен до 13 (было 12) */}
-                  <Text style={[styles.habitName, { color: colors.textMain, fontSize: 13 }]} numberOfLines={2}>
-                    {habit.name}
-                  </Text>
-                </TouchableOpacity>
-
-                {/* СКРОЛЛ: Ячейки */}
-                <ScrollView
-                  ref={(ref) => {
-                    rowScrollRefs.current[habit.id] = ref;
-                  }}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  scrollEventThrottle={16}
-                  onScroll={handleScroll}
-                  style={styles.scrollArea}
-                >
-                  <View style={{ flexDirection: 'row', width: contentWidth }}>
-                    {/* Ед.изм */}
-                    <View style={[styles.dataCell, { borderRightColor: colors.accentBorder, borderRightWidth: 2 }]}>
-                      {/* ИСПРАВЛЕНО: Размер шрифта 13 (было 12) */}
-                      <Text style={[styles.cellText, { color: colors.textMain, fontSize: 13 }]}>{habit.unit}</Text>
-                    </View>
-
-                    {/* План */}
-                    <View style={[styles.dataCell, { borderRightColor: colors.accentBorder, borderRightWidth: 2 }]}>
-                      {/* ИСПРАВЛЕНО: Размер шрифта 13 (было 12) */}
-                      <Text style={[styles.cellText, { color: colors.textMain, fontSize: 13 }]}>{habit.plan}</Text>
-                    </View>
-
-                    {/* Дни */}
-                    {days.map((day) => renderCell(habit, day))}
-
-                    {/* Итог */}
-                    <View style={[styles.dataCell, { borderLeftWidth: 2, borderLeftColor: colors.accentBorder, borderRightWidth: 2, borderRightColor: colors.accentBorder }]}>
-                      {/* ИСПРАВЛЕНО: Размер шрифта 13 (было 12), bold для итогов */}
-                      <Text style={[styles.totalText, { color: colors.textMain, fontSize: 13, fontWeight: '800' }]}>{stats.total}</Text>
-                    </View>
-                  </View>
-                </ScrollView>
-
-                {/* ФИКС: % */}
-                <View style={[styles.fixedColumn, styles.percentColumn, { backgroundColor: colors.surface, borderLeftColor: colors.accentBorder, borderLeftWidth: 2 }]}>
-                  <Text 
-                    style={[
-                      styles.percentText, 
-                      { 
-                        color: stats.percent >= 80 ? colors.accent1 : 
-                               stats.percent >= 50 ? colors.accent2 : 
-                               colors.textMuted,
-                        fontSize: 13 // Увеличен шрифт
-                      }
-                    ]}
-                  >
-                    {stats.percent}%
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* СКРОЛЛБАР ВНИЗУ */}
-      <View style={[styles.scrollbarWrapper, { backgroundColor: colors.background }]}>
-        <View style={[styles.fixedColumn, styles.taskColumn]} />
-        <ScrollView
-          ref={bottomScrollRef}
-          horizontal
-          showsHorizontalScrollIndicator={true}
-          scrollEventThrottle={16}
-          onScroll={handleScroll}
-          style={[styles.scrollArea, Platform.OS === 'web' && styles.webScrollbar]}
+        {/* --- ПРАВАЯ СКРОЛЛИРУЕМАЯ ЧАСТЬ (ДАННЫЕ) --- */}
+        <ScrollView 
+           horizontal 
+           ref={horizontalScrollRef}
+           showsHorizontalScrollIndicator={true}
+           contentContainerStyle={{ flexGrow: 1 }}
         >
-          <View style={{ width: contentWidth, height: 20 }} />
+          <View>
+             {/* Header Row */}
+             <View style={[styles.row, { height: ROW_HEIGHT, borderBottomWidth: 2, borderBottomColor: colors.accentBorder }]}>
+                {/* Unit */}
+                <View style={[styles.columnCell, { borderRightWidth: 2, borderRightColor: colors.accentBorder }]}>
+                   <Text style={[styles.headerText, { color: colors.textMain }]}>ЕД.</Text>
+                </View>
+                {/* Plan */}
+                <View style={[styles.columnCell, { borderRightWidth: 2, borderRightColor: colors.accentBorder }]}>
+                   <Text style={[styles.headerText, { color: colors.textMain }]}>ПЛАН</Text>
+                </View>
+                {/* Days */}
+                {days.map(day => {
+                    const isHolidayDay = isHoliday(year, month, day);
+                    const isWeekendDay = isWeekend(year, month, day);
+                    const dayOfWeek = getDayOfWeek(year, month, day);
+                    const dayColor = (isHolidayDay || isWeekendDay) ? colors.danger1 : colors.textMain;
+                    return (
+                       <View key={day} style={[styles.dayColumn, { borderRightColor: colors.borderSubtle }]}>
+                          <Text style={[styles.dayNumber, { color: dayColor }]}>{day}</Text>
+                          <Text style={[styles.dayName, { color: colors.textMain }]}>{dayOfWeek}</Text>
+                       </View>
+                    );
+                })}
+                {/* Total */}
+                <View style={[styles.columnCell, { borderLeftWidth: 2, borderLeftColor: colors.accentBorder }]}>
+                   <Text style={[styles.headerText, { color: colors.textMain }]}>ИТОГ</Text>
+                </View>
+                {/* Percent */}
+                <View style={[styles.columnCell, { borderLeftWidth: 2, borderLeftColor: colors.accentBorder, width: 55 }]}>
+                   <Text style={[styles.headerText, { color: colors.accent1 }]}>%</Text>
+                </View>
+             </View>
+
+             {/* Data Rows */}
+             {habits.map((habit, index) => {
+                const stats = calculateStats(habit.id);
+                return (
+                   <View key={habit.id} style={[styles.row, { height: ROW_HEIGHT, borderTopWidth: index > 0 ? 1 : 0, borderTopColor: colors.borderSubtle }]}>
+                      {/* Unit */}
+                      <View style={[styles.dataCell, { borderRightWidth: 2, borderRightColor: colors.accentBorder }]}>
+                         <Text style={[styles.cellText, { color: colors.textMain }]}>{habit.unit}</Text>
+                      </View>
+                      {/* Plan */}
+                      <View style={[styles.dataCell, { borderRightWidth: 2, borderRightColor: colors.accentBorder }]}>
+                         <Text style={[styles.cellText, { color: colors.textMain }]}>{habit.plan}</Text>
+                      </View>
+                      {/* Days */}
+                      {days.map(day => renderCell(habit, day))}
+                      {/* Total */}
+                      <View style={[styles.dataCell, { borderLeftWidth: 2, borderLeftColor: colors.accentBorder }]}>
+                         <Text style={[styles.totalText, { color: colors.textMain }]}>{stats.total}</Text>
+                      </View>
+                      {/* Percent */}
+                      <View style={[styles.dataCell, { borderLeftWidth: 2, borderLeftColor: colors.accentBorder, width: 55 }]}>
+                         <Text style={[styles.percentText, { 
+                            color: stats.percent >= 80 ? colors.accent1 : stats.percent >= 50 ? colors.accent2 : colors.textMuted
+                         }]}>{stats.percent}%</Text>
+                      </View>
+                   </View>
+                );
+             })}
+          </View>
         </ScrollView>
-        <View style={[styles.fixedColumn, styles.percentColumn]} />
+
       </View>
 
-      {/* МОДАЛКА */}
+      {/* --- MODALS (Copy Paste from prev) --- */}
       <Modal
         visible={showInputModal}
         onClose={() => {
@@ -528,7 +436,6 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
         )}
       </Modal>
       
-{/* МОДАЛКА РЕДАКТИРОВАНИЯ ПРИВЫЧКИ */}
 <Modal
   visible={showEditModal}
   onClose={() => {
@@ -622,39 +529,32 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
 
       <View style={styles.modalButtons}>
        <Button
-  title="🗑️"
+  title="🗑️ Удалить"
   onPress={() => {
     // Используем нативный confirm для веба и Alert для мобилки
     if (Platform.OS === 'web') {
-      if (window.confirm(`Вы уверены что хотите удалить "${editingHabit.name}"?\nВсе данные будут потеряны.`)) {
-        console.log('🗑️ Удаление привычки ID:', editingHabit.id);
+      if (window.confirm(`Вы уверены что хотите удалить \"${editingHabit.name}\"?\\nВсе данные будут потеряны.`)) {
         if (onHabitDelete) {
           onHabitDelete(editingHabit.id);
           setShowEditModal(false);
           setEditingHabit(null);
           setShowCustomUnit(false);
-        } else {
-          alert('Функция удаления не подключена');
         }
       }
     } else {
       Alert.alert(
         'Удалить привычку?',
-        `Вы уверены что хотите удалить "${editingHabit.name}"?\nВсе данные будут потеряны.`,
+        `Вы уверены что хотите удалить \"${editingHabit.name}\"?\\nВсе данные будут потеряны.`,
         [
           { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Удалить',
+          {\n            text: 'Удалить',
             style: 'destructive',
             onPress: () => {
-              console.log('🗑️ Удаление привычки ID:', editingHabit.id);
               if (onHabitDelete) {
                 onHabitDelete(editingHabit.id);
                 setShowEditModal(false);
                 setEditingHabit(null);
                 setShowCustomUnit(false);
-              } else {
-                Alert.alert('Ошибка', 'Функция удаления не подключена');
               }
             },
           },
@@ -667,7 +567,7 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
 />
 
         <Button
-          title="✓"
+          title="✓ Сохранить"
           onPress={() => {
             if (!editHabitName.trim()) {
               Alert.alert('Ошибка', 'Введите название привычки');
@@ -681,13 +581,6 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
 
             const planValue = editHabitPlan === '' ? editingHabit.plan : parseInt(editHabitPlan) || 1;
 
-            console.log('💾 Сохранение привычки:', {
-              id: editingHabit.id,
-              name: editHabitName,
-              unit: editingHabit.unit,
-              plan: planValue,
-            });
-
             if (onHabitUpdate) {
               onHabitUpdate(editingHabit.id, {
                 name: editHabitName,
@@ -697,8 +590,6 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
               setShowEditModal(false);
               setEditingHabit(null);
               setShowCustomUnit(false);
-            } else {
-              Alert.alert('Ошибка', 'Функция обновления не подключена');
             }
           }}
           style={[styles.modalButton, { flex: 0.7 }]}
@@ -708,147 +599,104 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
   )}
 </Modal>
 
-    </View>
+    </GestureHandlerRootView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  tableWrapper: {
+  tableContainer: {
+    flexDirection: 'row',
     borderWidth: 2,
     borderRadius: 12,
     overflow: 'hidden',
+    backgroundColor: 'transparent',
   },
-  tableRow: {
-    flexDirection: 'row',
+  fixedColumnContainer: {
+    width: 120, // Ширина фиксированной колонки
+    zIndex: 10,
+    elevation: 2,
+    borderRightWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  fixedColumn: {
+  fixedHeaderCell: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 5,
-    minHeight: 38,
+    paddingHorizontal: 8,
+    borderBottomWidth: 2,
   },
-  taskColumn: {
-    width: 110,
+  fixedRowCell: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
   },
-  percentColumn: {
-    width: 55,
+  habitName: {
+    fontSize: 12, // Увеличил
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  scrollArea: {
-    flex: 1,
-  },
-  webScrollbar: {
-    ...(Platform.OS === 'web' && {
-      scrollbarWidth: 'thin',
-      scrollbarColor: 'rgba(255, 255, 255, 0.3) transparent',
-    }),
+  
+  // Right Part
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   columnCell: {
     width: 45,
-    height: 38,
     justifyContent: 'center',
     alignItems: 'center',
   },
   dayColumn: {
     width: 36,
-    height: 38,
     justifyContent: 'center',
     alignItems: 'center',
     borderRightWidth: 1,
-  },
-  headerText: {
-    fontSize: 9,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  dayNumber: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  dayName: {
-    fontSize: 7,
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  tableBody: {
-    maxHeight: 600,
-  },
-  habitName: {
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   dataCell: {
     width: 45,
-    minHeight: 38,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dayCell: {
-    width: 36,
-    minHeight: 38,
     justifyContent: 'center',
     alignItems: 'center',
     borderRightWidth: 1,
   },
-  cellText: {
+  dayCell: {
+    width: 36,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRightWidth: 1,
+  },
+  
+  // Text Styles
+  headerText: {
     fontSize: 10,
-    fontWeight: '600',
-  },
-  totalText: {
-    fontSize: 11,
     fontWeight: '700',
+    textTransform: 'uppercase',
   },
-  percentText: {
-    fontSize: 12,
-    fontWeight: '800',
+  dayNumber: { fontSize: 11, fontWeight: '700' },
+  dayName: { fontSize: 7, fontWeight: '500' },
+  cellText: { fontSize: 11, fontWeight: '600' },
+  totalText: { fontSize: 12, fontWeight: '700' },
+  percentText: { fontSize: 12, fontWeight: '800' },
+
+  // Swipe
+  swipeActionBtn: {
+    width: 40,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  scrollbarWrapper: {
-    flexDirection: 'row',
-    height: 24,
-    marginTop: 8,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  modalContent: {
-    padding: 20,
-  },
-  modalSubtitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  timerDisplay: {
-    fontSize: 34,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginVertical: 14,
-    letterSpacing: 2,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-  },
-  modalButton: {
-    flex: 1,
-  },
-  unitButtonSmall: {
-  paddingVertical: 10,
-  paddingHorizontal: 16,
-  borderRadius: 8,
-  borderWidth: 1,
-  alignItems: 'center',
-  minWidth: 80,
-},
-unitButtonText: {
-  fontSize: 12,
-  fontWeight: '600',
-  textTransform: 'uppercase',
-},
+  
+  // Modal
+  modalContent: { padding: 20 },
+  modalSubtitle: { fontSize: 15, fontWeight: '600', marginBottom: 16 },
+  timerDisplay: { fontSize: 34, fontWeight: '800', textAlign: 'center', marginVertical: 14 },
+  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  modalButton: { flex: 1 },
+  unitButtonSmall: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, alignItems: 'center', minWidth: 80 },
+  unitButtonText: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
+  inputLabel: { fontSize: 14, fontWeight: '500' },
 });
 
 export default HabitTable;
