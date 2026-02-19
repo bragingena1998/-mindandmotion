@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SafeAreaView, StatusBar, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Feather } from '@expo/vector-icons'; 
-
+import { Feather } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { getToken } from './src/services/storage';
 
@@ -11,6 +10,7 @@ import { getToken } from './src/services/storage';
 import HabitsScreen from './src/screens/HabitsScreen';
 import TasksScreen from './src/screens/TasksScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import CalendarScreen from './src/screens/CalendarScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
@@ -20,22 +20,23 @@ const Tab = createBottomTabNavigator();
 
 const MainTabs = ({ onLogout, onOpenSecret }) => {
   const { colors } = useTheme();
+  // Secret triple tap logic moved to Profile tab listener
   const tapCounter = useRef({ count: 0, lastTime: 0 });
 
-  const handleTabPress = (e) => {
-    const now = Date.now();
-    if (now - tapCounter.current.lastTime < 500) {
-      tapCounter.current.count += 1;
-    } else {
-      tapCounter.current.count = 1;
-    }
-    tapCounter.current.lastTime = now;
+  const handleProfileTap = (e) => {
+      const now = Date.now();
+      if (now - tapCounter.current.lastTime < 500) {
+        tapCounter.current.count += 1;
+      } else {
+        tapCounter.current.count = 1;
+      }
+      tapCounter.current.lastTime = now;
 
-    if (tapCounter.current.count >= 3) {
-      e.preventDefault();
-      tapCounter.current.count = 0;
-      onOpenSecret();
-    }
+      if (tapCounter.current.count >= 3) {
+        e.preventDefault(); // Prevent tab switch if wanted, but Profile is fine to open too
+        tapCounter.current.count = 0;
+        onOpenSecret();
+      }
   };
 
   return (
@@ -43,7 +44,7 @@ const MainTabs = ({ onLogout, onOpenSecret }) => {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0f0f11', 
+          backgroundColor: '#0f0f11',
           borderTopWidth: 1,
           borderTopColor: '#333',
           height: 60,
@@ -53,36 +54,32 @@ const MainTabs = ({ onLogout, onOpenSecret }) => {
         tabBarActiveTintColor: colors.accent1,
         tabBarInactiveTintColor: '#555',
         tabBarShowLabel: false,
-        
         tabBarIcon: ({ color, size, focused }) => {
           let iconName;
+
           if (route.name === 'Tasks') iconName = 'check-square';
           else if (route.name === 'Habits') iconName = 'zap';
+          else if (route.name === 'Calendar') iconName = 'calendar';
           else if (route.name === 'Profile') iconName = 'user';
 
-          // УБРАЛ КВАДРАТНУЮ ТЕНЬ КОНТЕЙНЕРА
-          // ТЕПЕРЬ ПРОСТО ИКОНКА БЕЗ ФОНА
           return (
-             <Feather 
-               name={iconName} 
-               size={28} 
-               color={color} 
-               // Добавляем свечение самой иконке (для веба работает как textShadow)
-               style={focused ? {
-                 textShadowColor: colors.accent1,
-                 textShadowRadius: 10,
-               } : {}}
-             />
+            <Feather 
+              name={iconName} 
+              size={28} 
+              color={color} 
+              style={focused ? { textShadowColor: colors.accent1, textShadowRadius: 10 } : {}}
+            />
           );
         },
       })}
     >
       <Tab.Screen name="Tasks" component={TasksScreen} />
       <Tab.Screen name="Habits" component={HabitsScreen} />
+      <Tab.Screen name="Calendar" component={CalendarScreen} />
       <Tab.Screen 
-        name="Profile"
+        name="Profile" 
         children={() => <ProfileScreen onLogout={onLogout} />}
-        listeners={{ tabPress: handleTabPress }}
+        listeners={{ tabPress: handleProfileTap }}
       />
     </Tab.Navigator>
   );
@@ -119,9 +116,9 @@ const AppContent = () => {
 
   if (currentScreen === 'secret') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
-         <SecretChatScreen onExit={() => setCurrentScreen('main')} />
-      </SafeAreaView>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+            <SecretChatScreen onExit={() => setCurrentScreen('main')} />
+        </SafeAreaView>
     );
   }
 
@@ -135,7 +132,10 @@ const AppContent = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <NavigationContainer>
-         <MainTabs onLogout={() => { setIsAuthenticated(false); setCurrentScreen('login'); }} onOpenSecret={() => setCurrentScreen('secret')} />
+        <MainTabs 
+            onLogout={() => { setIsAuthenticated(false); setCurrentScreen('login'); }} 
+            onOpenSecret={() => setCurrentScreen('secret')} 
+        />
       </NavigationContainer>
     </SafeAreaView>
   );
