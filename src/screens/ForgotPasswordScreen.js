@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
-import { Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  KeyboardAvoidingView, 
+  Platform 
+} from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Background from '../components/Background';
-import Card from '../components/Card'; // <-- ИМПОРТИРУЕМ КАРТОЧКУ
+import Card from '../components/Card';
 import api from '../services/api';
 import AlertModal from '../components/AlertModal';
 
@@ -42,36 +49,48 @@ const ForgotPasswordScreen = ({ onNavigate }) => {
 
   return (
     <Background>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { color: colors.textMain }]}>ВОССТАНОВЛЕНИЕ</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={[styles.title, { color: colors.textMain }]}>ВОССТАНОВЛЕНИЕ</Text>
 
-        <Card style={styles.card}>
-          {step === 1 ? (
-            <>
-              <Input label="Ваш Email" value={email} onChangeText={setEmail} autoCapitalize="none" />
-              <Button title="Отправить код" onPress={handleRequestCode} loading={loading} style={{ marginTop: 24 }} />
-            </>
-          ) : (
-            <>
-              <Input label="Код из письма" value={code} onChangeText={setCode} keyboardType="numeric" />
-              <Input label="Новый пароль" value={newPassword} onChangeText={setNewPassword} secureTextEntry style={{ marginTop: 16 }} />
-              <Button title="Сменить пароль" onPress={handleReset} loading={loading} style={{ marginTop: 24 }} />
-            </>
-          )}
+          <Card style={styles.card}>
+            {step === 1 ? (
+              <>
+                <Input label="Ваш Email" value={email} onChangeText={setEmail} autoCapitalize="none" />
+                <Button title="Отправить код" onPress={handleRequestCode} loading={loading} style={{ marginTop: 24 }} />
+              </>
+            ) : (
+              <>
+                <Input label="Код из письма" value={code} onChangeText={setCode} keyboardType="numeric" />
+                <Input label="Новый пароль" value={newPassword} onChangeText={setNewPassword} secureTextEntry style={{ marginTop: 16 }} />
+                <Button title="Сменить пароль" onPress={handleReset} loading={loading} style={{ marginTop: 24 }} />
+              </>
+            )}
 
-          <TouchableOpacity onPress={() => onNavigate('login')} style={{ marginTop: 24, alignSelf: 'center' }}>
-            <Text style={{ color: colors.accent1 }}>Вернуться ко входу</Text>
-          </TouchableOpacity>
-        </Card>
+            <TouchableOpacity onPress={() => onNavigate('login')} style={{ marginTop: 24, alignSelf: 'center' }}>
+              <Text style={{ color: colors.accent1 }}>Вернуться ко входу</Text>
+            </TouchableOpacity>
+          </Card>
 
-        <AlertModal visible={alertConfig.visible} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => { setAlertConfig({ ...alertConfig, visible: false }); if (alertConfig.message.includes('успешно изменен')) onNavigate('login'); }} />
-      </ScrollView>
+          <AlertModal visible={alertConfig.visible} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => { setAlertConfig({ ...alertConfig, visible: false }); if (alertConfig.message.includes('успешно изменен')) onNavigate('login'); }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Background>
   );
 };
 
 const styles = StyleSheet.create({
-  content: { padding: 24, justifyContent: 'center', minHeight: '100%' },
+  content: { 
+    flexGrow: 1, 
+    padding: 24, 
+    justifyContent: 'center' 
+  },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 32, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 },
   card: { padding: 24 }
 });
