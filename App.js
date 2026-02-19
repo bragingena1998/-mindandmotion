@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { getToken } from './src/services/storage';
+import { registerForPushNotificationsAsync, scheduleMorningNotification } from './src/services/notifications';
 
 // Screens
 import HabitsScreen from './src/screens/HabitsScreen';
@@ -20,7 +21,6 @@ const Tab = createBottomTabNavigator();
 
 const MainTabs = ({ onLogout, onOpenSecret }) => {
   const { colors } = useTheme();
-  // Secret triple tap logic moved to Profile tab listener
   const tapCounter = useRef({ count: 0, lastTime: 0 });
 
   const handleProfileTap = (e) => {
@@ -33,7 +33,7 @@ const MainTabs = ({ onLogout, onOpenSecret }) => {
       tapCounter.current.lastTime = now;
 
       if (tapCounter.current.count >= 3) {
-        e.preventDefault(); // Prevent tab switch if wanted, but Profile is fine to open too
+        e.preventDefault();
         tapCounter.current.count = 0;
         onOpenSecret();
       }
@@ -93,7 +93,13 @@ const AppContent = () => {
 
   useEffect(() => {
     checkAuth();
+    initNotifications();
   }, []);
+
+  const initNotifications = async () => {
+    await registerForPushNotificationsAsync();
+    await scheduleMorningNotification();
+  };
 
   const checkAuth = async () => {
     try {
