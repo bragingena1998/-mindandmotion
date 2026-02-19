@@ -15,7 +15,7 @@ import HabitTable from '../components/HabitTable';
 import Modal from '../components/Modal';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import DatePicker from '../components/DatePicker'; // <-- ADDED
+import DatePicker from '../components/DatePicker'; 
 import ReorderHabitsModal from '../components/ReorderHabitsModal';
 import MonthPickerModal from '../components/MonthPickerModal';
 
@@ -113,7 +113,7 @@ useEffect(() => {
     const today = new Date();
     const birth = new Date(birthdate);
     
-    // --- УЧЕТ ПОЛА ---\
+    // --- УЧЕТ ПОЛА ---
     const lifeExpectancy = gender === 'female' ? 78.5 : 67.0;
 
     const ageMs = today - birth;
@@ -124,7 +124,7 @@ useEffect(() => {
 
     setLifeProgress({ percent: lifePercent, yearsLived, yearsLeft });
 
-    // --- ГОД ---\
+    // --- ГОД ---
     const birthMonth = birth.getMonth();
     const birthDay = birth.getDate();
     let yearStart = new Date(today.getFullYear(), birthMonth, birthDay);
@@ -194,7 +194,8 @@ const loadRecords = async () => {
       if (value && value > 0) {
         await api.post('/habits/records', { habit_id: habitId, year, month, day, value });
         console.log('✅ Запись сохранена');
-      } else {\n        await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
+      } else {
+        await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
         console.log('🗑️ Запись удалена');
       }
     } catch (error) {
@@ -561,7 +562,8 @@ const handleReorderSave = async (newOrderHabits) => {
                   {unit}
                 </Text>
               </TouchableOpacity>
-            ))}\n            <TouchableOpacity
+            ))}
+            <TouchableOpacity
               style={[
                 styles.unitButtonSmall,
                 {
@@ -726,7 +728,8 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    justifyContent: 'center',\n    alignItems: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   progressText: {
   fontSize: 11,
