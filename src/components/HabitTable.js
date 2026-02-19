@@ -30,10 +30,8 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
   useEffect(() => {
     if (isCurrentMonth && horizontalScrollRef.current) {
       const screenWidth = Dimensions.get('window').width;
-      // Calculate middle of scroll area
       const scrollAreaWidth = screenWidth - FIXED_LEFT_WIDTH - FIXED_RIGHT_WIDTH;
       const todayPosition = (today - 1) * DAY_CELL_WIDTH;
-      // Center today in the visible scroll area
       const scrollX = Math.max(0, todayPosition - (scrollAreaWidth / 2) + (DAY_CELL_WIDTH / 2));
       
       setTimeout(() => {
@@ -92,11 +90,9 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
 
     let percent = 0;
     if (habit.target_type === 'daily') {
-       // FIX: Plan is per day. Goal = activeDays * plan.
        const totalGoal = (habit.plan || 1) * activeDaysCount;
-       percent = Math.min(100, Math.round((currentTotal / totalGoal) * 100));
+       percent = totalGoal > 0 ? Math.min(100, Math.round((currentTotal / totalGoal) * 100)) : 0;
     } else {
-       // Monthly: Total Goal = plan.
        percent = (habit.plan > 0) ? Math.min(100, Math.round((currentTotal / habit.plan) * 100)) : 0;
     }
 
@@ -194,11 +190,11 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
         })}
       </View>
 
-      <Modal visible={showInputModal} onClose={() => setShowInputModal(false)} title=\"Значение\">
+      <Modal visible={showInputModal} onClose={() => setShowInputModal(false)} title="Значение">
         {editingCell && (
           <View style={{ padding: 20 }}>
-            <Input value={inputValue} onChangeText={setInputValue} keyboardType=\"numeric\" autoFocus />
-            <Button title=\"Ок\" onPress={() => { onCellChange(editingCell.habitId, year, month, editingCell.day, parseFloat(inputValue)||0); setShowInputModal(false); }} />
+            <Input value={inputValue} onChangeText={setInputValue} keyboardType="numeric" autoFocus />
+            <Button title="Ок" onPress={() => { onCellChange(editingCell.habitId, year, month, editingCell.day, parseFloat(inputValue)||0); setShowInputModal(false); }} />
           </View>
         )}
       </Modal>
