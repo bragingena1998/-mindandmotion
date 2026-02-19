@@ -97,7 +97,8 @@ const ProfileScreen = ({ onLogout }) => {
         <Text style={[styles.userEmail, { color: colors.textMuted }]}>{user?.email}</Text>
         
         <View style={[styles.badge, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-          <Text style={[styles.badgeText, { color: colors.textSecondary }]}>
+          {/* ИСПРАВЛЕНИЕ: Делаем текст светлым (цвета textMain вместо textSecondary) */}
+          <Text style={[styles.badgeText, { color: colors.textMain }]}>
             В ПУТИ С {user?.created_at ? new Date(user.created_at).getFullYear() : '2026'} ГОДА
           </Text>
         </View>
