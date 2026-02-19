@@ -506,8 +506,7 @@ const deleteSubtask = async (subtaskId, taskId) => {
 
   const handleEditTask = (task) => {
   setNewTask({
-    title: task.title,
-    date: task.date.split('T')[0],
+    title: task.title,\n    date: task.date.split('T')[0],
     deadline: task.deadline.split('T')[0],
     priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
     comment: task.comment || '',
@@ -953,7 +952,8 @@ const renderTask = ({ item }) => {
 {/* Статистика (Серверная) */}
 <View style={styles.statsContainer}>
   <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-    {/* СЕГОДНЯ: Выполнено / План */}\n    <Text style={[styles.statNumber, { color: colors.accentText }]}>
+    {/* СЕГОДНЯ: Выполнено / План */}
+    <Text style={[styles.statNumber, { color: colors.accentText }]}>
       {stats.today}/{stats.todayPlan}
     </Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>СЕГОДНЯ</Text>
@@ -1256,8 +1256,7 @@ const renderTask = ({ item }) => {
       // Очищаем форму
       setNewTask({ 
         title: '', 
-        date: new Date().toISOString().split('T')[0],
-        deadline: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split('T')[0],\n        deadline: new Date().toISOString().split('T')[0],
         priority: 2,
         comment: '',
       });
@@ -1644,8 +1643,7 @@ taskActions: {
 actionButton: {
   width: 32,
   height: 32,
-  backgroundColor: 'rgba(0, 0, 0, 0.4)',
-  borderRadius: 8,
+  backgroundColor: 'rgba(0, 0, 0, 0.4)',\n  borderRadius: 8,
   alignItems: 'center',
   justifyContent: 'center',
 },
