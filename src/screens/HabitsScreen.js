@@ -162,14 +162,21 @@ const HabitsScreen = () => {
     setYearProgress({ percent: Math.min(100, Math.round((daysPassed / daysInYear) * 100)), daysPassed, daysLeft: daysInYear - daysPassed });
   };
 
+  const parseHabitData = (h) => {
+    // Безопасный парсинг JSON из базы
+    let days = [];
+    try {
+        if (Array.isArray(h.days_of_week)) days = h.days_of_week;
+        else if (typeof h.days_of_week === 'string') days = JSON.parse(h.days_of_week);
+    } catch (e) { days = []; }
+    return { ...h, days_of_week: days };
+  };
+
   const loadHabits = async () => {
     try {
       setLoading(true);
       const response = await api.get(`/habits?year=${year}&month=${month}`);
-      const parsedHabits = response.data.map(h => ({
-        ...h,
-        days_of_week: typeof h.days_of_week === 'string' ? JSON.parse(h.days_of_week) : (h.days_of_week || [])
-      })).filter(h => h.shouldShow !== false);
+      const parsedHabits = response.data.map(parseHabitData).filter(h => h.shouldShow !== false);
       setHabits(parsedHabits);
     } catch (error) {
       console.error('Ошибка загрузки привычек:', error);
@@ -263,19 +270,29 @@ const HabitsScreen = () => {
      };
 
      try {
+       let savedHabit;
        if (editingHabitId) {
          await api.put(`/habits/${editingHabitId}`, payload);
-         setHabits(habits.map(h => h.id === editingHabitId ? { ...h, ...payload } : h));
+         // Оптимистичное обновление: обновляем состояние
+         savedHabit = { 
+             ...habits.find(h => h.id === editingHabitId),
+             ...payload 
+         };
+         setHabits(habits.map(h => h.id === editingHabitId ? savedHabit : h));
        } else {
          const response = await api.post('/habits', payload);
-         setHabits([...habits, response.data]);
+         // Сервер может вернуть days_of_week как JSON-строку или массив, парсим его
+         savedHabit = parseHabitData(response.data);
+         setHabits([...habits, savedHabit]);
        }
        setShowHabitModal(false);
        setShowCustomUnit(false);
      } catch (e) {
        console.error(e);
        if (e.response && e.response.status === 500) {
-           alert('Ошибка сервера при сохранении');
+            // Если ошибка с сервера вернулась как JSON с сообщением
+           const serverMsg = e.response.data?.message || e.response.data?.sqlMessage || 'Ошибка сервера';
+           alert(`Ошибка: ${serverMsg}`);
        } else {
            alert('Ошибка: ' + (e.message || 'Unknown'));
        }
