@@ -20,11 +20,16 @@ import DatePicker from '../components/DatePicker';
 import ReorderHabitsModal from '../components/ReorderHabitsModal';
 import MonthPickerModal from '../components/MonthPickerModal';
 
-// --- КОМПОНЕНТ ВЫБОРА ДНЕЙ НЕДЕЛИ ---
+// Helper to format Date -> "YYYY-MM-DD"
+const formatDateISO = (date) => {
+  if (!date) return null;
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().split('T')[0];
+};
+
 const DaysSelector = ({ selectedDays, onSelect }) => {
   const { colors } = useTheme();
-  // 1 = Пн, 7 = Вс (для удобства JS getDay() возвращает 0 для Вс, но мы маппим 1..7)
-  // Массив: [1, 2, 3, 4, 5, 6, 0] -> Пн, Вт, Ср, Чт, Пт, Сб, Вс
   const daysMap = [
     { label: 'Пн', val: 1 },
     { label: 'Вт', val: 2 },
@@ -79,7 +84,7 @@ const LifeProgressBar = ({ label, value, color }) => {
       <View style={styles.barBackground}>
         <View style={[styles.barFill, { width: `${percent}%`, backgroundColor: color }]} />
         <View style={styles.barTextContainer}>
-          <Text style={styles.barLabel}>{label}: {percent.toFixed(1)}%</Text>
+          <Text style={styles.barLabel}>{label}</Text>
         </View>
       </View>
     </View>
@@ -103,19 +108,17 @@ const HabitsScreen = () => {
   
   // Edit/Add Modal State
   const [showHabitModal, setShowHabitModal] = useState(false);
-  const [editingHabitId, setEditingHabitId] = useState(null); // ID если редактируем, null если новая
+  const [editingHabitId, setEditingHabitId] = useState(null);
   const [habitForm, setHabitForm] = useState({
     name: '',
     unit: 'Дни',
     plan: '',
     targetType: 'monthly',
-    startDate: null,
-    endDate: null,
-    daysOfWeek: [], // [1, 2, ... 0]
+    startDate: null, // String YYYY-MM-DD
+    endDate: null,   // String YYYY-MM-DD
+    daysOfWeek: [],
   });
   const [showCustomUnit, setShowCustomUnit] = useState(false);
-
-  // Custom Delete Modal
   const [habitToDelete, setHabitToDelete] = useState(null);
 
   useEffect(() => {
@@ -133,11 +136,9 @@ const HabitsScreen = () => {
     }
   }, [habits, year, month]);
 
-  // AUTO-REFRESH logic when screen gets focus
   useFocusEffect(
     useCallback(() => {
-       // Можно добавить логику обновления, если нужно
-       // Например loadRecords() чтобы подтянуть свежие данные
+       // Optional refresh logic
     }, [])
   );
 
@@ -179,7 +180,6 @@ const HabitsScreen = () => {
     try {
       setLoading(true);
       const response = await api.get(`/habits?year=${year}&month=${month}`);
-      // Парсим days_of_week из JSON если он пришел строкой (зависит от версии MySQL/драйвера)
       const parsedHabits = response.data.map(h => ({
         ...h,
         days_of_week: typeof h.days_of_week === 'string' ? JSON.parse(h.days_of_week) : (h.days_of_week || [])
@@ -220,7 +220,6 @@ const HabitsScreen = () => {
     }
   };
 
-  // --- DELETE LOGIC ---
   const confirmDeleteHabit = (habit) => {
     setHabitToDelete(habit);
   };
@@ -229,13 +228,11 @@ const HabitsScreen = () => {
     if (!habitToDelete) return;
     const habitId = habitToDelete.id;
     try {
-      // 1. Удаляем записи
       const habitRecords = records.filter(r => r.habitid === habitId);
       const deletePromises = habitRecords.map(r => 
          api.delete(`/habits/records/${habitId}/${r.year}/${r.month}/${r.day}`).catch(e => {})
       );
       await Promise.all(deletePromises);
-      // 2. Удаляем привычку
       await api.delete(`/habits/${habitId}?year=${year}&month=${month}`);
       setHabits(habits.filter(h => h.id !== habitId));
       setRecords(records.filter(r => r.habitid !== habitId));
@@ -255,8 +252,9 @@ const HabitsScreen = () => {
         unit: habit.unit,
         plan: habit.plan,
         targetType: habit.target_type || 'monthly',
-        startDate: habit.start_date ? new Date(habit.start_date) : null,
-        endDate: habit.end_date ? new Date(habit.end_date) : null,
+        // FIX: Convert Date/String to YYYY-MM-DD string safely
+        startDate: formatDateISO(habit.start_date),
+        endDate: formatDateISO(habit.end_date),
         daysOfWeek: habit.days_of_week || []
       });
     } else {
@@ -281,8 +279,8 @@ const HabitsScreen = () => {
        plan: planValue,
        year, month,
        target_type: habitForm.targetType,
-       start_date: habitForm.startDate,
-       end_date: habitForm.endDate,
+       start_date: habitForm.startDate, // Already string YYYY-MM-DD
+       end_date: habitForm.endDate,     // Already string YYYY-MM-DD
        days_of_week: habitForm.daysOfWeek
      };
 
@@ -341,15 +339,23 @@ const HabitsScreen = () => {
            </View>
          )}
 
-         {/* LIFE CARD */}
+         {/* LIFE CARD - RESTORED LABELS */}
          <View style={[styles.lifeCard, { backgroundColor: 'rgba(148, 163, 184, 0.05)', borderColor: colors.borderSubtle }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                <Text style={[styles.cardTitle, { color: colors.textMain }]}>ВРЕМЯ</Text>
                <Text style={{ fontSize: 10, color: colors.textMuted }}>MEMENTO MORI</Text>
             </View>
             <View style={{ gap: 12 }}>
-               <LifeProgressBar label={`ЖИЗНЬ`} value={lifeProgress.percent} color={colors.danger1} />
-               <LifeProgressBar label={`ГОД`} value={yearProgress.percent} color={colors.accent1} />
+               <LifeProgressBar 
+                  label={`ПРОЖИТО: ${profile?.gender === 'female' ? 'Ж' : 'М'} / ${lifeProgress.yearsLived} ЛЕТ`} 
+                  value={lifeProgress.percent} 
+                  color={colors.danger1} 
+               />
+               <LifeProgressBar 
+                  label={`ГОД: ОСТАЛОСЬ ${yearProgress.daysLeft} ДН.`} 
+                  value={yearProgress.percent} 
+                  color={colors.accent1} 
+               />
             </View>
          </View>
       </View>
@@ -386,8 +392,8 @@ const HabitsScreen = () => {
             month={month}
             records={records}
             onCellChange={handleCellChange}
-            onHabitDelete={confirmDeleteHabit} // Show custom modal
-            onHabitEdit={openHabitModal}       // Open edit modal
+            onHabitDelete={confirmDeleteHabit} 
+            onHabitEdit={openHabitModal}       
           />
         )}
       </View>
@@ -396,7 +402,6 @@ const HabitsScreen = () => {
       <ReorderHabitsModal visible={showReorderModal} habits={habits} onClose={() => setShowReorderModal(false)} onSave={handleReorderSave} />
       <MonthPickerModal visible={showDateModal} selectedYear={year} selectedMonth={month} onClose={() => setShowDateModal(false)} onSelect={(y, m) => { setYear(y); setMonth(m); }} />
 
-      {/* CREATE / EDIT HABIT MODAL */}
       <Modal
         visible={showHabitModal}
         onClose={() => { setShowHabitModal(false); setShowCustomUnit(false); }}
@@ -404,7 +409,6 @@ const HabitsScreen = () => {
       >
         <Input label="Название" placeholder="Например: Чтение" value={habitForm.name} onChangeText={t => setHabitForm({...habitForm, name: t})} />
         
-        {/* TARGET TYPE */}
         <View style={{ marginBottom: 16 }}>
            <Text style={[styles.formLabel, { color: colors.textMain }]}>Тип цели</Text>
            <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -422,19 +426,16 @@ const HabitsScreen = () => {
            </View>
         </View>
 
-        {/* DATES */}
         <View style={{ marginBottom: 16, flexDirection: 'row', gap: 12 }}>
            <View style={{ flex: 1 }}><DatePicker label="Начало" value={habitForm.startDate} onChangeDate={d => setHabitForm({...habitForm, startDate: d})} /></View>
            <View style={{ flex: 1 }}><DatePicker label="Конец" value={habitForm.endDate} onChangeDate={d => setHabitForm({...habitForm, endDate: d})} /></View>
         </View>
 
-        {/* DAYS OF WEEK */}
         <View style={{ marginBottom: 16 }}>
            <Text style={[styles.formLabel, { color: colors.textMain }]}>Дни недели (если пусто = все)</Text>
            <DaysSelector selectedDays={habitForm.daysOfWeek} onSelect={d => setHabitForm({...habitForm, daysOfWeek: d})} />
         </View>
 
-        {/* UNIT & PLAN */}
         <View style={{ marginBottom: 16 }}>
            <Text style={[styles.formLabel, { color: colors.textMain }]}>Единица и План</Text>
            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -461,7 +462,6 @@ const HabitsScreen = () => {
         <Button title="Сохранить" onPress={saveHabit} />
       </Modal>
 
-      {/* DELETE CONFIRMATION MODAL */}
       <Modal
          visible={!!habitToDelete}
          onClose={() => setHabitToDelete(null)}
