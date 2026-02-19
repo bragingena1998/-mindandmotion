@@ -506,7 +506,8 @@ const deleteSubtask = async (subtaskId, taskId) => {
 
   const handleEditTask = (task) => {
   setNewTask({
-    title: task.title,\n    date: task.date.split('T')[0],
+    title: task.title,
+    date: task.date.split('T')[0],
     deadline: task.deadline.split('T')[0],
     priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
     comment: task.comment || '',
@@ -1017,8 +1018,7 @@ const renderTask = ({ item }) => {
 </View>
 
 
-        {/* Список задач */}
-        <FlatList
+        {/* Список задач */}\n        <FlatList
           data={sortedTasks}
           renderItem={renderTask}
           keyExtractor={(item) => item.id.toString()}
@@ -1231,8 +1231,7 @@ const renderTask = ({ item }) => {
         setTasks(tasks.map(t => 
           t.id === editingTask.id 
             ? {
-                ...t,
-                ...taskToSend,
+                ...t,\n                ...taskToSend,
                 priority: taskToSend.priority === 1 ? 'high' : taskToSend.priority === 3 ? 'low' : 'medium',
                 dueDate: taskToSend.deadline,
               }
@@ -1256,7 +1255,8 @@ const renderTask = ({ item }) => {
       // Очищаем форму
       setNewTask({ 
         title: '', 
-        date: new Date().toISOString().split('T')[0],\n        deadline: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split('T')[0],
+        deadline: new Date().toISOString().split('T')[0],
         priority: 2,
         comment: '',
       });
@@ -1344,8 +1344,7 @@ const renderTask = ({ item }) => {
   visible
   onClose={() => {
     setShowAddSubtaskModal(false);
-    setNewSubtaskTitle('');
-    setCurrentTaskForSubtask(null);
+    setNewSubtaskTitle('');\n    setCurrentTaskForSubtask(null);
   }}
   title="Новая подзадача"
 >
@@ -1524,8 +1523,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   taskMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row',\n    alignItems: 'center',
     gap: 8,
   },
 priorityBadge: {
@@ -1643,7 +1641,8 @@ taskActions: {
 actionButton: {
   width: 32,
   height: 32,
-  backgroundColor: 'rgba(0, 0, 0, 0.4)',\n  borderRadius: 8,
+  backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  borderRadius: 8,
   alignItems: 'center',
   justifyContent: 'center',
 },
@@ -1686,8 +1685,7 @@ filterMenuItemText: {
   fontWeight: '500',
 },
 filterMenuLabel: {
-  fontSize: 11,
-  fontWeight: '600',
+  fontSize: 11,\n  fontWeight: '600',
   textTransform: 'uppercase',
   letterSpacing: 0.08,
   marginTop: 4,
@@ -1737,8 +1735,7 @@ deleteModalButtonText: {
     alignItems: 'center',
     elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },\n    shadowOpacity: 0.3,
     shadowRadius: 4,
     zIndex: 100,
   },
