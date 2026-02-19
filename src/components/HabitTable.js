@@ -547,7 +547,8 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
         `Вы уверены что хотите удалить \"${editingHabit.name}\"?\\nВсе данные будут потеряны.`,
         [
           { text: 'Отмена', style: 'cancel' },
-          {\n            text: 'Удалить',
+          {
+            text: 'Удалить',
             style: 'destructive',
             onPress: () => {
               if (onHabitDelete) {
