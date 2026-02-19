@@ -1,8 +1,7 @@
 // src/components/HabitTable.js
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform, Animated, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import { LinearGradient } from 'expo-linear-gradient';
 import Modal from './Modal';
 import Input from './Input';
 import Button from './Button';
@@ -40,13 +39,22 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
   // Логика автоскролла
   useEffect(() => {
     if (isCurrentMonth && horizontalScrollRef.current && scrollWidth > 0) {
-      const todayCenter = (today - 1) * DAY_CELL_WIDTH + (DAY_CELL_WIDTH / 2);
-      const visibleCenter = scrollWidth / 2;
-      const scrollX = Math.max(0, todayCenter - visibleCenter);
+      // Вычисляем центр для текущего дня
+      // (today - 1) * width -> позиция левого края ячейки
+      // + width/2 -> центр ячейки
+      // - scrollWidth/2 -> смещаем так, чтобы этот центр был в центре экрана
+      const todayCenter = ((today - 1) * DAY_CELL_WIDTH) + (DAY_CELL_WIDTH / 2);
+      const centerOffset = scrollWidth / 2;
+      const scrollX = Math.max(0, todayCenter - centerOffset);
       
+      // Небольшая задержка, чтобы UI успел отрисоваться
       setTimeout(() => {
-        horizontalScrollRef.current?.scrollTo({ x: scrollX, animated: true });
-      }, 500);
+        try {
+          horizontalScrollRef.current?.scrollTo({ x: scrollX, animated: true });
+        } catch (e) {
+          console.log('Scroll error', e);
+        }
+      }, 300);
     }
   }, [month, year, isCurrentMonth, habits.length, scrollWidth]);
 
@@ -135,27 +143,31 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     const isWknd = isWeekend(year, month, day);
     const isHol = isHoliday(year, month, day);
 
-    // НЕАКТИВНЫЙ ДЕНЬ: Явный крестик и затемнение
+    // НЕАКТИВНЫЙ ДЕНЬ
     if (!active) {
       return (
-        <View key={`${habit.id}-${day}`} style={[styles.dayCell, { backgroundColor: '#1e293b', borderRightWidth: 1, borderColor: colors.borderSubtle }]}>
-          <Text style={{color: colors.textMuted, fontSize: 10, opacity: 0.3}}>✕</Text>
+        <View key={`${habit.id}-${day}`} style={[styles.dayCell, { backgroundColor: '#0f172a', borderColor: '#334155' }]}>
+          <Text style={{color: '#475569', fontSize: 10}}>✕</Text>
         </View>
       );
     }
 
-    // Обычный день: Прозрачный фон или подсветка выходного
+    // Обычный день
     let cellBg = 'transparent';
-    if (isHol) cellBg = 'rgba(251, 191, 36, 0.1)'; // Holiday tint
-    else if (isWknd) cellBg = 'rgba(244, 63, 94, 0.05)'; // Weekend tint
+    // Явная подсветка выходных и праздников
+    if (isHol) cellBg = 'rgba(251, 191, 36, 0.15)'; // Holiday tint stronger
+    else if (isWknd) cellBg = 'rgba(244, 63, 94, 0.1)'; // Weekend tint stronger
 
+    // Если есть значение - подсвечиваем (зеленым если выполнено, иначе нейтрально)
+    // Но по текущей логике просто показываем значение
+    
     return (
       <TouchableOpacity
         key={`${habit.id}-${day}`}
         style={[
             styles.dayCell, 
-            { backgroundColor: cellBg, borderRightWidth: 1, borderColor: colors.borderSubtle },
-            isToday && { borderColor: colors.accent1, borderWidth: 2 } // Today border override
+            { backgroundColor: cellBg, borderColor: '#334155' },
+            isToday && { borderColor: colors.accent1, borderWidth: 2, zIndex: 10 } // Today needs zIndex to show border on top
         ]}
         onPress={() => onCellChange(habit.id, year, month, day, value ? 0 : (habit.unit === 'Дни' ? 1 : (habit.plan || 1)))}
         onLongPress={() => {
@@ -171,78 +183,93 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     );
   };
 
+  // MAIN RENDER
   return (
-    <GestureHandlerRootView style={[styles.tableContainer, { borderColor: colors.accent1, borderWidth: 2 }]}>
-      {/* LEFT FIXED COLUMN */}
-      <View style={[styles.fixedLeft, { backgroundColor: colors.surface, borderRightWidth: 2, borderRightColor: colors.accentBorder }]}>
-        <View style={[styles.headerCell, { height: ROW_HEIGHT, borderBottomWidth: 2, borderBottomColor: colors.accentBorder }]}>
-            <Text style={[styles.headerText, { color: colors.accent1 }]}>ЗАДАЧА</Text>
-        </View>
-        {habits.map((h, i) => (
-          <Swipeable key={h.id} renderRightActions={(pr, dr) => (
-            <View style={{ flexDirection: 'row', width: 80 }}>
-              <TouchableOpacity onPress={() => onHabitEdit(h)} style={[styles.swipeBtn, { backgroundColor: colors.accent1 }]}><Text>✎</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => onHabitDelete(h)} style={[styles.swipeBtn, { backgroundColor: colors.danger1 }]}><Text>🗑️</Text></TouchableOpacity>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* Outer Border Container */}
+      <View style={[styles.tableBorderWrapper, { borderColor: colors.accent1 }]}>
+        <View style={styles.tableContainer}>
+          
+          {/* LEFT FIXED COLUMN */}
+          <View style={[styles.fixedLeft, { backgroundColor: colors.surface, borderRightColor: colors.accentBorder }]}>
+            <View style={[styles.headerCell, { height: ROW_HEIGHT, borderBottomColor: colors.accentBorder }]}>
+                <Text style={[styles.headerText, { color: colors.accent1 }]}>ЗАДАЧА</Text>
             </View>
-          )}>
-            <View style={[styles.rowCell, { height: ROW_HEIGHT, borderTopWidth: i > 0 ? 1 : 0, borderColor: colors.borderSubtle }]}>
-              <Text style={{ fontSize: 12, marginRight: 6 }}>{h.target_type === 'daily' ? '⏳' : '📅'}</Text>
-              <Text style={[styles.habitName, { color: colors.textMain }]} numberOfLines={2}>{h.name}</Text>
-            </View>
-          </Swipeable>
-        ))}
-      </View>
-
-      {/* CENTER SCROLLABLE */}
-      <View 
-        style={{ flex: 1 }} 
-        onLayout={(e) => setScrollWidth(e.nativeEvent.layout.width)}
-      >
-        <ScrollView 
-            horizontal 
-            ref={horizontalScrollRef} 
-            showsHorizontalScrollIndicator={false}
-        >
-          <View>
-            <View style={[styles.row, { height: ROW_HEIGHT, borderBottomWidth: 2, borderColor: colors.accentBorder }]}>
-              <View style={[styles.columnCell, { borderRightWidth: 2, borderRightColor: colors.accentBorder }]}><Text style={[styles.headerText, { color: colors.textMain }]}>ЕД.</Text></View>
-              <View style={[styles.columnCell, { borderRightWidth: 2, borderRightColor: colors.accentBorder }]}><Text style={[styles.headerText, { color: colors.textMain }]}>ПЛАН</Text></View>
-              {days.map(d => {
-                  const isWknd = isWeekend(year, month, d);
-                  const isHol = isHoliday(year, month, d);
-                  return (
-                    <View key={d} style={[styles.dayHeader, { borderRightWidth: 1, borderColor: colors.borderSubtle }]}>
-                        <Text style={[styles.dayNum, { color: (isWknd || isHol) ? colors.danger1 : colors.textMain }]}>{d}</Text>
-                        <Text style={[styles.dayName, { color: colors.textMuted }]}>{getDayOfWeek(year, month, d)}</Text>
-                    </View>
-                  );
-              })}
-            </View>
-            {habits.map((h, index) => (
-              <View key={h.id} style={[styles.row, { height: ROW_HEIGHT, borderTopWidth: index > 0 ? 1 : 0, borderTopColor: colors.borderSubtle }]}>
-                <View style={[styles.columnCell, { borderRightWidth: 2, borderRightColor: colors.accentBorder }]}><Text style={[styles.cellText, { color: colors.textMain }]}>{h.unit}</Text></View>
-                <View style={[styles.columnCell, { borderRightWidth: 2, borderRightColor: colors.accentBorder }]}><Text style={[styles.cellText, { color: colors.textMain }]}>{h.plan}</Text></View>
-                {days.map(d => renderCell(h, d))}
-              </View>
+            {habits.map((h, i) => (
+              <Swipeable key={h.id} renderRightActions={(pr, dr) => (
+                <View style={{ flexDirection: 'row', width: 80 }}>
+                  <TouchableOpacity onPress={() => onHabitEdit(h)} style={[styles.swipeBtn, { backgroundColor: colors.accent1 }]}><Text>✎</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => onHabitDelete(h)} style={[styles.swipeBtn, { backgroundColor: colors.danger1 }]}><Text>🗑️</Text></TouchableOpacity>
+                </View>
+              )}>
+                <View style={[styles.rowCell, { height: ROW_HEIGHT, borderTopWidth: i > 0 ? 1 : 0, borderColor: '#334155' }]}>
+                  <Text style={{ fontSize: 12, marginRight: 6 }}>{h.target_type === 'daily' ? '⏳' : '📅'}</Text>
+                  <Text style={[styles.habitName, { color: colors.textMain }]} numberOfLines={2}>{h.name}</Text>
+                </View>
+              </Swipeable>
             ))}
           </View>
-        </ScrollView>
-      </View>
 
-      {/* RIGHT FIXED COLUMN */}
-      <View style={[styles.fixedRight, { backgroundColor: colors.surface, borderLeftWidth: 2, borderLeftColor: colors.accentBorder }]}>
-        <View style={[styles.headerCell, { height: ROW_HEIGHT, borderBottomWidth: 2, borderBottomColor: colors.accentBorder }]}>
-            <Text style={[styles.headerText, { color: colors.textMain }]}>ИТОГ</Text>
+          {/* CENTER SCROLLABLE */}
+          <View 
+            style={{ flex: 1 }} 
+            onLayout={(e) => setScrollWidth(e.nativeEvent.layout.width)}
+          >
+            <ScrollView 
+                horizontal 
+                ref={horizontalScrollRef} 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ flexGrow: 1 }}
+            >
+              <View>
+                {/* HEADER ROW */}
+                <View style={[styles.row, { height: ROW_HEIGHT, borderBottomWidth: 2, borderColor: colors.accentBorder }]}>
+                  <View style={[styles.columnCell, { borderRightColor: colors.accentBorder }]}><Text style={[styles.headerText, { color: colors.textMain }]}>ЕД.</Text></View>
+                  <View style={[styles.columnCell, { borderRightColor: colors.accentBorder }]}><Text style={[styles.headerText, { color: colors.textMain }]}>ПЛАН</Text></View>
+                  {days.map(d => {
+                      const isWknd = isWeekend(year, month, d);
+                      const isHol = isHoliday(year, month, d);
+                      const isToday = isCurrentMonth && d === today;
+                      return (
+                        <View key={d} style={[
+                            styles.dayHeader, 
+                            { borderColor: '#334155', backgroundColor: isToday ? 'rgba(6, 182, 212, 0.2)' : 'transparent' }
+                        ]}>
+                            <Text style={[styles.dayNum, { color: (isWknd || isHol) ? colors.danger1 : colors.textMain }]}>{d}</Text>
+                            <Text style={[styles.dayName, { color: colors.textMuted }]}>{getDayOfWeek(year, month, d)}</Text>
+                        </View>
+                      );
+                  })}
+                </View>
+                
+                {/* DATA ROWS */}
+                {habits.map((h, index) => (
+                  <View key={h.id} style={[styles.row, { height: ROW_HEIGHT, borderTopWidth: index > 0 ? 1 : 0, borderTopColor: '#334155' }]}>
+                    <View style={[styles.columnCell, { borderRightColor: colors.accentBorder }]}><Text style={[styles.cellText, { color: colors.textMain }]}>{h.unit}</Text></View>
+                    <View style={[styles.columnCell, { borderRightColor: colors.accentBorder }]}><Text style={[styles.cellText, { color: colors.textMain }]}>{h.plan}</Text></View>
+                    {days.map(d => renderCell(h, d))}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* RIGHT FIXED COLUMN */}
+          <View style={[styles.fixedRight, { backgroundColor: colors.surface, borderLeftColor: colors.accentBorder }]}>
+            <View style={[styles.headerCell, { height: ROW_HEIGHT, borderBottomColor: colors.accentBorder }]}>
+                <Text style={[styles.headerText, { color: colors.textMain }]}>ИТОГ</Text>
+            </View>
+            {habits.map((h, i) => {
+              const s = calculateStats(h);
+              return (
+                <TouchableOpacity key={h.id} onPress={() => setAverageMode(p => ({...p, [h.id]: !p[h.id]}))} style={[styles.row, { height: ROW_HEIGHT, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#334155' }]}>
+                  <View style={styles.statCell}><Text style={[styles.statText, { color: colors.textMain }]}>{s.total}</Text></View>
+                  <View style={[styles.statCell, { backgroundColor: colors.surfaceHover }]}><Text style={[styles.statText, { color: colors.accent1 }]}>{s.percent}%</Text></View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-        {habits.map((h, i) => {
-          const s = calculateStats(h);
-          return (
-            <TouchableOpacity key={h.id} onPress={() => setAverageMode(p => ({...p, [h.id]: !p[h.id]}))} style={[styles.row, { height: ROW_HEIGHT, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.borderSubtle }]}>
-              <View style={styles.statCell}><Text style={[styles.statText, { color: colors.textMain }]}>{s.total}</Text></View>
-              <View style={[styles.statCell, { backgroundColor: colors.surfaceHover }]}><Text style={[styles.statText, { color: colors.accent1 }]}>{s.percent}%</Text></View>
-            </TouchableOpacity>
-          );
-        })}
       </View>
 
       <Modal visible={showInputModal} onClose={() => setShowInputModal(false)} title="Значение">
@@ -258,15 +285,16 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
 };
 
 const styles = StyleSheet.create({
-  tableContainer: { flexDirection: 'row', borderRadius: 12, overflow: 'hidden', backgroundColor: '#020617' },
-  fixedLeft: { width: FIXED_LEFT_WIDTH, zIndex: 10 },
-  fixedRight: { width: FIXED_RIGHT_WIDTH, zIndex: 10 },
-  headerCell: { justifyContent: 'center', alignItems: 'center' },
+  tableBorderWrapper: { borderWidth: 2, borderRadius: 12, overflow: 'hidden' }, // NEW: Wrapper for outer border
+  tableContainer: { flexDirection: 'row', backgroundColor: '#020617' },
+  fixedLeft: { width: FIXED_LEFT_WIDTH, zIndex: 20, borderRightWidth: 2 },
+  fixedRight: { width: FIXED_RIGHT_WIDTH, zIndex: 20, borderLeftWidth: 2 },
+  headerCell: { justifyContent: 'center', alignItems: 'center', borderBottomWidth: 2 },
   rowCell: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
   row: { flexDirection: 'row', alignItems: 'center' },
-  columnCell: { width: 45, alignItems: 'center', justifyContent: 'center' },
-  dayHeader: { width: DAY_CELL_WIDTH, alignItems: 'center', justifyContent: 'center' },
-  dayCell: { width: DAY_CELL_WIDTH, height: '100%', alignItems: 'center', justifyContent: 'center' },
+  columnCell: { width: 45, alignItems: 'center', justifyContent: 'center', borderRightWidth: 2 },
+  dayHeader: { width: DAY_CELL_WIDTH, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1 },
+  dayCell: { width: DAY_CELL_WIDTH, height: '100%', alignItems: 'center', justifyContent: 'center', borderRightWidth: 1 },
   statCell: { width: '50%', alignItems: 'center', justifyContent: 'center' },
   habitName: { fontSize: 11, fontWeight: '600', flex: 1 },
   headerText: { fontSize: 10, fontWeight: '800' },
