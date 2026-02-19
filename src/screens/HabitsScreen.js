@@ -220,6 +220,10 @@ const HabitsScreen = () => {
     }
   };
 
+  const confirmDeleteHabit = (habit) => {
+    setHabitToDelete(habit);
+  };
+
   const openHabitModal = (habit = null) => {
     if (habit) {
       setEditingHabitId(habit.id);
@@ -247,7 +251,6 @@ const HabitsScreen = () => {
      
      const planValue = habitForm.plan === '' ? 1 : parseInt(habitForm.plan) || 1;
      
-     // FIX: ensure dates are null if undefined to avoid server crash
      const payload = {
        name: habitForm.name,
        unit: habitForm.unit,
@@ -271,7 +274,6 @@ const HabitsScreen = () => {
        setShowCustomUnit(false);
      } catch (e) {
        console.error(e);
-       // Show alert only for real errors, not parsing issues if response is ok
        if (e.response && e.response.status === 500) {
            alert('Ошибка сервера при сохранении');
        } else {
