@@ -40,21 +40,18 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
   useEffect(() => {
     if (isCurrentMonth && horizontalScrollRef.current && scrollWidth > 0) {
       // Вычисляем центр для текущего дня
-      // (today - 1) * width -> позиция левого края ячейки
-      // + width/2 -> центр ячейки
-      // - scrollWidth/2 -> смещаем так, чтобы этот центр был в центре экрана
       const todayCenter = ((today - 1) * DAY_CELL_WIDTH) + (DAY_CELL_WIDTH / 2);
       const centerOffset = scrollWidth / 2;
-      const scrollX = Math.max(0, todayCenter - centerOffset);
+      // Смещаем немного вправо (на 2 колонки), чтобы было виднее
+      const scrollX = Math.max(0, todayCenter - centerOffset + (DAY_CELL_WIDTH * 2));
       
-      // Небольшая задержка, чтобы UI успел отрисоваться
       setTimeout(() => {
         try {
           horizontalScrollRef.current?.scrollTo({ x: scrollX, animated: true });
         } catch (e) {
           console.log('Scroll error', e);
         }
-      }, 300);
+      }, 500); // Чуть больше задержка
     }
   }, [month, year, isCurrentMonth, habits.length, scrollWidth]);
 
