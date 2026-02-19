@@ -247,15 +247,16 @@ const HabitsScreen = () => {
      
      const planValue = habitForm.plan === '' ? 1 : parseInt(habitForm.plan) || 1;
      
+     // FIX: ensure dates are null if undefined to avoid server crash
      const payload = {
        name: habitForm.name,
        unit: habitForm.unit,
        plan: planValue,
        year, month,
        target_type: habitForm.targetType,
-       start_date: habitForm.startDate, 
-       end_date: habitForm.endDate,     
-       days_of_week: habitForm.daysOfWeek
+       start_date: habitForm.startDate || null, 
+       end_date: habitForm.endDate || null,     
+       days_of_week: habitForm.daysOfWeek || []
      };
 
      try {
@@ -270,7 +271,12 @@ const HabitsScreen = () => {
        setShowCustomUnit(false);
      } catch (e) {
        console.error(e);
-       alert('Ошибка сохранения');
+       // Show alert only for real errors, not parsing issues if response is ok
+       if (e.response && e.response.status === 500) {
+           alert('Ошибка сервера при сохранении');
+       } else {
+           alert('Ошибка: ' + (e.message || 'Unknown'));
+       }
      }
   };
   
@@ -284,16 +290,35 @@ const HabitsScreen = () => {
 
   if (loading) return <View style={[styles.container, { backgroundColor: colors.background }]}><ActivityIndicator size="large" color={colors.accent1}/></View>;
 
-  const today = new Date();
-  const currentDay = today.getDate();
-  const totalHabits = habits.length;
-  const completedToday = records.filter(r => r.day === currentDay && r.value > 0).length;
-  const dailyPercent = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
-  const quotes = ["Действуй.", "Просто делай.", "Шаг за шагом.", "Не сдавайся.", "Ты сможешь."];
+  const todayDate = new Date();
+  const currentDay = todayDate.getDate();
+  const currentMonthIdx = todayDate.getMonth() + 1;
+  const currentYearVal = todayDate.getFullYear();
+  
+  // STATS LOGIC: Filter only ACTIVE habits for today
+  const activeHabitsToday = habits.filter(h => {
+     // Check date range
+     const dateObj = new Date(year, month - 1, currentDay);
+     if (h.start_date) {
+         const s = new Date(h.start_date); s.setHours(0,0,0,0);
+         if (dateObj < s) return false;
+     }
+     if (h.end_date) {
+         const e = new Date(h.end_date); e.setHours(23,59,59,999);
+         if (dateObj > e) return false;
+     }
+     // Check day of week
+     if (h.days_of_week && h.days_of_week.length > 0) {
+         if (!h.days_of_week.includes(dateObj.getDay())) return false;
+     }
+     return true;
+  });
 
-  const confirmDeleteHabit = (habit) => {
-    setHabitToDelete(habit);
-  };
+  const totalHabitsToday = activeHabitsToday.length;
+  const completedToday = records.filter(r => r.day === currentDay && r.value > 0 && activeHabitsToday.some(h => h.id === r.habitid)).length;
+  
+  const dailyPercent = totalHabitsToday > 0 ? Math.round((completedToday / totalHabitsToday) * 100) : (totalHabitsToday === 0 ? 100 : 0);
+  const quotes = ["Действуй.", "Просто делай.", "Шаг за шагом.", "Не сдавайся.", "Ты сможешь."];
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
@@ -302,12 +327,12 @@ const HabitsScreen = () => {
            "{quotes[Math.floor(yearProgress.daysPassed % quotes.length)]}"
          </Text>
 
-         {year === today.getFullYear() && month === (today.getMonth() + 1) && (
+         {year === currentYearVal && month === currentMonthIdx && (
            <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                <View>
                  <Text style={[styles.statsTitle, { color: colors.textMain }]}>СЕГОДНЯ</Text>
-                 <Text style={[styles.statsValue, { color: colors.textMain }]}>{completedToday} <Text style={{ fontSize: 16, color: colors.textMuted }}>/ {totalHabits}</Text></Text>
+                 <Text style={[styles.statsValue, { color: colors.textMain }]}>{completedToday} <Text style={{ fontSize: 16, color: colors.textMuted }}>/ {totalHabitsToday}</Text></Text>
                </View>
                <Text style={{ fontSize: 32, fontWeight: 'bold', color: colors.accent1 }}>{dailyPercent}%</Text>
              </View>
