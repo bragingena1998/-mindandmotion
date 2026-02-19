@@ -31,9 +31,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const timerIntervalRef = useRef(null);
-  
-  // State for toggling Total view (Average vs Sum) for specific habits
-  const [averageMode, setAverageMode] = useState({}); // { habitId: boolean }
+  const [averageMode, setAverageMode] = useState({});
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
@@ -42,13 +40,21 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
   const currentYear = new Date().getFullYear();
   const isCurrentMonth = month === currentMonth && year === currentYear;
 
-  // Auto-scroll logic
+  // Auto-scroll logic updated
   useEffect(() => {
     if (isCurrentMonth && horizontalScrollRef.current) {
-      const scrollX = Math.max(0, (today - 3) * 36); 
+      // 36 - width of day cell. 
+      // We want today to be somewhat centered or at least visible.
+      // Offset = (today index) * width.
+      // Trying to center it: (today * 36) - (screenWidth / 2)
+      // Since we don't know exact screen width inside here easily without Dimensions, 
+      // let's just ensure it's scrolled to "today - 2" to give context.
+      const scrollX = Math.max(0, (today - 2) * 36); 
+      
+      // Increased timeout to ensure layout is done
       setTimeout(() => {
         horizontalScrollRef.current?.scrollTo({ x: scrollX, animated: true });
-      }, 500);
+      }, 800);
     }
   }, [month, year, isCurrentMonth, habits.length]); 
 
@@ -70,14 +76,11 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     return HOLIDAYS_2026[month]?.includes(day) || false;
   };
 
-  // CHECK IF DAY IS ACTIVE FOR HABIT
   const isDayActive = (habit, day) => {
     const date = new Date(year, month - 1, day);
     
-    // 1. Date Range Check
     if (habit.start_date) {
        const start = new Date(habit.start_date);
-       // Reset time for accurate comparison
        start.setHours(0,0,0,0);
        if (date < start) return false;
     }
@@ -87,9 +90,6 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
        if (date > end) return false;
     }
 
-    // 2. Days of Week Check
-    // JS getDay(): 0=Sun, 1=Mon ... 6=Sat
-    // Our DB/UI: 0=Sun, 1=Mon ... 6=Sat (same)
     if (habit.days_of_week && habit.days_of_week.length > 0) {
        const dayIndex = date.getDay();
        if (!habit.days_of_week.includes(dayIndex)) return false;
@@ -115,11 +115,9 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     return 'count';
   };
 
-  // --- INTERACTION ---
-
   const handleCellClick = (habitId, day) => {
     const habit = habits.find((h) => h.id === habitId);
-    if (!isDayActive(habit, day)) return; // Disable click for inactive days
+    if (!isDayActive(habit, day)) return; 
 
     const currentValue = getValue(habitId, day);
     const cellType = getCellType(habit.unit);
@@ -136,63 +134,46 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     }
   };
 
-  // --- STATS CALCULATION ---
-
   const calculateStats = (habit) => {
     const habitRecords = records ? records.filter((r) => r.habitid === habit.id) : [];
     const cellType = getCellType(habit.unit);
     
-    // 1. Calculate Active Days Count (for denominator)
     let activeDaysCount = 0;
     for (let d = 1; d <= daysInMonth; d++) {
        if (isDayActive(habit, d)) activeDaysCount++;
     }
 
-    // 2. Calculate Actuals
     let currentTotal = 0;
     let daysWithData = 0;
 
     habitRecords.forEach(r => {
-      // Only count value if day is active? Or allow "bonus"? Let's count everything for now but plan is based on active.
       const val = (r.value === '✓' || r.value === 'v') ? 1 : (parseFloat(r.value) || 0);
       if (val > 0) {
         currentTotal += val;
-        daysWithData++; // For average calculation
+        daysWithData++; 
       }
     });
 
-    // 3. Logic Branch: Monthly vs Daily Target
     let plan = 0;
     let percent = 0;
 
     if (habit.target_type === 'daily') {
-       // Daily Target Logic
-       // Total Target = Daily Plan * Active Days
        const dailyPlan = habit.plan || 0;
        plan = dailyPlan * activeDaysCount;
-       
-       // Percent is based on Total Target
        percent = plan > 0 ? Math.min(100, Math.round((currentTotal / plan) * 100)) : 0;
-
     } else {
-       // Monthly Target Logic (Default)
        plan = habit.plan || 0;
        percent = plan > 0 ? Math.min(100, Math.round((currentTotal / plan) * 100)) : 0;
     }
 
-    // 4. Formatting Total
     let displayTotal = '';
-    
-    // Check if we are in "Average" mode for this habit
     if (averageMode[habit.id] && cellType !== 'check') {
-       // Average logic
        const divisor = daysWithData > 0 ? daysWithData : 1;
        const avg = currentTotal / divisor;
        displayTotal = cellType === 'time' ? `${avg.toFixed(1)}ч/д` : `${avg.toFixed(1)}/д`;
     } else {
-       // Sum logic
        if (cellType === 'check') {
-         displayTotal = `${currentTotal}`; // Just count of checks
+         displayTotal = `${currentTotal}`; 
        } else if (cellType === 'time') {
          displayTotal = currentTotal >= 1 ? `${Math.floor(currentTotal)}ч` : `${currentTotal.toFixed(1)}ч`;
        } else {
@@ -203,8 +184,6 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     return { total: displayTotal, percent };
   };
 
-  // --- RENDERERS ---
-
   const renderCell = (habit, day) => {
     const isActive = isDayActive(habit, day);
     const value = getValue(habit.id, day);
@@ -213,11 +192,21 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     const isHolidayDay = isHoliday(year, month, day);
     const isWeekendDay = isWeekend(year, month, day);
 
-    // Style for Inactive
+    // Style for Inactive - Darker, striped or clearly disabled
     if (!isActive) {
        return (
-         <View key={`${habit.id}-${day}`} style={[styles.dayCell, { backgroundColor: colors.background, opacity: 0.3, borderRightWidth: 1, borderColor: colors.borderSubtle }]}>
-            {/* Empty or maybe a small dash? */}
+         <View key={`${habit.id}-${day}`} style={[
+            styles.dayCell, 
+            { 
+               backgroundColor: colors.surface, // Use surface color
+               borderRightWidth: 1, 
+               borderColor: colors.borderSubtle 
+            }
+         ]}>
+            {/* Dark Overlay for inactive */}
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: 0.15 }]} />
+            {/* Diagonal line or X */}
+            <Text style={{color: colors.textMuted, fontSize: 10, opacity: 0.3}}>✕</Text>
          </View>
        );
     }
@@ -297,7 +286,6 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     );
   };
 
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[styles.tableContainer, { borderColor: colors.accentBorder }]}>
@@ -375,7 +363,6 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
 
       </View>
 
-      {/* INPUT MODAL (Same as before) */}
       <Modal visible={showInputModal} onClose={() => { setShowInputModal(false); setEditingCell(null); setInputValue(''); }} title="Значение">
         {editingCell && (
           <View style={styles.modalContent}>
