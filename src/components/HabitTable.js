@@ -1,6 +1,6 @@
 // src/components/HabitTable.js
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Alert } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Modal from './Modal';
 import Input from './Input';
@@ -25,24 +25,32 @@ const HOLIDAYS_2026 = {
 const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete, onHabitEdit }) => {
   const { colors } = useTheme();
   const horizontalScrollRef = useRef(null);
+  
+  // Modals state
   const [showInputModal, setShowInputModal] = useState(false);
+  const [showTimerModal, setShowTimerModal] = useState(false);
   const [editingCell, setEditingCell] = useState(null);
   const [inputValue, setInputValue] = useState('');
+  
+  // Stats state
   const [averageMode, setAverageMode] = useState({});
   const [scrollWidth, setScrollWidth] = useState(0);
+
+  // Timer state
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const timerRef = useRef(null);
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const today = new Date().getDate();
   const isCurrentMonth = month === (new Date().getMonth() + 1) && year === new Date().getFullYear();
 
-  // Логика автоскролла
+  // Autoscroll
   useEffect(() => {
     if (isCurrentMonth && horizontalScrollRef.current && scrollWidth > 0) {
-      // Вычисляем центр для текущего дня
       const todayCenter = ((today - 1) * DAY_CELL_WIDTH) + (DAY_CELL_WIDTH / 2);
       const centerOffset = scrollWidth / 2;
-      // Смещаем немного вправо (на 2 колонки), чтобы было виднее
       const scrollX = Math.max(0, todayCenter - centerOffset + (DAY_CELL_WIDTH * 2));
       
       setTimeout(() => {
@@ -51,9 +59,45 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
         } catch (e) {
           console.log('Scroll error', e);
         }
-      }, 500); // Чуть больше задержка
+      }, 500);
     }
   }, [month, year, isCurrentMonth, habits.length, scrollWidth]);
+
+  // Timer logic
+  useEffect(() => {
+    if (isTimerRunning) {
+      timerRef.current = setInterval(() => {
+        setTimerSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [isTimerRunning]);
+
+  const formatTimer = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const saveTimer = () => {
+    setIsTimerRunning(false);
+    setShowTimerModal(false);
+    if (!editingCell) return;
+    
+    // Convert seconds to hours (e.g., 0.5 hours)
+    const hoursToAdd = parseFloat((timerSeconds / 3600).toFixed(2));
+    
+    // Get current value to ADD to it (or just set?)
+    // Usually a timer adds a session. Let's add.
+    const currentValue = getValue(editingCell.habitId, editingCell.day);
+    const newValue = (currentValue || 0) + hoursToAdd;
+    
+    onCellChange(editingCell.habitId, year, month, editingCell.day, newValue);
+    setTimerSeconds(0);
+  };
 
   const getDayOfWeek = (year, month, day) => {
     const DAYS_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
@@ -127,10 +171,41 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
        const divisor = daysWithData > 0 ? daysWithData : 1;
        displayTotal = (currentTotal / divisor).toFixed(1);
     } else {
-       displayTotal = habit.unit === 'Дни' ? currentTotal : Math.round(currentTotal);
+       const isFloat = habit.unit === 'Часы' || (!['Дни', 'Кол-во'].includes(habit.unit) && currentTotal % 1 !== 0);
+       displayTotal = isFloat ? currentTotal.toFixed(1) : Math.round(currentTotal);
     }
 
     return { total: displayTotal, percent };
+  };
+
+  const handleCellTap = (habit, day, currentValue) => {
+    if (habit.unit === 'Дни') {
+        // Toggle checkmark
+        onCellChange(habit.id, year, month, day, currentValue ? 0 : 1);
+    } else if (habit.unit === 'Часы') {
+        // Increment by 1 hour
+        onCellChange(habit.id, year, month, day, (currentValue || 0) + 1);
+    } else {
+        // 'Кол-во' and others: Open input modal directly for number entry
+        setEditingCell({ habitId: habit.id, day });
+        setInputValue(currentValue ? String(currentValue) : '');
+        setShowInputModal(true);
+    }
+  };
+
+  const handleCellLongPress = (habit, day, currentValue) => {
+    setEditingCell({ habitId: habit.id, day });
+    
+    if (habit.unit === 'Часы') {
+        // Open Timer Modal
+        setTimerSeconds(0);
+        setIsTimerRunning(false);
+        setShowTimerModal(true);
+    } else {
+        // Open Input Modal (Manual Edit)
+        setInputValue(currentValue ? String(currentValue) : '');
+        setShowInputModal(true);
+    }
   };
 
   const renderCell = (habit, day) => {
@@ -140,7 +215,6 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     const isWknd = isWeekend(year, month, day);
     const isHol = isHoliday(year, month, day);
 
-    // НЕАКТИВНЫЙ ДЕНЬ
     if (!active) {
       return (
         <View key={`${habit.id}-${day}`} style={[styles.dayCell, { backgroundColor: '#0f172a', borderColor: '#334155' }]}>
@@ -149,14 +223,17 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
       );
     }
 
-    // Обычный день
     let cellBg = 'transparent';
-    // Явная подсветка выходных и праздников
-    if (isHol) cellBg = 'rgba(251, 191, 36, 0.15)'; // Holiday tint stronger
-    else if (isWknd) cellBg = 'rgba(244, 63, 94, 0.1)'; // Weekend tint stronger
+    if (isHol) cellBg = 'rgba(251, 191, 36, 0.15)';
+    else if (isWknd) cellBg = 'rgba(244, 63, 94, 0.1)';
 
-    // Если есть значение - подсвечиваем (зеленым если выполнено, иначе нейтрально)
-    // Но по текущей логике просто показываем значение
+    // Formatting value
+    let displayValue = '';
+    if (value > 0) {
+        if (habit.unit === 'Дни') displayValue = '✓';
+        else if (habit.unit === 'Часы') displayValue = value % 1 === 0 ? value : value.toFixed(1);
+        else displayValue = value;
+    }
     
     return (
       <TouchableOpacity
@@ -164,36 +241,30 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
         style={[
             styles.dayCell, 
             { backgroundColor: cellBg, borderColor: '#334155' },
-            isToday && { borderColor: colors.accent1, borderWidth: 2, zIndex: 10 } // Today needs zIndex to show border on top
+            isToday && { borderColor: colors.accent1, borderWidth: 2, zIndex: 10 }
         ]}
-        onPress={() => onCellChange(habit.id, year, month, day, value ? 0 : (habit.unit === 'Дни' ? 1 : (habit.plan || 1)))}
-        onLongPress={() => {
-          setEditingCell({ habitId: habit.id, day });
-          setInputValue(value ? String(value) : '');
-          setShowInputModal(true);
-        }}
+        onPress={() => handleCellTap(habit, day, value)}
+        onLongPress={() => handleCellLongPress(habit, day, value)}
       >
         <Text style={{ color: colors.textMain, fontWeight: '700', fontSize: 11 }}>
-            {value > 0 ? (habit.unit === 'Дни' ? '✓' : value) : ''}
+            {displayValue}
         </Text>
       </TouchableOpacity>
     );
   };
 
-  // MAIN RENDER
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      {/* Outer Border Container */}
       <View style={[styles.tableBorderWrapper, { borderColor: colors.accent1 }]}>
         <View style={styles.tableContainer}>
           
-          {/* LEFT FIXED COLUMN */}
+          {/* LEFT COLUMN */}
           <View style={[styles.fixedLeft, { backgroundColor: colors.surface, borderRightColor: colors.accentBorder }]}>
             <View style={[styles.headerCell, { height: ROW_HEIGHT, borderBottomColor: colors.accentBorder }]}>
                 <Text style={[styles.headerText, { color: colors.accent1 }]}>ЗАДАЧА</Text>
             </View>
             {habits.map((h, i) => (
-              <Swipeable key={h.id} renderRightActions={(pr, dr) => (
+              <Swipeable key={h.id} renderRightActions={() => (
                 <View style={{ flexDirection: 'row', width: 80 }}>
                   <TouchableOpacity onPress={() => onHabitEdit(h)} style={[styles.swipeBtn, { backgroundColor: colors.accent1 }]}><Text>✎</Text></TouchableOpacity>
                   <TouchableOpacity onPress={() => onHabitDelete(h)} style={[styles.swipeBtn, { backgroundColor: colors.danger1 }]}><Text>🗑️</Text></TouchableOpacity>
@@ -219,27 +290,19 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
                 contentContainerStyle={{ flexGrow: 1 }}
             >
               <View>
-                {/* HEADER ROW */}
                 <View style={[styles.row, { height: ROW_HEIGHT, borderBottomWidth: 2, borderColor: colors.accentBorder }]}>
                   <View style={[styles.columnCell, { borderRightColor: colors.accentBorder }]}><Text style={[styles.headerText, { color: colors.textMain }]}>ЕД.</Text></View>
                   <View style={[styles.columnCell, { borderRightColor: colors.accentBorder }]}><Text style={[styles.headerText, { color: colors.textMain }]}>ПЛАН</Text></View>
                   {days.map(d => {
-                      const isWknd = isWeekend(year, month, d);
-                      const isHol = isHoliday(year, month, d);
                       const isToday = isCurrentMonth && d === today;
                       return (
-                        <View key={d} style={[
-                            styles.dayHeader, 
-                            { borderColor: '#334155', backgroundColor: isToday ? 'rgba(6, 182, 212, 0.2)' : 'transparent' }
-                        ]}>
-                            <Text style={[styles.dayNum, { color: (isWknd || isHol) ? colors.danger1 : colors.textMain }]}>{d}</Text>
+                        <View key={d} style={[styles.dayHeader, { borderColor: '#334155', backgroundColor: isToday ? 'rgba(6, 182, 212, 0.2)' : 'transparent' }]}>
+                            <Text style={[styles.dayNum, { color: (isWeekend(year, month, d) || isHoliday(year, month, d)) ? colors.danger1 : colors.textMain }]}>{d}</Text>
                             <Text style={[styles.dayName, { color: colors.textMuted }]}>{getDayOfWeek(year, month, d)}</Text>
                         </View>
                       );
                   })}
                 </View>
-                
-                {/* DATA ROWS */}
                 {habits.map((h, index) => (
                   <View key={h.id} style={[styles.row, { height: ROW_HEIGHT, borderTopWidth: index > 0 ? 1 : 0, borderTopColor: '#334155' }]}>
                     <View style={[styles.columnCell, { borderRightColor: colors.accentBorder }]}><Text style={[styles.cellText, { color: colors.textMain }]}>{h.unit}</Text></View>
@@ -251,7 +314,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
             </ScrollView>
           </View>
 
-          {/* RIGHT FIXED COLUMN */}
+          {/* RIGHT COLUMN */}
           <View style={[styles.fixedRight, { backgroundColor: colors.surface, borderLeftColor: colors.accentBorder }]}>
             <View style={[styles.headerCell, { height: ROW_HEIGHT, borderBottomColor: colors.accentBorder }]}>
                 <Text style={[styles.headerText, { color: colors.textMain }]}>ИТОГ</Text>
@@ -269,20 +332,70 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
         </View>
       </View>
 
+      {/* INPUT MODAL */}
       <Modal visible={showInputModal} onClose={() => setShowInputModal(false)} title="Значение">
         {editingCell && (
           <View style={{ padding: 20 }}>
             <Input value={inputValue} onChangeText={setInputValue} keyboardType="numeric" autoFocus />
-            <Button title="Ок" onPress={() => { onCellChange(editingCell.habitId, year, month, editingCell.day, parseFloat(inputValue)||0); setShowInputModal(false); }} />
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                <Button 
+                    title="Очистить" 
+                    variant="outline" 
+                    style={{ flex: 1, borderColor: colors.danger1 }} 
+                    textStyle={{ color: colors.danger1 }}
+                    onPress={() => { onCellChange(editingCell.habitId, year, month, editingCell.day, 0); setShowInputModal(false); }} 
+                />
+                <Button 
+                    title="Сохранить" 
+                    style={{ flex: 1 }} 
+                    onPress={() => { onCellChange(editingCell.habitId, year, month, editingCell.day, parseFloat(inputValue)||0); setShowInputModal(false); }} 
+                />
+            </View>
           </View>
         )}
       </Modal>
+
+      {/* TIMER MODAL */}
+      <Modal visible={showTimerModal} onClose={() => setShowTimerModal(false)} title="Таймер">
+        <View style={{ padding: 20, alignItems: 'center' }}>
+            <Text style={{ fontSize: 48, fontWeight: 'bold', color: colors.accent1, fontFamily: 'monospace', marginBottom: 30 }}>
+                {formatTimer(timerSeconds)}
+            </Text>
+            
+            <View style={{ flexDirection: 'row', gap: 16, marginBottom: 20 }}>
+                <TouchableOpacity 
+                    onPress={() => setIsTimerRunning(!isTimerRunning)} 
+                    style={{ 
+                        backgroundColor: isTimerRunning ? colors.surface : colors.accent1, 
+                        paddingVertical: 12, paddingHorizontal: 24, borderRadius: 30, borderWidth: 1, borderColor: colors.accent1 
+                    }}
+                >
+                    <Text style={{ color: isTimerRunning ? colors.accent1 : '#020617', fontWeight: 'bold', fontSize: 16 }}>
+                        {isTimerRunning ? "ПАУЗА" : "СТАРТ"}
+                    </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                    onPress={() => { setIsTimerRunning(false); setTimerSeconds(0); }} 
+                    style={{ backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 30, borderWidth: 1, borderColor: colors.borderSubtle }}
+                >
+                    <Text style={{ color: colors.textMain, fontWeight: 'bold', fontSize: 16 }}>СБРОС</Text>
+                </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                <Button title="Отмена" variant="outline" style={{ flex: 1 }} onPress={() => setShowTimerModal(false)} />
+                <Button title="Сохранить" style={{ flex: 1 }} onPress={saveTimer} />
+            </View>
+        </View>
+      </Modal>
+
     </GestureHandlerRootView>
   );
 };
 
 const styles = StyleSheet.create({
-  tableBorderWrapper: { borderWidth: 2, borderRadius: 12, overflow: 'hidden' }, // NEW: Wrapper for outer border
+  tableBorderWrapper: { borderWidth: 2, borderRadius: 12, overflow: 'hidden' },
   tableContainer: { flexDirection: 'row', backgroundColor: '#020617' },
   fixedLeft: { width: FIXED_LEFT_WIDTH, zIndex: 20, borderRightWidth: 2 },
   fixedRight: { width: FIXED_RIGHT_WIDTH, zIndex: 20, borderLeftWidth: 2 },
