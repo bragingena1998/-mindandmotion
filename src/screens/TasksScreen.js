@@ -254,6 +254,7 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
     
     // --- ПРОВЕРКА НА СТАРЫЕ ЗАДАЧИ (> 7 дней просрочки) ---
     // Выполняем 1 раз при первой загрузке (когда loading был true)
+    // FIX: Убрали лишнее условие, теперь вызываем всегда при первой загрузке
     if (loading) {
        checkOverdueTasks(formattedTasks);
     }
@@ -271,14 +272,17 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
   // Проверка просроченных задач
   const checkOverdueTasks = async (allTasks) => {
     try {
-      const lastCheckStr = await AsyncStorage.getItem('lastOverdueCheckDate');
+      // ДЛЯ ТЕСТА: Закомментируй проверку даты, чтобы модалка вылезала всегда
+      // const lastCheckStr = await AsyncStorage.getItem('lastOverdueCheckDate');
       const todayStr = new Date().toISOString().split('T')[0];
 
       // Если сегодня уже проверяли - не показываем
+      /*
       if (lastCheckStr === todayStr) {
         console.log('✅ Проверка просроченных задач уже была сегодня');
         return;
       }
+      */
 
       // Фильтруем задачи: не выполненные И просроченные > 7 дней
       const oneWeekAgo = new Date();
@@ -287,10 +291,16 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
 
       const oldTasks = allTasks.filter(t => {
         if (t.completed) return false;
-        const deadline = t.deadline ? t.deadline.split('T')[0] : (t.date ? t.date.split('T')[0] : null);
-        // Если deadline < (сегодня - 7 дней)
-        return deadline && deadline < oneWeekAgoStr;
+        
+        // FIX: Берем deadline, если его нет - берем date (дата создания/начала)
+        // Логика: если задача создана > 7 дней назад и не выполнена - она старая
+        const taskDate = t.deadline ? t.deadline.split('T')[0] : (t.date ? t.date.split('T')[0] : null);
+        
+        // Если taskDate < (сегодня - 7 дней)
+        return taskDate && taskDate < oneWeekAgoStr;
       });
+
+      console.log(`🔍 Проверка просрочки: ${oldTasks.length} задач найдено (порог: ${oneWeekAgoStr})`);
 
       if (oldTasks.length > 0) {
         console.log(`🔥 Найдено ${oldTasks.length} старых задач! Показываем модалку.`);
@@ -771,7 +781,7 @@ const renderTask = ({ item }) => {
             borderWidth: 2, // Всегда жирная рамка
             opacity: item.completed ? 0.6 : 1,
             marginBottom: 0,
-            borderRadius: 0, 
+            borderRadius: 12, // ВЕРНУЛ СКРУГЛЕНИЕ!
           },
           item.completed && styles.taskCompleted,
         ]}
@@ -862,7 +872,8 @@ const renderTask = ({ item }) => {
         {/* Стрелочка раскрытия */}
         <View style={{ paddingLeft: 8, justifyContent: 'center' }}>
           <Text style={{ fontSize: 12, color: colors.textMuted }}>
-            {isExpanded ? '▲' : '▼'}\n          </Text>
+            {isExpanded ? '▲' : '▼'}
+          </Text>
         </View>
 
       </TouchableOpacity>
