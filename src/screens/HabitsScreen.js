@@ -20,7 +20,6 @@ import DatePicker from '../components/DatePicker';
 import ReorderHabitsModal from '../components/ReorderHabitsModal';
 import MonthPickerModal from '../components/MonthPickerModal';
 
-// Helper to format Date -> "YYYY-MM-DD"
 const formatDateISO = (date) => {
   if (!date) return null;
   const d = new Date(date);
@@ -102,11 +101,9 @@ const HabitsScreen = () => {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [records, setRecords] = useState([]);
   
-  // Modals
   const [showDateModal, setShowDateModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
   
-  // Edit/Add Modal State
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabitId, setEditingHabitId] = useState(null);
   const [habitForm, setHabitForm] = useState({
@@ -114,8 +111,8 @@ const HabitsScreen = () => {
     unit: 'Дни',
     plan: '',
     targetType: 'monthly',
-    startDate: null, // String YYYY-MM-DD
-    endDate: null,   // String YYYY-MM-DD
+    startDate: null, 
+    endDate: null,   
     daysOfWeek: [],
   });
   const [showCustomUnit, setShowCustomUnit] = useState(false);
@@ -123,7 +120,6 @@ const HabitsScreen = () => {
 
   useEffect(() => {
     loadProfile();
-    loadHabits();
   }, []);
 
   useEffect(() => {
@@ -136,12 +132,6 @@ const HabitsScreen = () => {
     }
   }, [habits, year, month]);
 
-  useFocusEffect(
-    useCallback(() => {
-       // Optional refresh logic
-    }, [])
-  );
-
   const loadProfile = async () => {
     try {
       const response = await api.get('/user/profile');
@@ -153,11 +143,7 @@ const HabitsScreen = () => {
   };
 
   const calculateLifeProgress = (birthdate, gender = 'male') => {
-    if (!birthdate) {
-      setLifeProgress({ percent: 0, yearsLived: 0, yearsLeft: 64 });
-      setYearProgress({ percent: 0, daysPassed: 0, daysLeft: 365 });
-      return;
-    }
+    if (!birthdate) return;
     const today = new Date();
     const birth = new Date(birthdate);
     const lifeExpectancy = gender === 'female' ? 78.5 : 67.0;
@@ -220,19 +206,10 @@ const HabitsScreen = () => {
     }
   };
 
-  const confirmDeleteHabit = (habit) => {
-    setHabitToDelete(habit);
-  };
-
   const executeDelete = async () => {
     if (!habitToDelete) return;
     const habitId = habitToDelete.id;
     try {
-      const habitRecords = records.filter(r => r.habitid === habitId);
-      const deletePromises = habitRecords.map(r => 
-         api.delete(`/habits/records/${habitId}/${r.year}/${r.month}/${r.day}`).catch(e => {})
-      );
-      await Promise.all(deletePromises);
       await api.delete(`/habits/${habitId}?year=${year}&month=${month}`);
       setHabits(habits.filter(h => h.id !== habitId));
       setRecords(records.filter(r => r.habitid !== habitId));
@@ -245,20 +222,17 @@ const HabitsScreen = () => {
 
   const openHabitModal = (habit = null) => {
     if (habit) {
-      // Edit Mode
       setEditingHabitId(habit.id);
       setHabitForm({
         name: habit.name,
         unit: habit.unit,
         plan: habit.plan,
         targetType: habit.target_type || 'monthly',
-        // FIX: Convert Date/String to YYYY-MM-DD string safely
         startDate: formatDateISO(habit.start_date),
         endDate: formatDateISO(habit.end_date),
         daysOfWeek: habit.days_of_week || []
       });
     } else {
-      // Create Mode
       setEditingHabitId(null);
       setHabitForm({
         name: '', unit: 'Дни', plan: '', targetType: 'monthly', startDate: null, endDate: null, daysOfWeek: []
@@ -273,21 +247,22 @@ const HabitsScreen = () => {
      
      const planValue = habitForm.plan === '' ? 1 : parseInt(habitForm.plan) || 1;
      
+     // IMPORTANT: Backend must handle these fields in PUT and POST
      const payload = {
        name: habitForm.name,
        unit: habitForm.unit,
        plan: planValue,
        year, month,
        target_type: habitForm.targetType,
-       start_date: habitForm.startDate, // Already string YYYY-MM-DD
-       end_date: habitForm.endDate,     // Already string YYYY-MM-DD
+       start_date: habitForm.startDate, 
+       end_date: habitForm.endDate,     
        days_of_week: habitForm.daysOfWeek
      };
 
      try {
        if (editingHabitId) {
          await api.put(`/habits/${editingHabitId}`, payload);
-         setHabits(habits.map(h => h.id === editingHabitId ? { ...h, ...payload, id: editingHabitId } : h));
+         setHabits(habits.map(h => h.id === editingHabitId ? { ...h, ...payload } : h));
        } else {
          const response = await api.post('/habits', payload);
          setHabits([...habits, response.data]);
@@ -319,14 +294,11 @@ const HabitsScreen = () => {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-      
-      {/* HEADER SECTION */}
       <View style={styles.section}>
          <Text style={{ textAlign: 'center', color: colors.textMuted, fontStyle: 'italic', marginBottom: 16 }}>
            "{quotes[Math.floor(yearProgress.daysPassed % quotes.length)]}"
          </Text>
 
-         {/* TODAY CARD */}
          {year === today.getFullYear() && month === (today.getMonth() + 1) && (
            <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -339,28 +311,18 @@ const HabitsScreen = () => {
            </View>
          )}
 
-         {/* LIFE CARD - RESTORED LABELS */}
          <View style={[styles.lifeCard, { backgroundColor: 'rgba(148, 163, 184, 0.05)', borderColor: colors.borderSubtle }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                <Text style={[styles.cardTitle, { color: colors.textMain }]}>ВРЕМЯ</Text>
                <Text style={{ fontSize: 10, color: colors.textMuted }}>MEMENTO MORI</Text>
             </View>
             <View style={{ gap: 12 }}>
-               <LifeProgressBar 
-                  label={`ПРОЖИТО: ${profile?.gender === 'female' ? 'Ж' : 'М'} / ${lifeProgress.yearsLived} ЛЕТ`} 
-                  value={lifeProgress.percent} 
-                  color={colors.danger1} 
-               />
-               <LifeProgressBar 
-                  label={`ГОД: ОСТАЛОСЬ ${yearProgress.daysLeft} ДН.`} 
-                  value={yearProgress.percent} 
-                  color={colors.accent1} 
-               />
+               <LifeProgressBar label={`ПРОЖИТО: ${profile?.gender === 'female' ? 'Ж' : 'М'} / ${lifeProgress.yearsLived} ЛЕТ`} value={lifeProgress.percent} color={colors.danger1} />
+               <LifeProgressBar label={`ГОД: ОСТАЛОСЬ ${yearProgress.daysLeft} ДН.`} value={yearProgress.percent} color={colors.accent1} />
             </View>
          </View>
       </View>
 
-      {/* HABITS TABLE SECTION */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
            <TouchableOpacity onPress={() => setShowDateModal(true)}>
@@ -382,9 +344,7 @@ const HabitsScreen = () => {
         </View>
 
         {habits.length === 0 ? (
-          <View style={[styles.placeholder, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-             <Text style={{ color: colors.textMuted }}>Нет привычек</Text>
-          </View>
+          <View style={[styles.placeholder, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}><Text style={{ color: colors.textMuted }}>Нет привычек</Text></View>
         ) : (
           <HabitTable
             habits={habits}
@@ -398,87 +358,56 @@ const HabitsScreen = () => {
         )}
       </View>
 
-      {/* MODALS */}
       <ReorderHabitsModal visible={showReorderModal} habits={habits} onClose={() => setShowReorderModal(false)} onSave={handleReorderSave} />
       <MonthPickerModal visible={showDateModal} selectedYear={year} selectedMonth={month} onClose={() => setShowDateModal(false)} onSelect={(y, m) => { setYear(y); setMonth(m); }} />
 
-      <Modal
-        visible={showHabitModal}
-        onClose={() => { setShowHabitModal(false); setShowCustomUnit(false); }}
-        title={editingHabitId ? "Редактировать" : "Новая привычка"}
-      >
-        <Input label="Название" placeholder="Например: Чтение" value={habitForm.name} onChangeText={t => setHabitForm({...habitForm, name: t})} />
-        
+      <Modal visible={showHabitModal} onClose={() => { setShowHabitModal(false); setShowCustomUnit(false); }} title={editingHabitId ? \"Редактировать\" : \"Новая привычка\"}>
+        <Input label=\"Название\" placeholder=\"Например: Чтение\" value={habitForm.name} onChangeText={t => setHabitForm({...habitForm, name: t})} />
         <View style={{ marginBottom: 16 }}>
            <Text style={[styles.formLabel, { color: colors.textMain }]}>Тип цели</Text>
            <View style={{ flexDirection: 'row', gap: 8 }}>
               {['daily', 'monthly'].map(type => (
-                <TouchableOpacity 
-                   key={type}
-                   onPress={() => setHabitForm({...habitForm, targetType: type})}
-                   style={[styles.unitButtonSmall, { flex: 1, backgroundColor: habitForm.targetType === type ? colors.accent1 : colors.surface }]}
-                >
-                   <Text style={{ color: habitForm.targetType === type ? '#020617' : colors.textMain, fontWeight: '600' }}>
-                      {type === 'daily' ? 'В день' : 'В месяц'}
-                   </Text>
+                <TouchableOpacity key={type} onPress={() => setHabitForm({...habitForm, targetType: type})} style={[styles.unitButtonSmall, { flex: 1, backgroundColor: habitForm.targetType === type ? colors.accent1 : colors.surface }]}>
+                   <Text style={{ color: habitForm.targetType === type ? '#020617' : colors.textMain, fontWeight: '600' }}>{type === 'daily' ? 'В день' : 'В месяц'}</Text>
                 </TouchableOpacity>
               ))}
            </View>
         </View>
-
         <View style={{ marginBottom: 16, flexDirection: 'row', gap: 12 }}>
-           <View style={{ flex: 1 }}><DatePicker label="Начало" value={habitForm.startDate} onChangeDate={d => setHabitForm({...habitForm, startDate: d})} /></View>
-           <View style={{ flex: 1 }}><DatePicker label="Конец" value={habitForm.endDate} onChangeDate={d => setHabitForm({...habitForm, endDate: d})} /></View>
+           <View style={{ flex: 1 }}><DatePicker label=\"Начало\" value={habitForm.startDate} onChangeDate={d => setHabitForm({...habitForm, startDate: d})} /></View>
+           <View style={{ flex: 1 }}><DatePicker label=\"Конец\" value={habitForm.endDate} onChangeDate={d => setHabitForm({...habitForm, endDate: d})} /></View>
         </View>
-
         <View style={{ marginBottom: 16 }}>
            <Text style={[styles.formLabel, { color: colors.textMain }]}>Дни недели (если пусто = все)</Text>
            <DaysSelector selectedDays={habitForm.daysOfWeek} onSelect={d => setHabitForm({...habitForm, daysOfWeek: d})} />
         </View>
-
         <View style={{ marginBottom: 16 }}>
            <Text style={[styles.formLabel, { color: colors.textMain }]}>Единица и План</Text>
            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
               {['Дни', 'Часы', 'Кол-во'].map(u => (
-                 <TouchableOpacity 
-                   key={u}
-                   style={[styles.unitButtonSmall, { backgroundColor: habitForm.unit === u && !showCustomUnit ? colors.accent1 : colors.surface }]}
-                   onPress={() => { setHabitForm({...habitForm, unit: u}); setShowCustomUnit(false); }}
-                 >
+                 <TouchableOpacity key={u} style={[styles.unitButtonSmall, { backgroundColor: habitForm.unit === u && !showCustomUnit ? colors.accent1 : colors.surface }]} onPress={() => { setHabitForm({...habitForm, unit: u}); setShowCustomUnit(false); }}>
                     <Text style={{ color: habitForm.unit === u && !showCustomUnit ? '#020617' : colors.textMain }}>{u}</Text>
                  </TouchableOpacity>
               ))}
-              <TouchableOpacity 
-                style={[styles.unitButtonSmall, { backgroundColor: showCustomUnit ? colors.accent1 : colors.surface }]}
-                onPress={() => { setShowCustomUnit(true); setHabitForm({...habitForm, unit: ''}); }}
-              >
+              <TouchableOpacity style={[styles.unitButtonSmall, { backgroundColor: showCustomUnit ? colors.accent1 : colors.surface }]} onPress={() => { setShowCustomUnit(true); setHabitForm({...habitForm, unit: ''}); }}>
                  <Text style={{ color: showCustomUnit ? '#020617' : colors.textMain }}>Другое...</Text>
               </TouchableOpacity>
            </View>
-           {showCustomUnit && <Input placeholder="Своя единица" value={habitForm.unit} onChangeText={t => setHabitForm({...habitForm, unit: t})} />}
-           <Input placeholder="Число (План)" value={String(habitForm.plan)} onChangeText={t => setHabitForm({...habitForm, plan: t.replace(/[^0-9]/g, '')})} keyboardType="numeric" />
+           {showCustomUnit && <Input placeholder=\"Своя единица\" value={habitForm.unit} onChangeText={t => setHabitForm({...habitForm, unit: t})} />}
+           <Input placeholder=\"Число (План)\" value={String(habitForm.plan)} onChangeText={t => setHabitForm({...habitForm, plan: t.replace(/[^0-9]/g, '')})} keyboardType=\"numeric\" />
         </View>
-
-        <Button title="Сохранить" onPress={saveHabit} />
+        <Button title=\"Сохранить\" onPress={saveHabit} />
       </Modal>
 
-      <Modal
-         visible={!!habitToDelete}
-         onClose={() => setHabitToDelete(null)}
-         title="Удалить привычку?"
-      >
+      <Modal visible={!!habitToDelete} onClose={() => setHabitToDelete(null)} title=\"Удалить привычку?\">
          <View style={{ padding: 10 }}>
-            <Text style={{ color: colors.textMain, marginBottom: 20, textAlign: 'center' }}>
-               Вы уверены, что хотите удалить "{habitToDelete?.name}"?{'\n'}
-               Все данные и статистика будут потеряны навсегда.
-            </Text>
+            <Text style={{ color: colors.textMain, marginBottom: 20, textAlign: 'center' }}>Вы уверены, что хотите удалить \"{habitToDelete?.name}\"?{'\n'}Все данные будут потеряны.</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-               <Button title="Отмена" variant="outline" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
-               <Button title="Удалить" onPress={executeDelete} style={{ flex: 1, backgroundColor: colors.danger1 }} />
+               <Button title=\"Отмена\" variant=\"outline\" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
+               <Button title=\"Удалить\" onPress={executeDelete} style={{ flex: 1, backgroundColor: colors.danger1 }} />
             </View>
          </View>
       </Modal>
-
     </ScrollView>
   );
 };
@@ -503,8 +432,6 @@ const styles = StyleSheet.create({
   placeholder: { padding: 32, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
   formLabel: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
   unitButtonSmall: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', minWidth: 60, borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.1)' },
-  
-  // Days Selector
   daysSelectorContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   dayCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   dayCircleText: { fontSize: 12, fontWeight: '600' }
