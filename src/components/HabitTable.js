@@ -90,8 +90,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     // Convert seconds to hours (e.g., 0.5 hours)
     const hoursToAdd = parseFloat((timerSeconds / 3600).toFixed(2));
     
-    // Get current value to ADD to it (or just set?)
-    // Usually a timer adds a session. Let's add.
+    // Get current value to ADD to it
     const currentValue = getValue(editingCell.habitId, editingCell.day);
     const newValue = (currentValue || 0) + hoursToAdd;
     
@@ -179,17 +178,27 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
   };
 
   const handleCellTap = (habit, day, currentValue) => {
+    // 1. Дни (Days) - Toggle checkmark
     if (habit.unit === 'Дни') {
-        // Toggle checkmark
         onCellChange(habit.id, year, month, day, currentValue ? 0 : 1);
-    } else if (habit.unit === 'Часы') {
-        // Increment by 1 hour
+        return;
+    } 
+    
+    // 2. Часы (Hours) - Increment by 1
+    if (habit.unit === 'Часы') {
         onCellChange(habit.id, year, month, day, (currentValue || 0) + 1);
+        return;
+    }
+
+    // 3. Остальное (Quantity/Others)
+    if (habit.target_type === 'daily') {
+        // Daily target: Quick tap sets value to Plan (toggle to 0 if already met)
+        const plan = habit.plan || 1;
+        const newValue = (currentValue >= plan) ? 0 : plan;
+        onCellChange(habit.id, year, month, day, newValue);
     } else {
-        // 'Кол-во' and others: Open input modal directly for number entry
-        setEditingCell({ habitId: habit.id, day });
-        setInputValue(currentValue ? String(currentValue) : '');
-        setShowInputModal(true);
+        // Monthly target: Quick tap adds +1
+        onCellChange(habit.id, year, month, day, (currentValue || 0) + 1);
     }
   };
 
@@ -202,7 +211,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
         setIsTimerRunning(false);
         setShowTimerModal(true);
     } else {
-        // Open Input Modal (Manual Edit)
+        // Open Input Modal (Manual Edit) for Days, Quantity, etc.
         setInputValue(currentValue ? String(currentValue) : '');
         setShowInputModal(true);
     }
