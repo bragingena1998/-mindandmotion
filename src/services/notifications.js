@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 
 // Конфигурация: как показывать уведомления, когда приложение открыто
 Notifications.setNotificationHandler({
@@ -12,20 +12,25 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Регистрация и получение токена (для пушей с сервера) или просто прав (для локальных)
+// Регистрация и получение токена
 export async function registerForPushNotificationsAsync() {
   let token;
 
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
-    });
+  if (!Device.isDevice) {
+    console.log('Must use physical device for Push Notifications');
+    return;
   }
 
-  if (Device.isDevice) {
+  try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     
@@ -39,69 +44,85 @@ export async function registerForPushNotificationsAsync() {
       return;
     }
     
-    // Получаем токен, если бы мы хотели слать с сервера. 
-    // Для локальных уведомлений токен не обязателен, но права нужны.
+    // Пытаемся получить токен, но безопасно
+    // В Expo Go это работает, в Development Build тоже, но иногда бывают сбои
     try {
-        token = (await Notifications.getExpoPushTokenAsync({
-            projectId: Constants.expoConfig.extra.eas.projectId,
-        })).data;
+        const projectId = Constants?.expoConfig?.extra?.eas?.projectId || Constants?.easConfig?.projectId;
+        if (projectId) {
+            token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        } else {
+             // Если нет ID проекта, токен не получим, но локальные уведомления работать БУДУТ
+             console.log('Project ID not found, skipping push token generation');
+        }
     } catch(e) {
-        // console.log(e);
+        console.log('Error fetching push token:', e);
     }
-  } else {
-    console.log('Must use physical device for Push Notifications');
+  } catch (error) {
+    console.log('Error in registerForPushNotificationsAsync:', error);
   }
 
   return token;
 }
 
-// Отправка тестового уведомления прямо сейчас
+// Отправка тестового уведомления
 export async function sendTestNotification() {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "Mind & Motion 🚀",
-      body: "Это тестовое уведомление! Система работает отлично.",
-      sound: true,
-    },
-    trigger: null, // null = отправить сейчас
-  });
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Mind & Motion 🚀",
+        body: "Это тестовое уведомление! Система работает отлично.",
+        sound: true,
+      },
+      trigger: null,
+    });
+    Alert.alert("Успех", "Уведомление отправлено! Если не пришло - проверьте шторку.");
+  } catch (error) {
+    Alert.alert("Ошибка", "Не удалось отправить уведомление. Возможно, нет прав.");
+    console.log(error);
+  }
 }
 
-// Планирование ежедневного утреннего брифинга (9:00)
+// Планирование ежедневных уведомлений
 export async function scheduleMorningNotification() {
-  // Сначала отменим старые, чтобы не дублировать
-  await cancelAllNotifications();
+  try {
+    await cancelAllNotifications();
 
-  // Утро 9:00
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "Доброе утро! ☀️",
-      body: "Посмотри свой план на сегодня. Время побеждать!",
-      sound: true,
-    },
-    trigger: {
-      hour: 9,
-      minute: 0,
-      repeats: true,
-    },
-  });
+    // Утро 9:00
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Доброе утро! ☀️",
+        body: "Посмотри свой план на сегодня. Время побеждать!",
+        sound: true,
+      },
+      trigger: {
+        hour: 9,
+        minute: 0,
+        repeats: true,
+      },
+    });
 
-  // Вечер 20:00 - напоминание
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "Как успехи? 👀",
-      body: "Не забудь отметить выполненные привычки и задачи!",
-      sound: true,
-    },
-    trigger: {
-      hour: 20,
-      minute: 0,
-      repeats: true,
-    },
-  });
+    // Вечер 20:00
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Как успехи? 👀",
+        body: "Не забудь отметить выполненные привычки и задачи!",
+        sound: true,
+      },
+      trigger: {
+        hour: 20,
+        minute: 0,
+        repeats: true,
+      },
+    });
+  } catch (error) {
+    console.log('Error scheduling notifications:', error);
+  }
 }
 
-// Отмена всех запланированных (полезно при логауте или изменении настроек)
 export async function cancelAllNotifications() {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch (error) {
+    console.log('Error canceling notifications:', error);
+  }
 }
