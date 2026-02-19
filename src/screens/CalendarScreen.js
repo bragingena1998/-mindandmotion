@@ -20,8 +20,9 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CELL_WIDTH = (SCREEN_WIDTH - 40) / 7; // Увеличили отступы
-const CELL_HEIGHT = 95; // Чуть выше ячейка
+const PADDING_HORIZONTAL = 16; // Стандартный отступ по бокам
+const CELL_WIDTH = (SCREEN_WIDTH - (PADDING_HORIZONTAL * 2)) / 7; // Точный расчет ширины одной ячейки
+const CELL_HEIGHT = 90;
 
 const MONTHS = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -31,26 +32,25 @@ const MONTHS = [
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 const HOLIDAYS_2026 = {
-  0: [1, 2, 3, 4, 5, 6, 7, 8], // Январь (месяц 0)
-  1: [23], // Февраль
-  2: [8], // Март
-  4: [1, 9], // Май
-  5: [12], // Июнь
-  10: [4], // Ноябрь
+  0: [1, 2, 3, 4, 5, 6, 7, 8],
+  1: [23],
+  2: [8],
+  4: [1, 9],
+  5: [12],
+  10: [4],
 };
 
 const CalendarScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth()); // 0-11
+  const [month, setMonth] = useState(new Date().getMonth());
   
   const [tasks, setTasks] = useState([]);
   const [habitRecords, setHabitRecords] = useState([]);
   const [habitsCount, setHabitsCount] = useState(0);
   const [birthdays, setBirthdays] = useState([]);
 
-  // Modal states
   const [showBirthdayModal, setShowBirthdayModal] = useState(false);
   const [birthdayForm, setBirthdayForm] = useState({ name: '', day: '', month: '' });
   
@@ -65,9 +65,7 @@ const CalendarScreen = ({ navigation }) => {
   const loadData = async () => {
     try {
       setLoading(true);
-      
       const mApi = month + 1;
-      
       const [tasksRes, recordsRes, habitsRes, birthdaysRes] = await Promise.all([
         api.get(`/tasks?year=${year}&month=${month}`),
         api.get(`/habits/records/${year}/${mApi}`),
@@ -79,7 +77,6 @@ const CalendarScreen = ({ navigation }) => {
       setHabitRecords(recordsRes.data);
       setHabitsCount(habitsRes.data.filter(h => h.shouldShow !== false).length);
       setBirthdays(birthdaysRes.data);
-
     } catch (e) {
       console.error(e);
     } finally {
@@ -116,22 +113,17 @@ const CalendarScreen = ({ navigation }) => {
 
   const getDayData = (d) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    
     const dayTasks = tasks.filter(t => {
       if (t.done) return t.done_date && t.done_date.startsWith(dateStr);
       return t.date === dateStr;
     });
     const doneTasks = dayTasks.filter(t => t.done).length;
     const totalTasks = dayTasks.length;
-    
     const dayRecords = habitRecords.filter(r => r.day === d && (r.value === '✓' || r.value > 0));
     const doneHabits = dayRecords.length;
-    
     const dayBirthdays = birthdays.filter(b => b.day === d && b.month === (month + 1));
-
     const allTasksDone = totalTasks > 0 && doneTasks === totalTasks;
     const goodHabitsProgress = habitsCount > 0 && doneHabits >= (habitsCount * 0.8);
-
     return { dayTasks, doneTasks, totalTasks, doneHabits, dayBirthdays, allTasksDone, goodHabitsProgress };
   };
 
@@ -144,29 +136,31 @@ const CalendarScreen = ({ navigation }) => {
     setYear(newY);
   };
 
-  // SWIPE GESTURE
+  // SWIPE GESTURE FIX: .runOnJS(true)
   const swipeGesture = Gesture.Pan()
+    .runOnJS(true) // ВАЖНО: Разрешает выполнение JS-кода (changeMonth)
     .onEnd((event) => {
-      if (event.translationX > 100) {
-        // Swipe RIGHT → Previous Month
+      if (event.translationX > 50) { // Чуть уменьшил порог для легкости
         changeMonth(-1);
-      } else if (event.translationX < -100) {
-        // Swipe LEFT → Next Month
+      } else if (event.translationX < -50) {
         changeMonth(1);
       }
     });
 
-  // Render Grid
   const renderCalendar = () => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    // getDay(): 0=Sun, 1=Mon...
     const firstDayDow = new Date(year, month, 1).getDay();
+    // Convert to Mon=0 ... Sun=6
     const startOffset = firstDayDow === 0 ? 6 : firstDayDow - 1;
     
     const grid = [];
+    // Empty cells
     for (let i = 0; i < startOffset; i++) {
       grid.push(<View key={`empty-${i}`} style={{ width: CELL_WIDTH, height: CELL_HEIGHT }} />);
     }
 
+    // Days
     for (let d = 1; d <= daysInMonth; d++) {
       const { doneTasks, totalTasks, doneHabits, dayBirthdays, allTasksDone, goodHabitsProgress } = getDayData(d);
       const isWeekend = (new Date(year, month, d).getDay() % 6 === 0);
@@ -174,60 +168,47 @@ const CalendarScreen = ({ navigation }) => {
       const isToday = d === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
 
       grid.push(
-        <TouchableOpacity 
-          key={d} 
-          style={[
-            styles.cell, 
-            { 
-              width: CELL_WIDTH, 
-              height: CELL_HEIGHT,
-              backgroundColor: isHoliday ? 'rgba(251, 191, 36, 0.15)' : (isWeekend ? 'rgba(244, 63, 94, 0.08)' : colors.surface),
-              borderColor: isToday ? colors.accent1 : colors.borderSubtle,
-              borderWidth: isToday ? 2 : 1
-            }
-          ]}
-          onPress={() => setSelectedDay(d)}
-        >
-          {/* DAY NUMBER */}
-          <Text style={[styles.dayNum, { color: (isHoliday || isWeekend) ? colors.danger1 : colors.textMain }]}>{d}</Text>
-          
-          {/* INDICATORS */}
-          <View style={styles.indicators}>
-            {/* TASKS */}
-            {totalTasks > 0 && (
-              <View style={styles.indicatorRow}>
-                <Feather name="check-square" size={11} color={allTasksDone ? colors.accent1 : colors.textMuted} />
-                <Text style={[styles.indicatorText, { color: allTasksDone ? colors.accent1 : colors.textMain }]}>
-                  {doneTasks}/{totalTasks}
-                </Text>
-              </View>
-            )}
+        <View key={d} style={{ width: CELL_WIDTH, height: CELL_HEIGHT, padding: 2 }}> 
+          <TouchableOpacity 
+            style={[
+              styles.cellInner, 
+              { 
+                backgroundColor: isHoliday ? 'rgba(251, 191, 36, 0.15)' : (isWeekend ? 'rgba(244, 63, 94, 0.08)' : colors.surface),
+                borderColor: isToday ? colors.accent1 : colors.borderSubtle,
+                borderWidth: isToday ? 2 : 1
+              }
+            ]}
+            onPress={() => setSelectedDay(d)}
+          >
+            <Text style={[styles.dayNum, { color: (isHoliday || isWeekend) ? colors.danger1 : colors.textMain }]}>{d}</Text>
+            
+            <View style={styles.indicators}>
+              {totalTasks > 0 && (
+                <View style={styles.indicatorRow}>
+                  <Feather name="check-square" size={10} color={allTasksDone ? colors.accent1 : colors.textMuted} />
+                  <Text style={[styles.indicatorText, { color: allTasksDone ? colors.accent1 : colors.textMain }]}>{doneTasks}/{totalTasks}</Text>
+                </View>
+              )}
+              {doneHabits > 0 && (
+                <View style={styles.indicatorRow}>
+                  <Feather name="zap" size={10} color={goodHabitsProgress ? '#fbbf24' : colors.textMuted} />
+                  <Text style={[styles.indicatorText, { color: goodHabitsProgress ? '#fbbf24' : colors.textMain }]}>{doneHabits}</Text>
+                </View>
+              )}
+              {dayBirthdays.length > 0 && (
+                <View style={styles.indicatorRow}>
+                  <Feather name="gift" size={10} color="#f472b6" />
+                </View>
+              )}
+            </View>
 
-            {/* HABITS */}
-            {doneHabits > 0 && (
-              <View style={styles.indicatorRow}>
-                <Feather name="zap" size={11} color={goodHabitsProgress ? '#fbbf24' : colors.textMuted} />
-                <Text style={[styles.indicatorText, { color: goodHabitsProgress ? '#fbbf24' : colors.textMain }]}>
-                  {doneHabits}
-                </Text>
-              </View>
-            )}
-
-            {/* BIRTHDAYS */}
-            {dayBirthdays.length > 0 && (
-              <View style={styles.indicatorRow}>
-                <Feather name="gift" size={11} color="#f472b6" />
-              </View>
-            )}
-          </View>
-
-          {/* STICKERS (Bottom absolute) */}
-          <View style={styles.stickersContainer}>
-            {allTasksDone && <Text style={{ fontSize: 12 }}>⭐</Text>}
-            {goodHabitsProgress && <Text style={{ fontSize: 12 }}>🔥</Text>}
-            {dayBirthdays.length > 0 && <Text style={{ fontSize: 12 }}>🎂</Text>}
-          </View>
-        </TouchableOpacity>
+            <View style={styles.stickersContainer}>
+              {allTasksDone && <Text style={{ fontSize: 10 }}>⭐</Text>}
+              {goodHabitsProgress && <Text style={{ fontSize: 10 }}>🔥</Text>}
+              {dayBirthdays.length > 0 && <Text style={{ fontSize: 10 }}>🎂</Text>}
+            </View>
+          </TouchableOpacity>
+        </View>
       );
     }
 
@@ -244,9 +225,7 @@ const CalendarScreen = ({ navigation }) => {
               <Feather name="chevron-left" size={28} color={colors.accent1} />
             </TouchableOpacity>
             <View style={{ alignItems: 'center' }}>
-              <Text style={[styles.monthTitle, { color: colors.textMain }]}>
-                {MONTHS[month]}
-              </Text>
+              <Text style={[styles.monthTitle, { color: colors.textMain }]}>{MONTHS[month]}</Text>
               <Text style={{ fontSize: 12, color: colors.textMuted, fontWeight: '600' }}>{year}</Text>
             </View>
             <TouchableOpacity onPress={() => changeMonth(1)} style={styles.arrowBtn}>
@@ -254,36 +233,31 @@ const CalendarScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* ADD BIRTHDAY BUTTON */}
-          <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+          <View style={{ paddingHorizontal: PADDING_HORIZONTAL, marginBottom: 12 }}>
             <TouchableOpacity 
               style={[styles.addBirthdayBtn, { backgroundColor: colors.surfaceHover, borderColor: colors.accent1 }]} 
               onPress={() => { setBirthdayForm({name:'', day:'', month: month+1}); setShowBirthdayModal(true); }}
             >
               <Feather name="gift" size={18} color={colors.accent1} />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.accent1, marginLeft: 8 }}>ДОБАВИТЬ ДЕНЬ РОЖДЕНИЯ</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.accent1, marginLeft: 8 }}>ДОБАВИТЬ ДЕНЬ РОЖДЕНИЯ</Text>
             </TouchableOpacity>
           </View>
 
-          {/* WEEKDAYS */}
           <View style={styles.weekHeader}>
             {WEEKDAYS.map((d, i) => (
               <Text key={i} style={[styles.weekDayText, { width: CELL_WIDTH, color: i >= 5 ? colors.danger1 : colors.textMuted }]}>{d}</Text>
             ))}
           </View>
 
-          {/* CALENDAR GRID */}
           <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
             {loading ? <ActivityIndicator size="large" color={colors.accent1} style={{ marginTop: 50 }} /> : renderCalendar()}
           </ScrollView>
 
-          {/* DAY DETAILS MODAL */}
           <Modal visible={!!selectedDay} onClose={() => setSelectedDay(null)} title={`${selectedDay} ${MONTHS[month]} ${year}`}>
             {selectedDay && (() => {
               const { dayTasks, doneHabits, dayBirthdays } = getDayData(selectedDay);
               return (
                 <View style={{ padding: 16 }}>
-                  {/* Birthdays */}
                   {dayBirthdays.length > 0 && (
                     <View style={{ marginBottom: 16 }}>
                       <Text style={[styles.sectionTitle, { color: '#f472b6' }]}>🎂 Дни Рождения</Text>
@@ -297,14 +271,12 @@ const CalendarScreen = ({ navigation }) => {
                       ))}
                     </View>
                   )}
-
-                  {/* Tasks */}
                   <View style={{ marginBottom: 16 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Text style={[styles.sectionTitle, { color: colors.accent1 }]}>Задачи ({dayTasks.length})</Text>
                       <TouchableOpacity onPress={() => { 
                         setSelectedDay(null);
-                        navigation.navigate('Tasks');
+                        navigation.navigate('Tasks', { screen: 'TasksScreen', params: { date: `${year}-${String(month+1).padStart(2,'0')}-${String(selectedDay).padStart(2,'0')}` } });
                       }}>
                         <Text style={{ color: colors.accent1, fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' }}>ПЕРЕЙТИ</Text>
                       </TouchableOpacity>
@@ -318,8 +290,6 @@ const CalendarScreen = ({ navigation }) => {
                       ))
                     )}
                   </View>
-
-                  {/* Habits */}
                   <View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Text style={[styles.sectionTitle, { color: '#fbbf24' }]}>Привычки (Выполнено: {doneHabits})</Text>
@@ -337,7 +307,6 @@ const CalendarScreen = ({ navigation }) => {
             })()}
           </Modal>
 
-          {/* ADD BIRTHDAY MODAL */}
           <Modal visible={showBirthdayModal} onClose={() => setShowBirthdayModal(false)} title="Добавить ДР">
             <Input label="Имя" value={birthdayForm.name} onChangeText={t => setBirthdayForm({...birthdayForm, name: t})} />
             <Input label="День (число)" value={String(birthdayForm.day)} onChangeText={t => setBirthdayForm({...birthdayForm, day: t})} keyboardType="numeric" />
@@ -351,21 +320,21 @@ const CalendarScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PADDING_HORIZONTAL, paddingTop: 16, paddingBottom: 8 },
   monthTitle: { fontSize: 20, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5 },
   arrowBtn: { padding: 8 },
-  addBirthdayBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 12, borderWidth: 1.5 },
-  weekHeader: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 8 },
-  weekDayText: { textAlign: 'center', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 4 },
-  cell: { padding: 6, borderRadius: 10, marginBottom: 4, position: 'relative' },
-  dayNum: { fontSize: 14, fontWeight: '800', marginBottom: 4 },
-  indicators: { gap: 3 },
-  indicatorRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  indicatorText: { fontSize: 10, fontWeight: '700' },
-  stickersContainer: { position: 'absolute', bottom: 6, right: 6, flexDirection: 'row', gap: 2 },
+  addBirthdayBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, borderRadius: 10, borderWidth: 1 },
+  weekHeader: { flexDirection: 'row', paddingHorizontal: PADDING_HORIZONTAL, marginBottom: 8 },
+  weekDayText: { textAlign: 'center', fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: PADDING_HORIZONTAL }, // УБРАЛИ GAP!
+  cellInner: { flex: 1, borderRadius: 8, padding: 4, position: 'relative' }, // Внутренний контейнер с отступами и стилями
+  dayNum: { fontSize: 12, fontWeight: '800', marginBottom: 2 },
+  indicators: { gap: 2 },
+  indicatorRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  indicatorText: { fontSize: 9, fontWeight: '700' },
+  stickersContainer: { position: 'absolute', bottom: 4, right: 4, flexDirection: 'row', gap: 1 },
   sectionTitle: { fontSize: 16, fontWeight: '800', marginBottom: 10 },
-  listItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: 10, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 10 }
+  listItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, padding: 10, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8 }
 });
 
 export default CalendarScreen;
