@@ -367,8 +367,8 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
   }}
   delayLongPress={800}
 >
-                  {/* ИСПРАВЛЕНО: Размер шрифта увеличен до 12 (было 10) */}
-                  <Text style={[styles.habitName, { color: colors.textMain, fontSize: 12 }]} numberOfLines={2}>
+                  {/* ИСПРАВЛЕНО: Размер шрифта увеличен до 13 (было 12) */}
+                  <Text style={[styles.habitName, { color: colors.textMain, fontSize: 13 }]} numberOfLines={2}>
                     {habit.name}
                   </Text>
                 </TouchableOpacity>
@@ -387,14 +387,14 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
                   <View style={{ flexDirection: 'row', width: contentWidth }}>
                     {/* Ед.изм */}
                     <View style={[styles.dataCell, { borderRightColor: colors.accentBorder, borderRightWidth: 2 }]}>
-                      {/* ИСПРАВЛЕНО: Размер шрифта 12 (было 10) */}
-                      <Text style={[styles.cellText, { color: colors.textMain, fontSize: 12 }]}>{habit.unit}</Text>
+                      {/* ИСПРАВЛЕНО: Размер шрифта 13 (было 12) */}
+                      <Text style={[styles.cellText, { color: colors.textMain, fontSize: 13 }]}>{habit.unit}</Text>
                     </View>
 
                     {/* План */}
                     <View style={[styles.dataCell, { borderRightColor: colors.accentBorder, borderRightWidth: 2 }]}>
-                      {/* ИСПРАВЛЕНО: Размер шрифта 12 (было 10) */}
-                      <Text style={[styles.cellText, { color: colors.textMain, fontSize: 12 }]}>{habit.plan}</Text>
+                      {/* ИСПРАВЛЕНО: Размер шрифта 13 (было 12) */}
+                      <Text style={[styles.cellText, { color: colors.textMain, fontSize: 13 }]}>{habit.plan}</Text>
                     </View>
 
                     {/* Дни */}
@@ -402,8 +402,8 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
 
                     {/* Итог */}
                     <View style={[styles.dataCell, { borderLeftWidth: 2, borderLeftColor: colors.accentBorder, borderRightWidth: 2, borderRightColor: colors.accentBorder }]}>
-                      {/* ИСПРАВЛЕНО: Размер шрифта 12 (было 11) */}
-                      <Text style={[styles.totalText, { color: colors.textMain, fontSize: 12 }]}>{stats.total}</Text>
+                      {/* ИСПРАВЛЕНО: Размер шрифта 13 (было 12), bold для итогов */}
+                      <Text style={[styles.totalText, { color: colors.textMain, fontSize: 13, fontWeight: '800' }]}>{stats.total}</Text>
                     </View>
                   </View>
                 </ScrollView>
@@ -417,7 +417,7 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
                         color: stats.percent >= 80 ? colors.accent1 : 
                                stats.percent >= 50 ? colors.accent2 : 
                                colors.textMuted,
-                        fontSize: 12 // Увеличен шрифт
+                        fontSize: 13 // Увеличен шрифт
                       }
                     ]}
                   >
