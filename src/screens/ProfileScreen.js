@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
 // Убрали removeUserEmail, так как он вызывает ошибку
 import { removeToken } from '../services/storage';
+import { sendTestNotification } from '../services/notifications';
 import Modal from '../components/Modal';
 import Input from '../components/Input';
 import Button from '../components/Button';
@@ -180,7 +181,15 @@ const ProfileScreen = ({ onLogout }) => {
         </ScrollView>
       </View>
 
-      {/* 4. АККАУНТ */}
+      {/* 4. УВЕДОМЛЕНИЯ */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>УВЕДОМЛЕНИЯ</Text>
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]} onPress={sendTestNotification}>
+          <Text style={[styles.actionText, { color: colors.accent1 }]}>🔔 Проверить пуш-уведомление</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 5. АККАУНТ */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>БЕЗОПАСНОСТЬ</Text>
         <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]} onPress={() => setShowPasswordModal(true)}>
@@ -225,7 +234,4 @@ const styles = StyleSheet.create({
   // Вернули стиль ThemeCard
   themeCard: { width: 80, height: 80, borderRadius: 12, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   actionButton: { padding: 16, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
-  actionText: { fontSize: 16, fontWeight: '600' }
-});
-
-export default ProfileScreen;
+  actionText: { fontSize: 16, fontWeight: '600' }\n});\n\nexport default ProfileScreen;\n
