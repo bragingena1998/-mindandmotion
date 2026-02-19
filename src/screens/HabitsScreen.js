@@ -90,7 +90,7 @@ const LifeProgressBar = ({ label, value, color }) => {
   );
 };
 
-const HabitsScreen = () => {
+const HabitsScreen = ({ route }) => { // ADDED route
   const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [habits, setHabits] = useState([]);
@@ -117,6 +117,14 @@ const HabitsScreen = () => {
   });
   const [showCustomUnit, setShowCustomUnit] = useState(false);
   const [habitToDelete, setHabitToDelete] = useState(null);
+
+  // NEW: Listen to route params
+  useEffect(() => {
+    if (route?.params?.year && route?.params?.month) {
+        setYear(route.params.year);
+        setMonth(route.params.month);
+    }
+  }, [route?.params]);
 
   useEffect(() => {
     loadProfile();
