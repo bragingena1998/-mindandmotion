@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform, ScrollView } from 'react-native';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler'; // <-- ADDED
 import { useTheme } from '../contexts/ThemeContext';
 import Button from './Button';
 
@@ -105,51 +106,54 @@ const ReorderHabitsModal = ({ visible, onClose, habits, onSave }) => {
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
-      <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-          
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.textMain }]}>Порядок привычек</Text>
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-              {Platform.OS === 'web' ? 'Используй кнопки ↑ ↓' : 'Зажми и перетащи'}
-            </Text>
-          </View>
+      {/* WRAP IN GESTURE HANDLER ROOT VIEW */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
+          <View style={[styles.container, { backgroundColor: colors.background }]}>
+            
+            <View style={styles.header}>
+              <Text style={[styles.title, { color: colors.textMain }]}>Порядок привычек</Text>
+              <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+                {Platform.OS === 'web' ? 'Используй кнопки ↑ ↓' : 'Зажми и перетащи'}
+              </Text>
+            </View>
 
-          <View style={{ flex: 1 }}>
-            {Platform.OS === 'web' ? (
-              // ДЛЯ ВЕБА: Кнопки
-              <ScrollView style={{ flex: 1 }}>
-                {data.map((item, index) => renderButtonItem(item, index))}
-              </ScrollView>
-            ) : (
-              // ДЛЯ МОБИЛКИ: Drag & Drop
-              <DraggableFlatList
-                data={data}
-                onDragEnd={({ data }) => setData(data)}
-                keyExtractor={(item) => String(item.id)}
-                renderItem={renderDraggableItem}
-                containerStyle={{ flex: 1 }}
-                activationDistance={20}
+            <View style={{ flex: 1 }}>
+              {Platform.OS === 'web' ? (
+                // ДЛЯ ВЕБА: Кнопки
+                <ScrollView style={{ flex: 1 }}>
+                  {data.map((item, index) => renderButtonItem(item, index))}
+                </ScrollView>
+              ) : (
+                // ДЛЯ МОБИЛКИ: Drag & Drop
+                <DraggableFlatList
+                  data={data}
+                  onDragEnd={({ data }) => setData(data)}
+                  keyExtractor={(item) => String(item.id)}
+                  renderItem={renderDraggableItem}
+                  containerStyle={{ flex: 1 }}
+                  activationDistance={20}
+                />
+              )}
+            </View>
+
+            <View style={styles.footer}>
+              <Button 
+                title="Отмена" 
+                variant="outline" 
+                onPress={onClose} 
+                style={{ flex: 1, marginRight: 8 }} 
               />
-            )}
-          </View>
+              <Button 
+                title="Сохранить" 
+                onPress={() => onSave(data)} 
+                style={{ flex: 1, marginLeft: 8 }} 
+              />
+            </View>
 
-          <View style={styles.footer}>
-            <Button 
-              title="Отмена" 
-              variant="outline" 
-              onPress={onClose} 
-              style={{ flex: 1, marginRight: 8 }} 
-            />
-            <Button 
-              title="Сохранить" 
-              onPress={() => onSave(data)} 
-              style={{ flex: 1, marginLeft: 8 }} 
-            />
           </View>
-
         </View>
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 };
