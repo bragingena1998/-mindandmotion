@@ -285,7 +285,12 @@ const SecretChatScreen = ({ onExit }) => {
 
   // ЧАТ
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, backgroundColor: '#000' }} onTouchStart={updateActivity}>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : undefined} 
+      style={{ flex: 1, backgroundColor: '#000' }} 
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      onTouchStart={updateActivity}
+    >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderColor: '#333' }}>
         <TouchableOpacity onPress={onExit}><Text style={{ color: '#666' }}>← Выход</Text></TouchableOpacity>
         <Text style={{ color: colors.accent1, fontWeight: 'bold' }}>КУЛЬТ ОВОЩЕЙ</Text>
@@ -307,11 +312,11 @@ const SecretChatScreen = ({ onExit }) => {
         data={messages}
         keyExtractor={item => item.id.toString()}
         renderItem={renderMessage}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
       />
 
-      <View style={{ padding: 10, borderTopWidth: 1, borderColor: '#333', backgroundColor: '#050505' }}>
+      <View style={{ padding: 12, paddingBottom: Platform.OS === 'ios' ? 24 : 12, borderTopWidth: 1, borderColor: '#333', backgroundColor: '#050505' }}>
         {isAdmin && (
           <TouchableOpacity onPress={() => setIsAuthorMode(!isAuthorMode)} style={{ marginBottom: 8 }}>
             <Text style={{ color: isAuthorMode ? colors.accent1 : '#444', fontSize: 12 }}>
@@ -321,13 +326,14 @@ const SecretChatScreen = ({ onExit }) => {
         )}
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TextInput
-            style={{ flex: 1, color: '#fff', backgroundColor: '#222', borderRadius: 20, paddingHorizontal: 16, height: 40 }}
+            style={{ flex: 1, color: '#fff', backgroundColor: '#222', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, height: 44 }}
             placeholder={isAuthorMode ? "Вещай..." : "Сообщение (/roll для рулетки)..."}
             placeholderTextColor="#666"
             value={text}
             onChangeText={setText}
+            multiline={false}
           />
-          <TouchableOpacity onPress={sendMessage} style={{ marginLeft: 10, backgroundColor: colors.accent1, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}>
+          <TouchableOpacity onPress={sendMessage} style={{ marginLeft: 10, backgroundColor: colors.accent1, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
              <Feather name="send" size={20} color="#000" />
           </TouchableOpacity>
         </View>
