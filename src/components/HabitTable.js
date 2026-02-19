@@ -213,7 +213,8 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
     if (showValue) {
       gradientColors = [colors.accent1 + 'A0', colors.accent1 + '60', colors.accent1 + '30'];
     } else if (isToday) {
-      gradientColors = [colors.accent2 + '80', colors.accent2 + '50', colors.accent2 + '20'];
+      // ИСПРАВЛЕНО: Яркий неон для сегодняшнего дня (было accent2 который undefined/бледный)
+      gradientColors = [colors.accent1 + '40', colors.accent1 + '20', colors.accent1 + '05'];
     } else if (isHolidayDay) {
       // Золотой градиент для праздников
       gradientColors = ['rgba(251, 191, 36, 0.5)', 'rgba(245, 158, 11, 0.35)', 'rgba(217, 119, 6, 0.2)'];
@@ -239,7 +240,8 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
           style={[
             styles.dayCell,
             { borderColor: colors.borderSubtle },
-            isToday && { borderColor: colors.accent2, borderWidth: 2 }
+            // ИСПРАВЛЕНО: Яркая обводка accent1 для "сегодня"
+            isToday && { borderColor: colors.accent1, borderWidth: 2 }
           ]}
         >
           <Text style={[styles.cellText, { color: colors.textMain }]}>
@@ -365,8 +367,8 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
   }}
   delayLongPress={800}
 >
-
-                  <Text style={[styles.habitName, { color: colors.textMain }]} numberOfLines={2}>
+                  {/* ИСПРАВЛЕНО: Размер шрифта увеличен до 12 (было 10) */}
+                  <Text style={[styles.habitName, { color: colors.textMain, fontSize: 12 }]} numberOfLines={2}>
                     {habit.name}
                   </Text>
                 </TouchableOpacity>
@@ -385,12 +387,14 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
                   <View style={{ flexDirection: 'row', width: contentWidth }}>
                     {/* Ед.изм */}
                     <View style={[styles.dataCell, { borderRightColor: colors.accentBorder, borderRightWidth: 2 }]}>
-                      <Text style={[styles.cellText, { color: colors.textMain }]}>{habit.unit}</Text>
+                      {/* ИСПРАВЛЕНО: Размер шрифта 12 (было 10) */}
+                      <Text style={[styles.cellText, { color: colors.textMain, fontSize: 12 }]}>{habit.unit}</Text>
                     </View>
 
                     {/* План */}
                     <View style={[styles.dataCell, { borderRightColor: colors.accentBorder, borderRightWidth: 2 }]}>
-                      <Text style={[styles.cellText, { color: colors.textMain }]}>{habit.plan}</Text>
+                      {/* ИСПРАВЛЕНО: Размер шрифта 12 (было 10) */}
+                      <Text style={[styles.cellText, { color: colors.textMain, fontSize: 12 }]}>{habit.plan}</Text>
                     </View>
 
                     {/* Дни */}
@@ -398,7 +402,8 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
 
                     {/* Итог */}
                     <View style={[styles.dataCell, { borderLeftWidth: 2, borderLeftColor: colors.accentBorder, borderRightWidth: 2, borderRightColor: colors.accentBorder }]}>
-                      <Text style={[styles.totalText, { color: colors.textMain }]}>{stats.total}</Text>
+                      {/* ИСПРАВЛЕНО: Размер шрифта 12 (было 11) */}
+                      <Text style={[styles.totalText, { color: colors.textMain, fontSize: 12 }]}>{stats.total}</Text>
                     </View>
                   </View>
                 </ScrollView>
@@ -411,7 +416,8 @@ const [editHabitPlan, setEditHabitPlan] = useState('');
                       { 
                         color: stats.percent >= 80 ? colors.accent1 : 
                                stats.percent >= 50 ? colors.accent2 : 
-                               colors.textMuted 
+                               colors.textMuted,
+                        fontSize: 12 // Увеличен шрифт
                       }
                     ]}
                   >
