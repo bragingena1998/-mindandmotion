@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
@@ -14,6 +15,7 @@ import HabitTable from '../components/HabitTable';
 import Modal from '../components/Modal';
 import Input from '../components/Input';
 import Button from '../components/Button';
+import DatePicker from '../components/DatePicker'; // <-- ADDED
 import ReorderHabitsModal from '../components/ReorderHabitsModal';
 import MonthPickerModal from '../components/MonthPickerModal';
 
@@ -50,15 +52,20 @@ const HabitsScreen = () => {
   const [showDateModal, setShowDateModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState(null);
-const [newHabit, setNewHabit] = useState({
-  name: '',
-  unit: 'Дни',
-  plan: '',
-});
+  
+  // Updated State for New Habit
+  const [newHabit, setNewHabit] = useState({
+    name: '',
+    unit: 'Дни',
+    plan: '',
+    targetType: 'monthly', // 'daily' or 'monthly'
+    startDate: null,
+    endDate: null,
+    daysOfWeek: [], // [1, 2, 3...]
+  });
+  
   const [showCustomUnit, setShowCustomUnit] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
-
-
 
   useEffect(() => {
     loadProfile();
@@ -144,7 +151,6 @@ useEffect(() => {
       const response = await api.get(`/habits?year=${year}&month=${month}`);
       
       // Фильтруем привычки: показываем только те, у которых shouldShow = true
-      // (Это свойство мы добавили на бэкенде)
       const visibleHabits = response.data.filter(h => h.shouldShow !== false);
       
       setHabits(visibleHabits);
@@ -161,14 +167,6 @@ const loadRecords = async () => {
   try {
     console.log(`Загрузка записей за ${year}-${month}`);
     const response = await api.get(`/habits/records/${year}/${month}`);
-    
-    // 🔍 ОТЛАДКА: смотрим структуру данных
-    console.log('📦 RAW записи:', response.data);
-    if (response.data.length > 0) {
-      console.log('📦 Первая запись:', response.data[0]);
-      console.log('📦 Ключи:', Object.keys(response.data[0]));
-    }
-    
     setRecords(response.data);
     console.log('Записей загружено:', response.data.length);
   } catch (error) {
@@ -196,8 +194,7 @@ const loadRecords = async () => {
       if (value && value > 0) {
         await api.post('/habits/records', { habit_id: habitId, year, month, day, value });
         console.log('✅ Запись сохранена');
-      } else {
-        await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
+      } else {\n        await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
         console.log('🗑️ Запись удалена');
       }
     } catch (error) {
@@ -210,16 +207,29 @@ const loadRecords = async () => {
 
   const handleHabitDelete = async (habitId) => {
     try {
-      console.log('🗑️ Архивация привычки:', habitId);
-      // Передаем year и month в query params
+      console.log('🗑️ Удаление привычки (FIXED):', habitId);
+      
+      // 1. Сначала удаляем записи из локального стейта и пытаемся удалить их на сервере
+      // (Это костыль, если нет каскадного удаления на бэке)
+      const habitRecords = records.filter(r => r.habitid === habitId);
+      console.log(`Найдено ${habitRecords.length} записей для удаления`);
+      
+      // Удаляем записи параллельно (оптимистично)
+      const deletePromises = habitRecords.map(r => 
+         api.delete(`/habits/records/${habitId}/${r.year}/${r.month}/${r.day}`)
+           .catch(e => console.log('Err removing record:', e.message))
+      );
+      await Promise.all(deletePromises);
+
+      // 2. Теперь удаляем саму привычку
       await api.delete(`/habits/${habitId}?year=${year}&month=${month}`);
       
       setHabits(habits.filter(h => h.id !== habitId));
       setRecords(records.filter(r => r.habitid !== habitId));
-      console.log('✅ Привычка скрыта в этом месяце');
+      console.log('✅ Привычка удалена полностью');
     } catch (error) {
       console.error('❌ Ошибка удаления привычки:', error);
-      alert('Не удалось удалить привычку');
+      Alert.alert('Ошибка', 'Не удалось удалить привычку. Попробуйте очистить все ячейки вручную.');
     }
   };
 
@@ -296,7 +306,6 @@ const handleReorderSave = async (newOrderHabits) => {
   // Процент выполнения
   const dailyPercent = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
   
-  // Цитаты (можно вынести в отдельный файл потом)
   const quotes = [
     "Мы — это то, что мы делаем постоянно.",
     "Дисциплина — это решение делать то, чего очень не хочется.",
@@ -304,7 +313,6 @@ const handleReorderSave = async (newOrderHabits) => {
     "Привычка — вторая натура.",
     "Не жди вдохновения, стань дисциплинированным."
   ];
-  // Берем цитату на основе дня года, чтобы она менялась раз в сутки
   const quoteIndex = Math.floor(yearProgress.daysPassed % quotes.length);
 
   return (
@@ -314,7 +322,7 @@ const handleReorderSave = async (newOrderHabits) => {
     >
                   <View style={styles.section}>
         
-        {/* 1. ЦИТАТА ДНЯ (Заполняет пустоту смыслом) */}
+        {/* 1. ЦИТАТА ДНЯ */}
         <View style={{ marginBottom: 20, paddingHorizontal: 4 }}>
           <Text style={{ 
             fontSize: 14, 
@@ -327,7 +335,7 @@ const handleReorderSave = async (newOrderHabits) => {
           </Text>
         </View>
 
-        {/* 2. КАРТОЧКА "СЕГОДНЯ" (Новый блок) */}
+        {/* 2. КАРТОЧКА "СЕГОДНЯ" */}
         {isCurrentMonthView && (
           <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -338,7 +346,7 @@ const handleReorderSave = async (newOrderHabits) => {
                 </Text>
               </View>
               
-              {/* Круговой индикатор (простой) */}
+              {/* Круговой индикатор */}
               <View style={{ alignItems: 'center', justifyContent: 'center', width: 50, height: 50 }}>
                 <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.accent1 }}>
                   {dailyPercent}%
@@ -346,7 +354,6 @@ const handleReorderSave = async (newOrderHabits) => {
               </View>
             </View>
             
-            {/* Текст мотивации */}
             <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 8 }}>
               {dailyPercent === 100 ? "🔥 Все привычки выполнены!" : 
                dailyPercent >= 50 ? "👍 Отличный темп!" : "⏳ Поднажми!"}
@@ -354,7 +361,7 @@ const handleReorderSave = async (newOrderHabits) => {
           </View>
         )}
 
-        {/* 3. КАРТОЧКА "ЖИЗНЬ" (Бары теперь внутри карточки) */}
+        {/* 3. КАРТОЧКА "ЖИЗНЬ" */}
         <View style={[styles.lifeCard, { backgroundColor: 'rgba(148, 163, 184, 0.05)', borderColor: colors.borderSubtle }]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
              <Text style={[styles.cardTitle, { color: colors.textMain }]}>ВРЕМЯ</Text>
@@ -406,7 +413,7 @@ const handleReorderSave = async (newOrderHabits) => {
             <TouchableOpacity 
               style={[styles.addButton, { borderColor: colors.borderSubtle }]} 
               onPress={() => {
-                  setNewHabit({ name: '', unit: 'Дни', plan: '' });
+                  setNewHabit({ name: '', unit: 'Дни', plan: '', targetType: 'monthly', startDate: null, endDate: null, daysOfWeek: [] });
                   setEditingHabit(null);
                   setShowAddModal(true);
               }}
@@ -444,15 +451,14 @@ const handleReorderSave = async (newOrderHabits) => {
           </View>
         ) : (
           <HabitTable
-  habits={habits}
-  year={year}
-  month={month}
-  records={records}
-  onCellChange={handleCellChange}
-  onHabitDelete={handleHabitDelete}
-  onHabitUpdate={handleHabitUpdate}
-/>
-
+            habits={habits}
+            year={year}
+            month={month}
+            records={records}
+            onCellChange={handleCellChange}
+            onHabitDelete={handleHabitDelete} // Исправленная функция
+            onHabitUpdate={handleHabitUpdate}
+          />
         )}
       </View>
 
@@ -472,6 +478,59 @@ const handleReorderSave = async (newOrderHabits) => {
           value={newHabit.name}
           onChangeText={(text) => setNewHabit({ ...newHabit, name: text })}
         />
+
+        {/* --- НОВЫЙ БЛОК: ТИП ЦЕЛИ --- */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={[styles.formLabel, { color: colors.textMain }]}>Тип цели</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+             <TouchableOpacity 
+               onPress={() => setNewHabit({ ...newHabit, targetType: 'daily' })}
+               style={[
+                 styles.unitButtonSmall, 
+                 { backgroundColor: newHabit.targetType === 'daily' ? colors.accent1 : colors.surface, flex: 1 }
+               ]}
+             >
+                <Text style={{ color: newHabit.targetType === 'daily' ? '#020617' : colors.textMain, fontWeight: '600' }}>
+                  В день
+                </Text>
+             </TouchableOpacity>
+
+             <TouchableOpacity 
+               onPress={() => setNewHabit({ ...newHabit, targetType: 'monthly' })}
+               style={[
+                 styles.unitButtonSmall, 
+                 { backgroundColor: newHabit.targetType === 'monthly' ? colors.accent1 : colors.surface, flex: 1 }
+               ]}
+             >
+                <Text style={{ color: newHabit.targetType === 'monthly' ? '#020617' : colors.textMain, fontWeight: '600' }}>
+                  В месяц
+                </Text>
+             </TouchableOpacity>
+          </View>
+          <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 4 }}>
+             {newHabit.targetType === 'daily' 
+               ? 'Цель рассчитывается на каждый активный день.' 
+               : 'Общая цель на весь месяц.'}
+          </Text>
+        </View>
+
+        {/* --- НОВЫЙ БЛОК: ДАТЫ --- */}
+        <View style={{ marginBottom: 16, flexDirection: 'row', gap: 12 }}>
+           <View style={{ flex: 1 }}>
+              <DatePicker 
+                label="Дата начала"
+                value={newHabit.startDate}
+                onChangeDate={(d) => setNewHabit({ ...newHabit, startDate: d })}
+              />
+           </View>
+           <View style={{ flex: 1 }}>
+              <DatePicker 
+                label="Дата окончания"
+                value={newHabit.endDate}
+                onChangeDate={(d) => setNewHabit({ ...newHabit, endDate: d })}
+              />
+           </View>
+        </View>
 
         <View style={{ marginBottom: 16 }}>
           <Text style={[styles.formLabel, { color: colors.textMain }]}>
@@ -502,8 +561,7 @@ const handleReorderSave = async (newOrderHabits) => {
                   {unit}
                 </Text>
               </TouchableOpacity>
-            ))}
-            <TouchableOpacity
+            ))}\n            <TouchableOpacity
               style={[
                 styles.unitButtonSmall,
                 {
@@ -569,8 +627,13 @@ const handleReorderSave = async (newOrderHabits) => {
               name: newHabit.name,
               unit: newHabit.unit,
               plan: planValue,
-              year,   // Текущий год (из стейта HabitsScreen)
-              month,  // Текущий месяц (из стейта HabitsScreen)
+              year,   
+              month,  
+              // Новые поля
+              target_type: newHabit.targetType,
+              start_date: newHabit.startDate,
+              end_date: newHabit.endDate,
+              // days_of_week: newHabit.daysOfWeek // TODO: Add logic for this later
             };
 
             try {
@@ -593,7 +656,7 @@ const handleReorderSave = async (newOrderHabits) => {
               }
 
               // 3. Очистка и закрытие
-              setNewHabit({ name: '', unit: 'Дни', plan: '' });
+              setNewHabit({ name: '', unit: 'Дни', plan: '', targetType: 'monthly', startDate: null, endDate: null, daysOfWeek: [] });
               setEditingHabit(null);
               setShowAddModal(false);
               setShowCustomUnit(false);
@@ -663,8 +726,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center',\n    alignItems: 'center',
   },
   progressText: {
   fontSize: 11,
