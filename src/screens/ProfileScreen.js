@@ -234,4 +234,7 @@ const styles = StyleSheet.create({
   // Вернули стиль ThemeCard
   themeCard: { width: 80, height: 80, borderRadius: 12, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   actionButton: { padding: 16, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
-  actionText: { fontSize: 16, fontWeight: '600' }\n});\n\nexport default ProfileScreen;\n
+  actionText: { fontSize: 16, fontWeight: '600' }
+});
+
+export default ProfileScreen;
