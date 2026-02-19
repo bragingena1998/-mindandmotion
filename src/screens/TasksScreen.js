@@ -148,20 +148,15 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
     
     const targetMonth = date.getMonth();
     const targetYear = date.getFullYear();
-    
-    const isCurrentMonth = (targetMonth === currentMonth && targetYear === currentYear);
+    \n    const isCurrentMonth = (targetMonth === currentMonth && targetYear === currentYear);
 
     // 2. Готовим параметры для API
     let params = {};
     if (!isCurrentMonth) {
       // Если месяц прошлый -> шлем параметры для фильтрации
-      params = { 
-        month: targetMonth, 
-        year: targetYear 
-      };
+      params = { \n        month: targetMonth, \n        year: targetYear \n      };
       // Можно выставить флаг "Архив", чтобы показать юзеру, что это история
-      // setIsArchiveMode(true); 
-    } else {
+      // setIsArchiveMode(true); \n    } else {
       // setIsArchiveMode(false);
     }
 
@@ -170,10 +165,8 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
     // 3. Загружаем данные
     // Если месяц текущий -> грузим задачи + статистику
     // Если прошлый -> только задачи (статистику не трогаем или можно обнулить)
-    
-    let tasksData = [];
-    
-    if (isCurrentMonth) {
+    \n    let tasksData = [];
+    \n    if (isCurrentMonth) {
       // Грузим всё параллельно
       const [tasksRes, _] = await Promise.all([
         api.get('/tasks', { params }), // Используем api.get напрямую для передачи params
@@ -187,19 +180,16 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
     }
 
     console.log(`✅ Загружено ${tasksData.length} задач`);
-    
-    // 4. Форматируем данные
+    \n    // 4. Форматируем данные
     const formattedTasks = tasksData.map(task => ({
       ...task,
       priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
       dueDate: task.deadline || task.date,
       completed: task.done || false,
     }));
-    
-    setTasks(formattedTasks);
+    \n    setTasks(formattedTasks);
     setLoading(false);
-    
-  } catch (err) {
+    \n  } catch (err) {
     console.error('❌ Ошибка загрузки задач:', err);
     setError('Ошибка загрузки задач');
     setTasks([]);
@@ -240,17 +230,14 @@ const toggleTask = async (taskId) => {
       deadline: taskToUpdate.deadline,
       priority: taskToUpdate.priority === 'high' ? 1 : taskToUpdate.priority === 'low' ? 3 : 2,
       comment: taskToUpdate.comment || '',
-      done: newDoneState, 
-      doneDate: newDoneDate, // <--- ОТПРАВЛЯЕМ ПОЛНУЮ ДАТУ
+      done: newDoneState, \n      doneDate: newDoneDate, // <--- ОТПРАВЛЯЕМ ПОЛНУЮ ДАТУ
     };
 
     // 3. Отправляем на сервер
     await tasksAPI.updateTask(taskId, updatedTaskData);
-    
-    // 4. ОБНОВЛЯЕМ СТАТИСТИКУ (чтобы счетчики пересчитались)
+    \n    // 4. ОБНОВЛЯЕМ СТАТИСТИКУ (чтобы счетчики пересчитались)
     await loadStats(); // <--- ВАЖНО!
-    
-  } catch (error) {
+    \n  } catch (error) {
     console.error('❌ Ошибка переключения задачи:', error);
     // Откатываем изменения при ошибке
     loadTasks();
@@ -263,8 +250,7 @@ useEffect(() => {
     try {
       const token = await getToken();
       console.log('🔑 TOKEN:', token ? 'OK ' + token.slice(0, 20) + '...' : 'NULL');
-      
-      // Тест API
+      \n      // Тест API
       const tasks = await tasksAPI.getTasks();
       console.log('✅ GET работает:', tasks.length, 'задач');
     } catch (err) {
@@ -277,34 +263,37 @@ useEffect(() => {
 const deleteTask = useCallback(async (taskId) => {
   try {
     console.log('🗑️ Удаляем задачу ID:', taskId);
-    
-    // 1. Оптимистичное обновление UI
+    \n    // 1. Оптимистичное обновление UI
     setTasks((prevTasks) => prevTasks.filter(task => task.id !== taskId));
-    
-    // 2. Отправляем DELETE на сервер
+    \n    // 2. Отправляем DELETE на сервер
     await tasksAPI.deleteTask(taskId);
-    
-    console.log('✅ Задача удалена (UI + API)');
+    \n    console.log('✅ Задача удалена (UI + API)');
   } catch (error) {
     console.error('❌ Ошибка удаления:', error);
-    
-    // 3. Откатываем при ошибке
+    \n    // 3. Откатываем при ошибке
     loadTasks();
     Alert.alert('Ошибка', 'Не удалось удалить задачу');
   }
 }, []);
 
-// Загрузка подзадач (FIX: добавлена валидация массива)
+// Загрузка подзадач
 const loadSubtasks = async (taskId) => {
   try {
     setLoadingSubtasks(prev => ({ ...prev, [taskId]: true }));
     const response = await api.get(`/tasks/${taskId}/subtasks`);
     
     // ЗАЩИТА: Проверяем, что response.data — это массив
-    const data = Array.isArray(response.data) ? response.data : [];
-    console.log(`📋 Загружено ${data.length} подзадач для задачи ${taskId}`);
+    const rawData = Array.isArray(response.data) ? response.data : [];
     
-    setSubtasks(prev => ({ ...prev, [taskId]: data }));
+    // FIX: Форматируем подзадачи (приводим к булевым, чтобы не было 0 в JSX)
+    const formattedSubtasks = rawData.map(st => ({
+        ...st,
+        completed: Boolean(st.completed || st.done), // Поддержка и completed, и done, превращаем в true/false
+    }));
+
+    console.log(`📋 Загружено ${formattedSubtasks.length} подзадач для задачи ${taskId}`);
+    
+    setSubtasks(prev => ({ ...prev, [taskId]: formattedSubtasks }));
     setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
   } catch (err) {
     console.error('Ошибка загрузки подзадач:', err);
@@ -316,13 +305,11 @@ const loadSubtasks = async (taskId) => {
 // Раскрытие/скрытие подзадач
 const toggleExpand = (taskId) => {
   const isExpanded = expandedTasks[taskId];
-  
-  if (!isExpanded) {
+  \n  if (!isExpanded) {
     // Раскрываем - загружаем подзадачи
     loadSubtasks(taskId);
   }
-  
-  setExpandedTasks(prev => ({ ...prev, [taskId]: !isExpanded }));
+  \n  setExpandedTasks(prev => ({ ...prev, [taskId]: !isExpanded }));
 };
 
 // Переключение статуса подзадачи
@@ -330,10 +317,8 @@ const toggleSubtask = async (subtaskId, taskId) => {
   try {
     await api.put(`/subtasks/${subtaskId}/toggle`);
     // Обновляем локально
-    setSubtasks(prev => ({
-      ...prev,
-      [taskId]: prev[taskId].map(st => 
-        st.id === subtaskId ? { ...st, completed: !st.completed } : st
+    setSubtasks(prev => ({\n      ...prev,
+      [taskId]: prev[taskId].map(st => \n        st.id === subtaskId ? { ...st, completed: !st.completed } : st
       )
     }));
   } catch (err) {
@@ -344,19 +329,15 @@ const toggleSubtask = async (subtaskId, taskId) => {
 // Добавление подзадачи
 const addSubtask = async () => {
   if (!newSubtaskTitle.trim() || !currentTaskForSubtask) return;
-  
-  try {
+  \n  try {
     const response = await api.post(`/tasks/${currentTaskForSubtask}/subtasks`, {
       title: newSubtaskTitle
     });
-    
-    // Добавляем в локальный стейт
-    setSubtasks(prev => ({
-      ...prev,
+    \n    // Добавляем в локальный стейт
+    setSubtasks(prev => ({\n      ...prev,
       [currentTaskForSubtask]: [...(prev[currentTaskForSubtask] || []), response.data]
     }));
-    
-    setNewSubtaskTitle('');
+    \n    setNewSubtaskTitle('');
     setShowAddSubtaskModal(false);
     setCurrentTaskForSubtask(null);
   } catch (err) {
@@ -368,8 +349,7 @@ const addSubtask = async () => {
 const deleteSubtask = async (subtaskId, taskId) => {
   try {
     await api.delete(`/subtasks/${subtaskId}`);
-    setSubtasks(prev => ({
-      ...prev,
+    setSubtasks(prev => ({\n      ...prev,
       [taskId]: prev[taskId].filter(st => st.id !== subtaskId)
     }));
   } catch (err) {
@@ -407,8 +387,7 @@ const handleLogout = () => {
   // --- ИСПРАВЛЕННАЯ СТАТИСТИКА ---
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
-  
-  // Хелпер для получения начала недели
+  \n  // Хелпер для получения начала недели
   const getStartOfWeek = (d) => {
     const date = new Date(d);
     const day = date.getDay();
@@ -423,20 +402,17 @@ const handleLogout = () => {
   const completedToday = tasks.filter(t => {
     if (!t.completed || !t.doneDate) return false;
     // Берем только первые 10 символов (YYYY-MM-DD)
-    const d = typeof t.doneDate === 'string' ? t.doneDate.substring(0, 10) : ''; 
-    return d === todayStr;
+    const d = typeof t.doneDate === 'string' ? t.doneDate.substring(0, 10) : ''; \n    return d === todayStr;
   }).length;
 
   const completedWeek = tasks.filter(t => {
     if (!t.completed || !t.doneDate) return false;
-    const d = typeof t.doneDate === 'string' ? t.doneDate.substring(0, 10) : ''; 
-    return d >= startOfWeekStr;
+    const d = typeof t.doneDate === 'string' ? t.doneDate.substring(0, 10) : ''; \n    return d >= startOfWeekStr;
   }).length;
 
   const completedMonth = tasks.filter(t => {
     if (!t.completed || !t.doneDate) return false;
-    const d = typeof t.doneDate === 'string' ? t.doneDate.substring(0, 10) : ''; 
-    return d >= startOfMonth;
+    const d = typeof t.doneDate === 'string' ? t.doneDate.substring(0, 10) : ''; \n    return d >= startOfMonth;
   }).length;
 
   const completedTotal = tasks.filter(t => t.completed).length;
@@ -472,8 +448,7 @@ const formatTaskDate = (task) => {
   const year = dateObj.getFullYear();
 
   // Если один месяц
-  if (dateObj.getMonth() === deadlineObj.getMonth() && 
-      dateObj.getFullYear() === deadlineObj.getFullYear()) {
+  if (dateObj.getMonth() === deadlineObj.getMonth() && \n      dateObj.getFullYear() === deadlineObj.getFullYear()) {
     return `${dayStart}-${dayEnd}.${month}.${year}`;
   }
 
@@ -482,34 +457,27 @@ const formatTaskDate = (task) => {
 };
 
 // Фильтрация задач
-const filteredTasks = hideCompleted 
-  ? tasks.filter(t => !t.completed) 
-  : tasks;
+const filteredTasks = hideCompleted \n  ? tasks.filter(t => !t.completed) \n  : tasks;
 
 // Определение статуса задачи по дате
 const getTaskStatus = (task) => {
   // Приводим все даты к формату YYYY-MM-DD для корректного сравнения
   const today = new Date().toISOString().split('T')[0];
-  
-  // Если date/deadline приходят как ISO (2026-02-05T00:00:00.000Z), обрезаем до YYYY-MM-DD
+  \n  // Если date/deadline приходят как ISO (2026-02-05T00:00:00.000Z), обрезаем до YYYY-MM-DD
   const startDate = task.date ? task.date.split('T')[0] : today;
   const endDate = task.deadline ? task.deadline.split('T')[0] : startDate;
-  
-  console.log('📅 getTaskStatus:', task.title, '| today:', today, '| start:', startDate, '| end:', endDate);
-  
-  // Если сегодня попадает в диапазон [startDate, endDate] - задача актуальна
+  \n  console.log('📅 getTaskStatus:', task.title, '| today:', today, '| start:', startDate, '| end:', endDate);
+  \n  // Если сегодня попадает в диапазон [startDate, endDate] - задача актуальна
   if (today >= startDate && today <= endDate) {
     console.log('✅ Статус: today');
     return 'today';
   }
-  
-  // Если дедлайн уже прошёл - просрочено
+  \n  // Если дедлайн уже прошёл - просрочено
   if (endDate < today) {
     console.log('🔥 Статус: overdue');
     return 'overdue';
   }
-  
-  // Если задача ещё в будущем
+  \n  // Если задача ещё в будущем
   console.log('📆 Статус: future');
   return 'future';
 };
@@ -522,36 +490,28 @@ const sortedTasks = [...filteredTasks].sort((a, b) => {
     // ИСПОЛЬЗУЕМ getTaskStatus вместо ручной проверки deadline
     const statusA = getTaskStatus(a);
     const statusB = getTaskStatus(b);
-    
-    // Порядок категорий: overdue (1) → today (2) → future (3)
+    \n    // Порядок категорий: overdue (1) → today (2) → future (3)
     const categoryOrder = { overdue: 1, today: 2, future: 3 };
     const categoryA = categoryOrder[statusA];
     const categoryB = categoryOrder[statusB];
-    
-    console.log('🔀 Сортировка:', a.title, '(', statusA, categoryA, ') vs', b.title, '(', statusB, categoryB, ')');
-    
-    // Сначала сортируем по категориям
+    \n    console.log('🔀 Сортировка:', a.title, '(', statusA, categoryA, ') vs', b.title, '(', statusB, categoryB, ')');
+    \n    // Сначала сортируем по категориям
     if (categoryA !== categoryB) {
       return categoryA - categoryB;
     }
-    
-    // Внутри категории — по deadline
+    \n    // Внутри категории — по deadline
     const deadlineA = a.deadline ? a.deadline.split('T')[0] : a.date.split('T')[0];
     const deadlineB = b.deadline ? b.deadline.split('T')[0] : b.date.split('T')[0];
-    
-    return new Date(deadlineA) - new Date(deadlineB);
+    \n    return new Date(deadlineA) - new Date(deadlineB);
   }
-  
-  if (sortBy === 'priority') {
+  \n  if (sortBy === 'priority') {
     const priorityOrder = { high: 1, medium: 2, low: 3 };
     return priorityOrder[a.priority] - priorityOrder[b.priority];
   }
-  
-  if (sortBy === 'title') {
+  \n  if (sortBy === 'title') {
     return a.title.localeCompare(b.title, 'ru');
   }
-  
-  return 0;
+  \n  return 0;
 });
 
 
@@ -561,8 +521,7 @@ const renderTask = ({ item }) => {
   const isExpanded = expandedTasks[item.id];
   const taskSubtasks = subtasks[item.id] || [];
   const isLoadingSubtasks = loadingSubtasks[item.id];
-  
-  // Цвета приоритета
+  \n  // Цвета приоритета
   const getPriorityColor = () => {
     switch (item.priority) {
       case 'high': return colors.danger1;
@@ -571,8 +530,7 @@ const renderTask = ({ item }) => {
       default: return colors.textMuted;
     }
   };
-  
-  // Статус и цвета
+  \n  // Статус и цвета
   const taskStatus = getTaskStatus(item);
   const getStatusColor = () => {
     if (item.completed) return colors.borderSubtle;
@@ -589,8 +547,7 @@ const renderTask = ({ item }) => {
   return (
     <View style={{ marginBottom: 12 }}>
       <TouchableOpacity
-        style={[
-          styles.taskItem,
+        style={[\n          styles.taskItem,
           {
             backgroundColor: colors.surface,
             borderColor: getStatusColor(),
@@ -603,18 +560,15 @@ const renderTask = ({ item }) => {
         onPress={() => toggleExpand(item.id)} // ТАП -> Раскрыть
         onLongPress={handleLongPress}         // ДОЛГИЙ ТАП -> Редактировать
       >
-        
-        {/* ЧЕКБОКС (Слева) */}
-        <TouchableOpacity 
-          style={styles.checkboxArea}
+        \n        {/* ЧЕКБОКС (Слева) */}
+        <TouchableOpacity \n          style={styles.checkboxArea}
           onPress={(e) => {
             e.stopPropagation();
             toggleTask(item.id);
           }}
         >
           <View
-            style={[
-              styles.checkbox,
+            style={[\n              styles.checkbox,
               {
                 borderColor: item.completed ? colors.ok1 : colors.borderSubtle,
                 backgroundColor: item.completed ? colors.ok1 : 'transparent',
@@ -628,8 +582,7 @@ const renderTask = ({ item }) => {
         {/* КОНТЕНТ */}
         <View style={styles.taskContent}>
           <Text
-            style={[
-              styles.taskTitle,
+            style={[\n              styles.taskTitle,
               { color: item.completed ? colors.textMuted : colors.textMain },
               item.completed && styles.taskTitleCompleted,
             ]}
@@ -663,12 +616,10 @@ const renderTask = ({ item }) => {
             {/* Приоритет */}
             <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
               <Text style={styles.priorityText}>
-                {item.priority === 'high' ? 'Высокий' : 
-                 item.priority === 'medium' ? 'Средний' : 'Низкий'}
+                {item.priority === 'high' ? 'Высокий' : \n                 item.priority === 'medium' ? 'Средний' : 'Низкий'}
               </Text>
             </View>
-            
-            {/* Дата */}
+            \n            {/* Дата */}
             <Text style={[styles.taskDate, { color: colors.textMuted }]}>
               {formatTaskDate(item)}
             </Text>
@@ -695,22 +646,20 @@ const renderTask = ({ item }) => {
       {isExpanded && (
         <View style={[styles.subtasksContainer, { backgroundColor: colors.surface }]}>
           {isLoadingSubtasks ? (
-            <ActivityIndicator size="small" color={colors.accent1} />
+            <ActivityIndicator size=\"small\" color={colors.accent1} />
           ) : (
             <>
               {taskSubtasks.length === 0 && (
                 <Text style={{color: colors.textMuted, fontSize: 12, marginBottom: 8}}>Нет подзадач</Text>
               )}
-              
-              {taskSubtasks.map(subtask => (
+              \n              {taskSubtasks.map(subtask => (
                 <View key={subtask.id} style={styles.subtaskItem}>
                   <TouchableOpacity
                     onPress={() => toggleSubtask(subtask.id, item.id)}
                     style={styles.subtaskCheckbox}
                   >
                     <View
-                      style={[
-                        styles.checkbox,
+                      style={[\n                        styles.checkbox,
                         {
                           width: 20, height: 20,
                           borderColor: subtask.completed ? colors.ok1 : colors.borderSubtle,
@@ -718,13 +667,12 @@ const renderTask = ({ item }) => {
                         },
                       ]}
                     >
-                      {subtask.completed && <Text style={[styles.checkmark, { fontSize: 12 }]}>✓</Text>}
+                      {!!subtask.completed && <Text style={[styles.checkmark, { fontSize: 12 }]}>✓</Text>}
                     </View>
                   </TouchableOpacity>
 
                   <Text
-                    style={[
-                      styles.subtaskTitle,
+                    style={[\n                      styles.subtaskTitle,
                       { color: subtask.completed ? colors.textMuted : colors.textMain },
                       subtask.completed && { textDecorationLine: 'line-through' }
                     ]}
@@ -768,7 +716,7 @@ const renderTask = ({ item }) => {
     return (
       <Background>
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.accent1} />
+          <ActivityIndicator size=\"large\" color={colors.accent1} />
         </View>
       </Background>
     );
@@ -782,11 +730,8 @@ const renderTask = ({ item }) => {
           <Text style={[styles.headerTitle, { color: colors.accentText }]}>
     МОИ ЗАДАЧИ
           </Text>
-          
-          <View style={styles.headerButtons}>
-          
-          <TouchableOpacity 
-  onPress={() => setShowMonthPicker(true)}
+          \n          <View style={styles.headerButtons}>
+          \n          <TouchableOpacity \n  onPress={() => setShowMonthPicker(true)}
   style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
 >
   <Text style={[styles.headerTitle, { color: colors.accentText }]}>
@@ -795,8 +740,7 @@ const renderTask = ({ item }) => {
   <Text style={{ fontSize: 12, color: colors.textMuted }}>▼</Text>
 </TouchableOpacity>
 
-        
-          </View>
+        \n          </View>
         </View>
 
 {/* Статистика (Серверная) */}
@@ -808,18 +752,15 @@ const renderTask = ({ item }) => {
     </Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>СЕГОДНЯ</Text>
   </View>
-  
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
+  \n  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
     <Text style={[styles.statNumber, { color: colors.accentText }]}>{stats.week}</Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>НЕДЕЛЯ</Text>
   </View>
-  
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
+  \n  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
     <Text style={[styles.statNumber, { color: colors.accentText }]}>{stats.month}</Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>МЕСЯЦ</Text>
   </View>
-  
-  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
+  \n  <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
     <Text style={[styles.statNumber, { color: colors.accentText }]}>{stats.total}</Text>
     <Text style={[styles.statLabel, { color: colors.textMuted }]}>ВСЕГО</Text>
   </View>
@@ -828,8 +769,7 @@ const renderTask = ({ item }) => {
 {/* Кнопка фильтра/сортировки */}
 <View style={styles.filterContainer}>
  <TouchableOpacity
-  style={[
-    styles.filterMenuButton,
+  style={[\n    styles.filterMenuButton,
     {
       backgroundColor: colors.surface,
       borderColor: colors.accentBorder,
@@ -928,8 +868,7 @@ const renderTask = ({ item }) => {
 
          {/* Плавающая кнопка добавления (FAB) */}
       <TouchableOpacity
-  style={[
-    styles.fab, 
+  style={[\n    styles.fab, 
     { backgroundColor: colors.accent1 }
   ]}
   onPress={() => setShowAddModal(true)}
@@ -945,9 +884,7 @@ const renderTask = ({ item }) => {
 <Modal
   visible
   onClose={() => {
-    setNewTask({ 
-      title: '', 
-      date: new Date().toISOString().split('T')[0],
+    setNewTask({ \n      title: '', \n      date: new Date().toISOString().split('T')[0],
       deadline: new Date().toISOString().split('T')[0],
       priority: 2,
       comment: '',
@@ -955,31 +892,29 @@ const renderTask = ({ item }) => {
     setEditingTask(null);
     setShowAddModal(false);
   }}
-  title={editingTask ? "Редактировать задачу" : "Новая задача"}
+  title={editingTask ? \"Редактировать задачу\" : \"Новая задача\"}
 >
 
   <Input
-    label="Название задачи"
-    placeholder="Например: Купить продукты"
+    label=\"Название задачи\"
+    placeholder=\"Например: Купить продукты\"
     value={newTask.title}
     onChangeText={(text) => setNewTask({ ...newTask, title: text })}
   />
 
 <DatePicker
-  label="Дата (когда планируете)"
+  label=\"Дата (когда планируете)\"
   value={newTask.date}
   onChangeDate={(date) => {
     console.log('📅 Выбрана дата:', date);
-    setNewTask({ 
-      ...newTask, 
-      date: date,
+    setNewTask({ \n      ...newTask, \n      date: date,
       deadline: date,
     });
   }}
 />
 
 <DatePicker
-  label="Срок (deadline)"
+  label=\"Срок (deadline)\"
   value={newTask.deadline}
   onChangeDate={(date) => {
     console.log('⏰ Выбран срок:', date);
@@ -995,8 +930,7 @@ const renderTask = ({ item }) => {
   </Text>
   <View style={styles.priorityRow}>
     <TouchableOpacity
-      style={[
-        styles.priorityBtn,
+      style={[\n        styles.priorityBtn,
         {
           backgroundColor: newTask.priority === 1 ? colors.danger1 : colors.surface,
           borderColor: newTask.priority === 1 ? colors.danger1 : colors.borderSubtle,
@@ -1010,8 +944,7 @@ const renderTask = ({ item }) => {
     </TouchableOpacity>
 
     <TouchableOpacity
-      style={[
-        styles.priorityBtn,
+      style={[\n        styles.priorityBtn,
         {
           backgroundColor: newTask.priority === 2 ? colors.accent1 : colors.surface,
           borderColor: newTask.priority === 2 ? colors.accent1 : colors.borderSubtle,
@@ -1025,8 +958,7 @@ const renderTask = ({ item }) => {
     </TouchableOpacity>
 
     <TouchableOpacity
-      style={[
-        styles.priorityBtn,
+      style={[\n        styles.priorityBtn,
         {
           backgroundColor: newTask.priority === 3 ? colors.ok1 : colors.surface,
           borderColor: newTask.priority === 3 ? colors.ok1 : colors.borderSubtle,
@@ -1043,7 +975,7 @@ const renderTask = ({ item }) => {
 
 
   <Button
-  title={editingTask ? "Сохранить" : "Добавить"}
+  title={editingTask ? \"Сохранить\" : \"Добавить\"}
   onPress={async () => {
     if (!newTask.title.trim()) {
       setError('Название задачи не может быть пусто');
@@ -1052,8 +984,7 @@ const renderTask = ({ item }) => {
 
     try {
       setLoading(true);
-      
-      const taskToSend = {
+      \n      const taskToSend = {
         title: newTask.title,
         date: newTask.date,
         deadline: newTask.deadline,
@@ -1067,11 +998,8 @@ const renderTask = ({ item }) => {
         // РЕДАКТИРОВАНИЕ
         console.log('📝 Редактируем задачу:', editingTask.id);
         await tasksAPI.updateTask(editingTask.id, taskToSend);
-        
-        // Обновляем локально
-        setTasks(tasks.map(t => 
-          t.id === editingTask.id 
-            ? {
+        \n        // Обновляем локально
+        setTasks(tasks.map(t => \n          t.id === editingTask.id \n            ? {
                 ...t,
                 ...taskToSend,
                 priority: taskToSend.priority === 1 ? 'high' : taskToSend.priority === 3 ? 'low' : 'medium',
@@ -1079,35 +1007,27 @@ const renderTask = ({ item }) => {
               }
             : t
         ));
-        
-      } else {
+        \n      } else {
         // СОЗДАНИЕ
         console.log('➕ Создаём задачу');
         const createdTask = await tasksAPI.createTask(taskToSend);
-        
-        const formattedTask = {
+        \n        const formattedTask = {
           ...createdTask,
           priority: createdTask.priority === 1 ? 'high' : createdTask.priority === 3 ? 'low' : 'medium',
           dueDate: createdTask.deadline || createdTask.date,
         };
-        
-        setTasks([...tasks, formattedTask]);
+        \n        setTasks([...tasks, formattedTask]);
       }
-      
-      // Очищаем форму
-      setNewTask({ 
-        title: '', 
-        date: new Date().toISOString().split('T')[0],
+      \n      // Очищаем форму
+      setNewTask({ \n        title: '', \n        date: new Date().toISOString().split('T')[0],
         deadline: new Date().toISOString().split('T')[0],
         priority: 2,
         comment: '',
       });
-      
-      setEditingTask(null);
+      \n      setEditingTask(null);
       setShowAddModal(false);
       setLoading(false);
-      
-    } catch (err) {
+      \n    } catch (err) {
       console.error('❌ Ошибка:', err);
       setError('Не удалось сохранить задачу: ' + err.message);
       setLoading(false);
@@ -1135,20 +1055,17 @@ const renderTask = ({ item }) => {
 <Modal
   visible
   onClose={() => setTaskToDelete(null)}
-  title="Удалить задачу?"
+  title=\"Удалить задачу?\"
 >
   <Text style={[styles.deleteModalText, { color: colors.textMain }]}>
-    Задача "{taskToDelete.title}" будет удалена навсегда.
+    Задача \"{taskToDelete.title}\" будет удалена навсегда.
   </Text>
-  
-  <Text style={[styles.deleteModalWarning, { color: colors.textMuted }]}>
+  \n  <Text style={[styles.deleteModalWarning, { color: colors.textMuted }]}>
     Это действие нельзя отменить.
   </Text>
-  
-  <View style={styles.deleteModalButtons}>
+  \n  <View style={styles.deleteModalButtons}>
     <TouchableOpacity
-      style={[styles.deleteModalButton, { 
-        backgroundColor: colors.surface,
+      style={[styles.deleteModalButton, { \n        backgroundColor: colors.surface,
         borderColor: colors.borderSubtle,
       }]}
       onPress={() => {
@@ -1160,10 +1077,8 @@ const renderTask = ({ item }) => {
         Отмена
       </Text>
     </TouchableOpacity>
-    
-    <TouchableOpacity
-      style={[styles.deleteModalButton, { 
-        backgroundColor: colors.danger1,
+    \n    <TouchableOpacity
+      style={[styles.deleteModalButton, { \n        backgroundColor: colors.danger1,
         borderColor: colors.danger1,
       }]}
       onPress={() => {
@@ -1189,17 +1104,16 @@ const renderTask = ({ item }) => {
     setNewSubtaskTitle('');
     setCurrentTaskForSubtask(null);
   }}
-  title="Новая подзадача"
+  title=\"Новая подзадача\"
 >
   <Input
-    label="Название"
-    placeholder="Например: Купить молоко"
+    label=\"Название\"
+    placeholder=\"Например: Купить молоко\"
     value={newSubtaskTitle}
     onChangeText={setNewSubtaskTitle}
   />
-  
-  <Button
-    title="Добавить"
+  \n  <Button
+    title=\"Добавить\"
     onPress={addSubtask}
   />
 </Modal>
@@ -1210,7 +1124,7 @@ const renderTask = ({ item }) => {
 <Modal
   visible
   onClose={() => setShowMonthPicker(false)}
-  title="Выберите месяц"
+  title=\"Выберите месяц\"
 >
   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
     {Array.from({ length: 12 }).map((_, i) => {
@@ -1235,9 +1149,7 @@ const renderTask = ({ item }) => {
              setShowMonthPicker(false);
            }}
          >
-           <Text style={{ 
-             color: isSelected ? '#000' : colors.textMain, 
-             fontWeight: isSelected ? 'bold' : 'normal',
+           <Text style={{ \n             color: isSelected ? '#000' : colors.textMain, \n             fontWeight: isSelected ? 'bold' : 'normal',
              textTransform: 'capitalize'
            }}>
              {date.toLocaleString('ru-RU', { month: 'short' })}
@@ -1246,8 +1158,7 @@ const renderTask = ({ item }) => {
        );
     })}
   </View>
-  
-  {/* Переключатель года */}
+  \n  {/* Переключатель года */}
   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, alignItems: 'center' }}>
     <TouchableOpacity onPress={() => {
        const newDate = new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth(), 1);
