@@ -34,7 +34,7 @@ const BASE_DARK = {
   
   // ЦВЕТА СТАТУСОВ (КРИТИЧНО ДЛЯ ЗАДАЧ)
   danger1: '#ff4444',  // Красный (Просрочено / Высокий приоритет)
-  ok1: '#22c55e',      // Зеленый (Сегодня / Низкий приоритет) <-- ДОБАВИЛ
+  ok1: '#22c55e',      // Зеленый (Сегодня / Низкий приоритет)
   success: '#22c55e',  // Дублируем для совместимости
 };
 
@@ -42,45 +42,42 @@ const themes = {
   default: {
     ...BASE_DARK,
     accent1: '#FFD700', // Желтый неон
+    accent2: '#FDB931', // Золотой (вторичный)
     
-    // ИСПРАВИЛ: Был черный, стал Желтый. 
-    // Теперь заголовок месяца и цифры статистики будут светиться желтым.
     accentText: '#FFD700', 
-    
     accentBorder: '#FFD700',
     gradientPrimary: ['#FFD700', '#D4AF37'],
   },
   storm: {
     ...BASE_DARK,
-    background: '#0b1015',
-    surface: '#121820',
-    accent1: '#0ea5e9', // Голубой
+    background: '#0f0518', // Очень темный фиолетовый фон
+    surface: '#1a0b2e',    // Темно-фиолетовая подложка
+    accent1: '#8b5cf6',    // Фиолетовый неон (Violet-500)
+    accent2: '#a78bfa',    // Светло-фиолетовый (Violet-400)
     
-    // Исправил на голубой, чтобы текст светился
-    accentText: '#0ea5e9', 
-    
-    accentBorder: '#0ea5e9',
-    gradientPrimary: ['#0ea5e9', '#0284c7'],
+    accentText: '#8b5cf6', 
+    accentBorder: '#8b5cf6',
+    gradientPrimary: ['#8b5cf6', '#7c3aed'],
   },
   ice: {
     ...BASE_DARK,
     background: '#081015',
     surface: '#0c1620',
-    accent1: '#38bdf8', // Светло-голубой
+    accent1: '#06b6d4', // Cyan-500 (Ледяной голубой)
+    accent2: '#67e8f9', // Cyan-300 (Светлый лед)
     
-    accentText: '#38bdf8',
-    
-    accentBorder: '#7dd3fc',
-    gradientPrimary: ['#38bdf8', '#0ea5e9'],
+    accentText: '#06b6d4',
+    accentBorder: '#22d3ee',
+    gradientPrimary: ['#06b6d4', '#0ea5e9'],
   },
   blood: {
     ...BASE_DARK,
-    background: '#120505', // Темный (не красный фон!)
+    background: '#120505', 
     surface: '#1a0a0a',
-    accent1: '#ff3333', // Красный неон
+    accent1: '#ff3333', 
+    accent2: '#ff6666',
     
     accentText: '#ff3333',
-    
     accentBorder: '#ff3333',
     gradientPrimary: ['#ff3333', '#cc0000'],
   },
@@ -88,10 +85,10 @@ const themes = {
     ...BASE_DARK,
     background: '#051005',
     surface: '#0a1a0d',
-    accent1: '#4ade80', // Зеленый неон
+    accent1: '#4ade80', 
+    accent2: '#86efac',
     
     accentText: '#4ade80',
-    
     accentBorder: '#4ade80',
     gradientPrimary: ['#4ade80', '#16a34a'],
   },
@@ -99,10 +96,10 @@ const themes = {
     ...BASE_DARK,
     background: '#10051a',
     surface: '#180a26',
-    accent1: '#d8b4fe', // Фиолетовый
+    accent1: '#d8b4fe', 
+    accent2: '#e9d5ff',
     
     accentText: '#d8b4fe',
-    
     accentBorder: '#d8b4fe',
     gradientPrimary: ['#d8b4fe', '#9333ea'],
   }
