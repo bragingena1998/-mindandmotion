@@ -4,8 +4,6 @@ import { getToken, removeToken } from './storage';
 import { Platform } from 'react-native';
 
 // Определяем базовый URL в зависимости от окружения
-// Для Android эмулятора локалхост это 10.0.2.2, для iOS - localhost
-// Но у тебя внешний IP, так что оставляем его
 const BASE_URL = 'http://85.198.96.149:5000/api';
 
 const api = axios.create({
@@ -34,53 +32,122 @@ api.interceptors.request.use(
   }
 );
 
-// Обработка ошибок
+// Обработка ошибок ответа
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
       console.error('Unauthorized - токен истёк или неверен');
       await removeToken();
-      
-      // На мобилке мы не можем просто сделать window.location.href = '/'
-      // Навигация должна обрабатываться в React компонентах через слушатель состояния аутентификации
-      // Но для веба оставим редирект
+
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.location.href = '/';
       }
-      
-      // Можно выбросить специальную ошибку, которую поймает App.js или экран
-      // Но пока просто реджектим
     }
     return Promise.reject(error);
   }
 );
 
+// ========================================
+// TASKS API
+// ========================================
 export const tasksAPI = {
-  getTasks: async () => {
-    const response = await api.get('/tasks');
+  getTasks: async (params = {}) => {
+    const response = await api.get('/tasks', { params });
     return response.data;
   },
-  
+
   createTask: async (taskData) => {
     const response = await api.post('/tasks', taskData);
     return response.data;
   },
-  
+
   updateTask: async (id, taskData) => {
     const response = await api.put(`/tasks/${id}`, taskData);
     return response.data;
   },
-  
+
   deleteTask: async (id) => {
     const response = await api.delete(`/tasks/${id}`);
     return response.data;
   },
-  
+
   syncTasks: async (tasks) => {
     const response = await api.post('/tasks/sync', { tasks });
     return response.data;
-  }
+  },
+
+  getStats: async () => {
+    const response = await api.get('/tasks/stats');
+    return response.data;
+  },
+};
+
+// ========================================
+// FOLDERS API
+// ========================================
+export const foldersAPI = {
+  // Получить все папки пользователя
+  getFolders: async () => {
+    const response = await api.get('/folders');
+    return response.data;
+  },
+
+  // Создать папку
+  createFolder: async (folderData) => {
+    // folderData: { name: string, icon?: string }
+    const response = await api.post('/folders', folderData);
+    return response.data;
+  },
+
+  // Редактировать папку
+  updateFolder: async (id, folderData) => {
+    // folderData: { name?: string, icon?: string }
+    const response = await api.put(`/folders/${id}`, folderData);
+    return response.data;
+  },
+
+  // Удалить папку (задачи в ней получат folder_id = null)
+  deleteFolder: async (id) => {
+    const response = await api.delete(`/folders/${id}`);
+    return response.data;
+  },
+
+  // Сортировка папок
+  reorderFolders: async (folders) => {
+    // folders: Array<{ id: number, order_index: number }>
+    const response = await api.put('/folders/reorder', { folders });
+    return response.data;
+  },
+};
+
+// ========================================
+// SUBTASKS API
+// ========================================
+export const subtasksAPI = {
+  // Получить подзадачи задачи
+  getSubtasks: async (taskId) => {
+    const response = await api.get(`/tasks/${taskId}/subtasks`);
+    return response.data;
+  },
+
+  // Создать подзадачу
+  createSubtask: async (taskId, title) => {
+    const response = await api.post(`/tasks/${taskId}/subtasks`, { title });
+    return response.data;
+  },
+
+  // Переключить выполнение подзадачи
+  toggleSubtask: async (subtaskId) => {
+    const response = await api.put(`/subtasks/${subtaskId}/toggle`);
+    return response.data;
+  },
+
+  // Удалить подзадачу
+  deleteSubtask: async (subtaskId) => {
+    const response = await api.delete(`/subtasks/${subtaskId}`);
+    return response.data;
+  },
 };
 
 export default api;
