@@ -21,13 +21,13 @@ import Modal from '../components/Modal';
 import Input from '../components/Input';
 import api from '../services/api';
 import { getToken } from '../services/storage';
+
 // Импорт Swipeable из gesture-handler
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-// Импорт Drag-and-Drop (нужно будет установить react-native-draggable-flatlist)
-// Но пока сделаем базовую поддержку папок, DND добавим следующим шагом
-// import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+// === ИМПОРТЫ ДЛЯ DRAG AND DROP ===
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 
 // Используем api напрямую
 const toMysqlFormat = (date) => {
@@ -68,6 +68,10 @@ const foldersAPI = {
   },
   deleteFolder: async (id) => {
     const response = await api.delete(`/folders/${id}`);
+    return response.data;
+  },
+  moveTaskToFolder: async (taskId, folderId) => {
+    const response = await api.put(`/folders/tasks/${taskId}/move`, { folder_id: folderId });
     return response.data;
   }
 };
@@ -140,9 +144,12 @@ const TasksScreen = ({ navigation }) => {
   const [editingFolder, setEditingFolder] = useState(null);
   const [newFolderName, setNewFolderName] = useState('');
   
+  // Состояние DND
+  const [hoveredFolderId, setHoveredFolderId] = useState(null);
+  
   const [hideCompleted, setHideCompleted] = useState(true);
   const [editingTask, setEditingTask] = useState(null);
-  const [taskToDelete, setTaskToDelete] = useState(null); // ← НОВАЯ СТРОКА
+  const [taskToDelete, setTaskToDelete] = useState(null);
   const [sortBy, setSortBy] = useState('date');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [newTask, setNewTask] = useState({
@@ -194,123 +201,91 @@ const TasksScreen = ({ navigation }) => {
     }
   };
 
-// 1. Сначала объявляем loadStats
-const loadStats = async () => {
-  try {
-    const response = await api.get('/tasks/stats');
-    setStats({
-      today: response.data.completed_today || 0,
-      todayPlan: response.data.total_today_plan || 0,
-      week: response.data.completed_week || 0,
-      month: response.data.completed_month || 0,
-      total: response.data.completed_total || 0
-    });
-  } catch (err) {
-    console.error('Ошибка загрузки статистики:', err);
-  }
-};
-
-// Загрузка задач (с учетом выбранного месяца)
-const loadTasks = async (date = selectedDate) => { // <-- Принимаем дату (по умолчанию текущая выбранная)
-  try {
-    setError('');
-    const token = await getToken();
-    
-    if (!token) {
-      console.log('⚠️ Нет токена, возврат на логин');
-      // TODO: заменить на navigation.navigate('Login') для RN
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
-      }
-      return;
-    }
-
-    // 1. Определяем, какой месяц грузить
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
-    const targetMonth = date.getMonth();
-    const targetYear = date.getFullYear();
-    
-    const isCurrentMonth = (targetMonth === currentMonth && targetYear === currentYear);
-
-    // 2. Готовим параметры для API
-    let params = {};
-    if (!isCurrentMonth) {
-      // Если месяц прошлый -> шлем параметры для фильтрации
-      params = { 
-        month: targetMonth, 
-        year: targetYear 
-      };
-      // Можно выставить флаг "Архив", чтобы показать юзеру, что это история
-      // setIsArchiveMode(true); 
-    } else {
-      // setIsArchiveMode(false);
-    }
-
-    console.log(`📡 Загружаем задачи за: ${targetMonth + 1}.${targetYear} (params:`, params, ')');
-
-    // 3. Загружаем данные
-    // Если месяц текущий -> грузим задачи + статистику
-    // Если прошлый -> только задачи (статистику не трогаем или можно обнулить)
-    
-    let tasksData = [];
-    
-    if (isCurrentMonth) {
-      // Грузим всё параллельно
-      const [tasksRes, _] = await Promise.all([
-        api.get('/tasks', { params }), // Используем api.get напрямую для передачи params
-        loadStats()
-      ]);
-      tasksData = tasksRes.data;
-    } else {
-      // Грузим только задачи (архив)
-      const response = await api.get('/tasks', { params });
-      tasksData = response.data;
-    }
-
-    console.log(`✅ Загружено ${tasksData.length} задач`);
-    
-    // 4. Форматируем данные
-    const formattedTasks = tasksData.map(task => ({
-      ...task,
-      priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
-      dueDate: task.deadline || task.date,
-      completed: task.done || false,
-    }));
-    
-    setTasks(formattedTasks);
-    
-    // --- ПРОВЕРКА НА СТАРЫЕ ЗАДАЧИ (> 7 дней просрочки) ---
-    // Выполняем 1 раз при первой загрузке (когда loading был true)
-    // FIX: Убрали лишнее условие, теперь вызываем всегда при первой загрузке
-    if (loading) {
-       checkOverdueTasks(formattedTasks);
-    }
-
-  } catch (err) {
-    console.error('❌ Ошибка загрузки задач:', err);
-    setError('Ошибка загрузки задач');
-    setTasks([]);
-  }
-};
-
-  // Проверка просроченных задач
-  const checkOverdueTasks = async (allTasks) => {
+  const loadStats = async () => {
     try {
-      // ДЛЯ ТЕСТА: Закомментируй проверку даты, чтобы модалка вылезала всегда
-      // const lastCheckStr = await AsyncStorage.getItem('lastOverdueCheckDate');
-      const todayStr = new Date().toISOString().split('T')[0];
+      const response = await api.get('/tasks/stats');
+      setStats({
+        today: response.data.completed_today || 0,
+        todayPlan: response.data.total_today_plan || 0,
+        week: response.data.completed_week || 0,
+        month: response.data.completed_month || 0,
+        total: response.data.completed_total || 0
+      });
+    } catch (err) {
+      console.error('Ошибка загрузки статистики:', err);
+    }
+  };
 
-      // Если сегодня уже проверяли - не показываем
-      /*
-      if (lastCheckStr === todayStr) {
-        console.log('✅ Проверка просроченных задач уже была сегодня');
+  const loadTasks = async (date = selectedDate) => {
+    try {
+      setError('');
+      const token = await getToken();
+      
+      if (!token) {
+        console.log('⚠️ Нет токена, возврат на логин');
+        if (typeof window !== 'undefined') {
+          window.location.href = '/';
+        }
         return;
       }
-      */
 
-      // Фильтруем задачи: не выполненные И просроченные > 7 дней
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
+      const targetMonth = date.getMonth();
+      const targetYear = date.getFullYear();
+      
+      const isCurrentMonth = (targetMonth === currentMonth && targetYear === currentYear);
+
+      let params = {};
+      if (!isCurrentMonth) {
+        params = { 
+          month: targetMonth, 
+          year: targetYear 
+        };
+      }
+
+      console.log(`📡 Загружаем задачи за: ${targetMonth + 1}.${targetYear} (params:`, params, ')');
+      
+      let tasksData = [];
+      
+      if (isCurrentMonth) {
+        const [tasksRes, _] = await Promise.all([
+          api.get('/tasks', { params }),
+          loadStats()
+        ]);
+        tasksData = tasksRes.data;
+      } else {
+        const response = await api.get('/tasks', { params });
+        tasksData = response.data;
+      }
+
+      console.log(`✅ Загружено ${tasksData.length} задач`);
+      
+      const formattedTasks = tasksData.map(task => ({
+        ...task,
+        priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
+        dueDate: task.deadline || task.date,
+        completed: task.done || false,
+      }));
+      
+      setTasks(formattedTasks);
+      
+      if (loading) {
+         checkOverdueTasks(formattedTasks);
+      }
+
+    } catch (err) {
+      console.error('❌ Ошибка загрузки задач:', err);
+      setError('Ошибка загрузки задач');
+      setTasks([]);
+    }
+  };
+
+  const checkOverdueTasks = async (allTasks) => {
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
@@ -318,11 +293,8 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
       const oldTasks = allTasks.filter(t => {
         if (t.completed) return false;
         
-        // FIX: Берем deadline, если его нет - берем date (дата создания/начала)
-        // Логика: если задача создана > 7 дней назад и не выполнена - она старая
         const taskDate = t.deadline ? t.deadline.split('T')[0] : (t.date ? t.date.split('T')[0] : null);
         
-        // Если taskDate < (сегодня - 7 дней)
         return taskDate && taskDate < oneWeekAgoStr;
       });
 
@@ -332,7 +304,6 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
         console.log(`🔥 Найдено ${oldTasks.length} старых задач! Показываем модалку.`);
         setOverdueTasksList(oldTasks);
         setShowOverdueCleanupModal(true);
-        // Запоминаем, что сегодня показали
         await AsyncStorage.setItem('lastOverdueCheckDate', todayStr);
       }
     } catch (e) {
@@ -340,18 +311,15 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
     }
   };
 
-  // Удаление старых задач (всех разом)
   const handleDeleteOldTasks = async () => {
     try {
       setLoading(true);
-      // Удаляем параллельно
       await Promise.all(overdueTasksList.map(t => tasksAPI.deleteTask(t.id)));
       
       console.log('🗑️ Старые задачи удалены');
       setShowOverdueCleanupModal(false);
       setOverdueTasksList([]);
       
-      // Перезагружаем список
       await loadTasks(); 
       setLoading(false);
     } catch (err) {
@@ -361,582 +329,567 @@ const loadTasks = async (date = selectedDate) => { // <-- Принимаем д�
     }
   };
 
-
-  // Обновление списка
   const onRefresh = async () => {
     setRefreshing(true);
     await loadFoldersAndTasks();
     setRefreshing(false);
   };
 
-// Переключение статуса задачи
-const toggleTask = async (taskId) => {
-  try {
-    const taskToUpdate = tasks.find(t => t.id === taskId);
-    if (!taskToUpdate) return;
+  const toggleTask = async (taskId) => {
+    try {
+      const taskToUpdate = tasks.find(t => t.id === taskId);
+      if (!taskToUpdate) return;
 
-    // 1. Оптимистичное обновление UI (чтобы галочка сработала мгновенно)
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    );
+      setTasks(prevTasks =>
+        prevTasks.map(task =>
+          task.id === taskId ? { ...task, completed: !task.completed } : task
+        )
+      );
 
-    // 2. Формируем данные
-    // Если помечаем выполненной -> ставим ТЕКУЩЕЕ время
-    // Если снимаем галочку -> null
-    const newDoneState = !taskToUpdate.completed;
-    // Используем toISOString(), чтобы сохранить точное время (UTC)
-    const newDoneDate = newDoneState ? toMysqlFormat(new Date()) : null;
+      const newDoneState = !taskToUpdate.completed;
+      const newDoneDate = newDoneState ? toMysqlFormat(new Date()) : null;
 
-    const updatedTaskData = {
-      title: taskToUpdate.title,
-      date: taskToUpdate.date,
-      deadline: taskToUpdate.deadline,
-      priority: taskToUpdate.priority === 'high' ? 1 : taskToUpdate.priority === 'low' ? 3 : 2,
-      comment: taskToUpdate.comment || '',
-      folder_id: taskToUpdate.folder_id,
-      done: newDoneState, 
-      doneDate: newDoneDate, // <--- ОТПРАВЛЯЕМ ПОЛНУЮ ДАТУ
+      const updatedTaskData = {
+        title: taskToUpdate.title,
+        date: taskToUpdate.date,
+        deadline: taskToUpdate.deadline,
+        priority: taskToUpdate.priority === 'high' ? 1 : taskToUpdate.priority === 'low' ? 3 : 2,
+        comment: taskToUpdate.comment || '',
+        folder_id: taskToUpdate.folder_id,
+        done: newDoneState, 
+        doneDate: newDoneDate,
+      };
+
+      await tasksAPI.updateTask(taskId, updatedTaskData);
+      
+      await loadStats(); 
+      
+    } catch (error) {
+      console.error('❌ Ошибка переключения задачи:', error);
+      loadTasks();
+    }
+  };
+
+  useEffect(() => {
+    const checkToken = async () => {
+      try {
+        const token = await getToken();
+        console.log('🔑 TOKEN:', token ? 'OK ' + token.slice(0, 20) + '...' : 'NULL');
+        
+        const tasks = await tasksAPI.getTasks();
+        console.log('✅ GET работает:', tasks.length, 'задач');
+      } catch (err) {
+        console.error('❌ TOKEN/API ошибка:', err.message);
+      }
+    };
+    checkToken();
+  }, []);
+
+  const deleteTask = useCallback(async (taskId) => {
+    try {
+      console.log('🗑️ Удаляем задачу ID:', taskId);
+      
+      setTasks((prevTasks) => prevTasks.filter(task => task.id !== taskId));
+      
+      await tasksAPI.deleteTask(taskId);
+      
+      console.log('✅ Задача удалена (UI + API)');
+    } catch (error) {
+      console.error('❌ Ошибка удаления:', error);
+      
+      loadTasks();
+      Alert.alert('Ошибка', 'Не удалось удалить задачу');
+    }
+  }, []);
+
+  const loadSubtasks = async (taskId) => {
+    try {
+      setLoadingSubtasks(prev => ({ ...prev, [taskId]: true }));
+      const response = await api.get(`/tasks/${taskId}/subtasks`);
+      
+      const rawData = Array.isArray(response.data) ? response.data : [];
+      
+      const formattedSubtasks = rawData.map(st => ({
+          ...st,
+          completed: Boolean(st.completed || st.done),
+      }));
+
+      console.log(`📋 Загружено ${formattedSubtasks.length} подзадач для задачи ${taskId}`);
+      
+      setSubtasks(prev => ({ ...prev, [taskId]: formattedSubtasks }));
+      setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
+    } catch (err) {
+      console.error('Ошибка загрузки подзадач:', err);
+      setSubtasks(prev => ({ ...prev, [taskId]: [] }));
+      setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
+    }
+  };
+
+  const toggleExpand = (taskId) => {
+    const isExpanded = expandedTasks[taskId];
+    
+    if (!isExpanded) {
+      loadSubtasks(taskId);
+    }
+    
+    setExpandedTasks(prev => ({ ...prev, [taskId]: !isExpanded }));
+  };
+
+  const toggleSubtask = async (subtaskId, taskId) => {
+    try {
+      await api.put(`/subtasks/${subtaskId}/toggle`);
+      setSubtasks(prev => ({
+        ...prev,
+        [taskId]: prev[taskId].map(st => 
+          st.id === subtaskId ? { ...st, completed: !st.completed } : st
+        )
+      }));
+    } catch (err) {
+      console.error('Ошибка переключения подзадачи:', err);
+    }
+  };
+
+  const addSubtask = async () => {
+    if (!newSubtaskTitle.trim() || !currentTaskForSubtask) return;
+    
+    try {
+      const response = await api.post(`/tasks/${currentTaskForSubtask}/subtasks`, {
+        title: newSubtaskTitle
+      });
+      
+      setSubtasks(prev => ({
+        ...prev,
+        [currentTaskForSubtask]: [...(prev[currentTaskForSubtask] || []), response.data]
+      }));
+      
+      setNewSubtaskTitle('');
+      setShowAddSubtaskModal(false);
+      setCurrentTaskForSubtask(null);
+    } catch (err) {
+      console.error('Ошибка добавления подзадачи:', err);
+    }
+  };
+
+  const deleteSubtask = async (subtaskId, taskId) => {
+    try {
+      await api.delete(`/subtasks/${subtaskId}`);
+      setSubtasks(prev => ({
+        ...prev,
+        [taskId]: prev[taskId].filter(st => st.id !== subtaskId)
+      }));
+    } catch (err) {
+      console.error('Ошибка удаления подзадачи:', err);
+    }
+  };
+
+  const handleEditTask = (task) => {
+    setNewTask({
+      title: task.title,
+      date: task.date.split('T')[0],
+      deadline: task.deadline.split('T')[0],
+      priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
+      comment: task.comment || '',
+      folder_id: task.folder_id
+    });
+    setEditingTask(task);
+    setShowAddModal(true);
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    try {
+      await foldersAPI.createFolder(newFolderName.trim());
+      await loadFolders();
+      setNewFolderName('');
+      setShowAddFolderModal(false);
+    } catch (err) {
+      console.error('Ошибка создания папки:', err);
+      Alert.alert('Ошибка', 'Не удалось создать папку');
+    }
+  };
+
+  const handleUpdateFolder = async () => {
+    if (!newFolderName.trim() || !editingFolder) return;
+    try {
+      await foldersAPI.updateFolder(editingFolder.id, newFolderName.trim());
+      await loadFolders();
+      setNewFolderName('');
+      setEditingFolder(null);
+      setShowEditFolderModal(false);
+    } catch (err) {
+      console.error('Ошибка обновления папки:', err);
+      Alert.alert('Ошибка', 'Не удалось обновить папку');
+    }
+  };
+
+  const handleDeleteFolder = async () => {
+    if (!editingFolder) return;
+    try {
+      await foldersAPI.deleteFolder(editingFolder.id);
+      if (activeFolderId === editingFolder.id) {
+        setActiveFolderId('all');
+      }
+      await loadFolders();
+      setEditingFolder(null);
+      setShowEditFolderModal(false);
+    } catch (err) {
+      console.error('Ошибка удаления папки:', err);
+      Alert.alert('Ошибка', 'Не удалось удалить папку. Возможно, в ней есть задачи.');
+    }
+  };
+
+  // Перемещение задачи в папку (Drag-and-Drop)
+  const handleDropTaskToFolder = async (taskId, targetFolderId) => {
+    console.log(`📦 Перемещаем задачу ${taskId} в папку ${targetFolderId}`);
+    try {
+      // 1. Оптимистичное обновление UI
+      const resolvedFolderId = targetFolderId === 'inbox' ? null : targetFolderId;
+      
+      setTasks(prevTasks => 
+        prevTasks.map(t => 
+          t.id === taskId ? { ...t, folder_id: resolvedFolderId } : t
+        )
+      );
+      
+      // 2. Сбрасываем подсвеченную папку
+      setHoveredFolderId(null);
+      
+      // 3. Отправляем на сервер
+      await foldersAPI.moveTaskToFolder(taskId, resolvedFolderId);
+      
+    } catch (err) {
+      console.error('Ошибка при перемещении задачи:', err);
+      Alert.alert('Ошибка', 'Не удалось переместить задачу');
+      // Откатываем UI
+      await loadTasks();
+    }
+  };
+
+  const filteredTasks = tasks.filter(t => {
+    if (hideCompleted && t.completed) return false;
+    
+    if (activeFolderId === 'all') return true;
+    if (activeFolderId === 'inbox') return t.folder_id === null;
+    return t.folder_id === activeFolderId;
+  });
+
+  const getTaskStatus = (task) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const startDate = task.date ? task.date.split('T')[0] : today;
+    const endDate = task.deadline ? task.deadline.split('T')[0] : startDate;
+    
+    if (today >= startDate && today <= endDate) {
+      return 'today';
+    }
+    
+    if (endDate < today) {
+      return 'overdue';
+    }
+    
+    return 'future';
+  };
+
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    if (sortBy === 'date') {
+      const statusA = getTaskStatus(a);
+      const statusB = getTaskStatus(b);
+      
+      const categoryOrder = { overdue: 1, today: 2, future: 3 };
+      const categoryA = categoryOrder[statusA];
+      const categoryB = categoryOrder[statusB];
+      
+      if (categoryA !== categoryB) {
+        return categoryA - categoryB;
+      }
+      
+      const deadlineA = a.deadline ? a.deadline.split('T')[0] : a.date.split('T')[0];
+      const deadlineB = b.deadline ? b.deadline.split('T')[0] : b.date.split('T')[0];
+      
+      return new Date(deadlineA) - new Date(deadlineB);
+    }
+    
+    if (sortBy === 'priority') {
+      const priorityOrder = { high: 1, medium: 2, low: 3 };
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    }
+    
+    if (sortBy === 'title') {
+      return a.title.localeCompare(b.title, 'ru');
+    }
+    
+    return 0;
+  });
+
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+
+  const formatTaskDate = (task) => {
+    const formatDate = (isoString) => {
+      if (!isoString) return '';
+      const date = new Date(isoString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}.${month}.${year}`;
     };
 
-    // 3. Отправляем на сервер
-    await tasksAPI.updateTask(taskId, updatedTaskData);
-    
-    // 4. ОБНОВЛЯЕМ СТАТИСТИКУ (чтобы счетчики пересчитались)
-    await loadStats(); // <--- ВАЖНО!
-    
-  } catch (error) {
-    console.error('❌ Ошибка переключения задачи:', error);
-    // Откатываем изменения при ошибке
-    loadTasks();
-  }
-};
+    const dateStr = task.date;
+    const deadlineStr = task.deadline;
 
+    if (!deadlineStr || dateStr === deadlineStr) {
+      return formatDate(dateStr);
+    }
 
-useEffect(() => {
-  const checkToken = async () => {
-    try {
-      const token = await getToken();
-      console.log('🔑 TOKEN:', token ? 'OK ' + token.slice(0, 20) + '...' : 'NULL');
+    const dateObj = new Date(dateStr);
+    const deadlineObj = new Date(deadlineStr);
+
+    const dayStart = String(dateObj.getDate()).padStart(2, '0');
+    const dayEnd = String(deadlineObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
+
+    if (dateObj.getMonth() === deadlineObj.getMonth() && 
+        dateObj.getFullYear() === deadlineObj.getFullYear()) {
+      return `${dayStart}-${dayEnd}.${month}.${year}`;
+    }
+
+    return `${formatDate(dateStr)} - ${formatDate(deadlineStr)}`;
+  };
+
+  // === ОБНОВЛЕННЫЙ РЕНДЕР ЗАДАЧИ ДЛЯ DRAG AND DROP ===
+  const renderTask = ({ item, drag, isActive }) => {
+    const isExpanded = expandedTasks[item.id];
+    const taskSubtasks = subtasks[item.id] || [];
+    const isLoadingSubtasks = loadingSubtasks[item.id];
+    
+    const getPriorityColor = () => {
+      switch (item.priority) {
+        case 'high': return colors.danger1;
+        case 'medium': return colors.accent1;
+        case 'low': return colors.ok1;
+        default: return colors.textMuted;
+      }
+    };
+    
+    const taskStatus = getTaskStatus(item);
+    const getStatusColor = () => {
+      if (item.completed) return colors.textMuted;
+      if (taskStatus === 'overdue') return colors.danger1;
+      if (taskStatus === 'today') return colors.ok1;
+      return colors.borderSubtle;
+    };
+
+    const renderRightActions = (progress, dragX) => {
+      const scale = dragX.interpolate({
+        inputRange: [-100, 0],
+        outputRange: [1, 0],
+        extrapolate: 'clamp',
+      });
       
-      // Тест API
-      const tasks = await tasksAPI.getTasks();
-      console.log('✅ GET работает:', tasks.length, 'задач');
-    } catch (err) {
-      console.error('❌ TOKEN/API ошибка:', err.message);
-    }
-  };
-  checkToken();
-}, []);
+      return (
+        <View style={styles.swipeActionRight}>
+          <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>
+            🗑️
+          </Animated.Text>
+        </View>
+      );
+    };
 
-const deleteTask = useCallback(async (taskId) => {
-  try {
-    console.log('🗑️ Удаляем задачу ID:', taskId);
-    
-    // 1. Оптимистичное обновление UI
-    setTasks((prevTasks) => prevTasks.filter(task => task.id !== taskId));
-    
-    // 2. Отправляем DELETE на сервер
-    await tasksAPI.deleteTask(taskId);
-    
-    console.log('✅ Задача удалена (UI + API)');
-  } catch (error) {
-    console.error('❌ Ошибка удаления:', error);
-    
-    // 3. Откатываем при ошибке
-    loadTasks();
-    Alert.alert('Ошибка', 'Не удалось удалить задачу');
-  }
-}, []);
+    const renderLeftActions = (progress, dragX) => {
+      const scale = dragX.interpolate({
+        inputRange: [0, 100],
+        outputRange: [0, 1],
+        extrapolate: 'clamp',
+      });
+      
+      return (
+        <View style={styles.swipeActionLeft}>
+          <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>
+            ✓
+          </Animated.Text>
+        </View>
+      );
+    };
 
-// Загрузка подзадач
-const loadSubtasks = async (taskId) => {
-  try {
-    setLoadingSubtasks(prev => ({ ...prev, [taskId]: true }));
-    const response = await api.get(`/tasks/${taskId}/subtasks`);
-    
-    // ЗАЩИТА: Проверяем, что response.data — это массив
-    const rawData = Array.isArray(response.data) ? response.data : [];
-    
-    // FIX: Форматируем подзадачи (приводим к булевым, чтобы не было 0 в JSX)
-    const formattedSubtasks = rawData.map(st => ({
-        ...st,
-        completed: Boolean(st.completed || st.done), // Поддержка и completed, и done, превращаем в true/false
-    }));
+    const onSwipeableOpen = (direction) => {
+      if (direction === 'left') {
+        toggleTask(item.id);
+      } else if (direction === 'right') {
+        setTaskToDelete(item);
+      }
+    };
 
-    console.log(`📋 Загружено ${formattedSubtasks.length} подзадач для задачи ${taskId}`);
-    
-    setSubtasks(prev => ({ ...prev, [taskId]: formattedSubtasks }));
-    setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
-  } catch (err) {
-    console.error('Ошибка загрузки подзадач:', err);
-    setSubtasks(prev => ({ ...prev, [taskId]: [] })); // Пустой массив при ошибке
-    setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
-  }
-};
+    const handleLongPress = () => {
+      // Инициируем DND при долгом нажатии
+      if (drag) {
+        drag();
+      } else {
+        handleEditTask(item); // Фолбэк, если drag недоступен
+      }
+    };
 
-// Раскрытие/скрытие подзадач
-const toggleExpand = (taskId) => {
-  const isExpanded = expandedTasks[taskId];
-  
-  if (!isExpanded) {
-    // Раскрываем - загружаем подзадачи
-    loadSubtasks(taskId);
-  }
-  
-  setExpandedTasks(prev => ({ ...prev, [taskId]: !isExpanded }));
-};
-
-// Переключение статуса подзадачи
-const toggleSubtask = async (subtaskId, taskId) => {
-  try {
-    await api.put(`/subtasks/${subtaskId}/toggle`);
-    // Обновляем локально
-    setSubtasks(prev => ({
-      ...prev,
-      [taskId]: prev[taskId].map(st => 
-        st.id === subtaskId ? { ...st, completed: !st.completed } : st
-      )
-    }));
-  } catch (err) {
-    console.error('Ошибка переключения подзадачи:', err);
-  }
-};
-
-// Добавление подзадачи
-const addSubtask = async () => {
-  if (!newSubtaskTitle.trim() || !currentTaskForSubtask) return;
-  
-  try {
-    const response = await api.post(`/tasks/${currentTaskForSubtask}/subtasks`, {
-      title: newSubtaskTitle
-    });
-    
-    // Добавляем в локальный стейт
-    setSubtasks(prev => ({
-      ...prev,
-      [currentTaskForSubtask]: [...(prev[currentTaskForSubtask] || []), response.data]
-    }));
-    
-    setNewSubtaskTitle('');
-    setShowAddSubtaskModal(false);
-    setCurrentTaskForSubtask(null);
-  } catch (err) {
-    console.error('Ошибка добавления подзадачи:', err);
-  }
-};
-
-// Удаление подзадачи
-const deleteSubtask = async (subtaskId, taskId) => {
-  try {
-    await api.delete(`/subtasks/${subtaskId}`);
-    setSubtasks(prev => ({
-      ...prev,
-      [taskId]: prev[taskId].filter(st => st.id !== subtaskId)
-    }));
-  } catch (err) {
-    console.error('Ошибка удаления подзадачи:', err);
-  }
-};
-
-const handleEditTask = (task) => {
-  setNewTask({
-    title: task.title,
-    date: task.date.split('T')[0],
-    deadline: task.deadline.split('T')[0],
-    priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
-    comment: task.comment || '',
-    folder_id: task.folder_id
-  });
-  setEditingTask(task);
-  setShowAddModal(true);
-};
-
-// Функции для работы с папками
-const handleCreateFolder = async () => {
-  if (!newFolderName.trim()) return;
-  try {
-    await foldersAPI.createFolder(newFolderName.trim());
-    await loadFolders();
-    setNewFolderName('');
-    setShowAddFolderModal(false);
-  } catch (err) {
-    console.error('Ошибка создания папки:', err);
-    Alert.alert('Ошибка', 'Не удалось создать папку');
-  }
-};
-
-const handleUpdateFolder = async () => {
-  if (!newFolderName.trim() || !editingFolder) return;
-  try {
-    await foldersAPI.updateFolder(editingFolder.id, newFolderName.trim());
-    await loadFolders();
-    setNewFolderName('');
-    setEditingFolder(null);
-    setShowEditFolderModal(false);
-  } catch (err) {
-    console.error('Ошибка обновления папки:', err);
-    Alert.alert('Ошибка', 'Не удалось обновить папку');
-  }
-};
-
-const handleDeleteFolder = async () => {
-  if (!editingFolder) return;
-  try {
-    await foldersAPI.deleteFolder(editingFolder.id);
-    if (activeFolderId === editingFolder.id) {
-      setActiveFolderId('all');
-    }
-    await loadFolders();
-    setEditingFolder(null);
-    setShowEditFolderModal(false);
-  } catch (err) {
-    console.error('Ошибка удаления папки:', err);
-    Alert.alert('Ошибка', 'Не удалось удалить папку. Возможно, в ней есть задачи.');
-  }
-};
-
-// Фильтрация задач с учетом папок
-const filteredTasks = tasks.filter(t => {
-  // Фильтр по выполнению
-  if (hideCompleted && t.completed) return false;
-  
-  // Фильтр по папкам
-  if (activeFolderId === 'all') return true;
-  if (activeFolderId === 'inbox') return t.folder_id === null;
-  return t.folder_id === activeFolderId;
-});
-
-// Определение статуса задачи по дате
-const getTaskStatus = (task) => {
-  // Приводим все даты к формату YYYY-MM-DD для корректного сравнения
-  const today = new Date().toISOString().split('T')[0];
-  
-  // Если date/deadline приходят как ISO (2026-02-05T00:00:00.000Z), обрезаем до YYYY-MM-DD
-  const startDate = task.date ? task.date.split('T')[0] : today;
-  const endDate = task.deadline ? task.deadline.split('T')[0] : startDate;
-  
-  // Если сегодня попадает в диапазон [startDate, endDate] - задача актуальна
-  if (today >= startDate && today <= endDate) {
-    return 'today';
-  }
-  
-  // Если дедлайн уже прошёл - просрочено
-  if (endDate < today) {
-    return 'overdue';
-  }
-  
-  // Если задача ещё в будущем
-  return 'future';
-};
-
-// Сортировка задач
-const sortedTasks = [...filteredTasks].sort((a, b) => {
-  if (sortBy === 'date') {
-    // ИСПОЛЬЗУЕМ getTaskStatus вместо ручной проверки deadline
-    const statusA = getTaskStatus(a);
-    const statusB = getTaskStatus(b);
-    
-    // Порядок категорий: overdue (1) → today (2) → future (3)
-    const categoryOrder = { overdue: 1, today: 2, future: 3 };
-    const categoryA = categoryOrder[statusA];
-    const categoryB = categoryOrder[statusB];
-    
-    // Сначала сортируем по категориям
-    if (categoryA !== categoryB) {
-      return categoryA - categoryB;
-    }
-    
-    // Внутри категории — по deadline
-    const deadlineA = a.deadline ? a.deadline.split('T')[0] : a.date.split('T')[0];
-    const deadlineB = b.deadline ? b.deadline.split('T')[0] : b.date.split('T')[0];
-    
-    return new Date(deadlineA) - new Date(deadlineB);
-  }
-  
-  if (sortBy === 'priority') {
-    const priorityOrder = { high: 1, medium: 2, low: 3 };
-    return priorityOrder[a.priority] - priorityOrder[b.priority];
-  }
-  
-  if (sortBy === 'title') {
-    return a.title.localeCompare(b.title, 'ru');
-  }
-  
-  return 0;
-});
-
-// --- ИСПРАВЛЕННАЯ СТАТИСТИКА ---
-const today = new Date();
-const todayStr = today.toISOString().split('T')[0];
-
-// Форматирование даты для отображения (как на сайте)
-const formatTaskDate = (task) => {
-  const formatDate = (isoString) => {
-    if (!isoString) return '';
-    const date = new Date(isoString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}.${month}.${year}`;
-  };
-
-  const dateStr = task.date;
-  const deadlineStr = task.deadline;
-
-  // Если нет deadline или они совпадают
-  if (!deadlineStr || dateStr === deadlineStr) {
-    return formatDate(dateStr);
-  }
-
-  // Если разные - показываем диапазон
-  const dateObj = new Date(dateStr);
-  const deadlineObj = new Date(deadlineStr);
-
-  const dayStart = String(dateObj.getDate()).padStart(2, '0');
-  const dayEnd = String(deadlineObj.getDate()).padStart(2, '0');
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const year = dateObj.getFullYear();
-
-  // Если один месяц
-  if (dateObj.getMonth() === deadlineObj.getMonth() && 
-      dateObj.getFullYear() === deadlineObj.getFullYear()) {
-    return `${dayStart}-${dayEnd}.${month}.${year}`;
-  }
-
-  // Разные месяцы
-  return `${formatDate(dateStr)} - ${formatDate(deadlineStr)}`;
-};
-
-// Рендер одной задачи (КРАСИВЫЙ + НОВЫЙ UX)
-const renderTask = ({ item }) => {
-  const isExpanded = expandedTasks[item.id];
-  const taskSubtasks = subtasks[item.id] || [];
-  const isLoadingSubtasks = loadingSubtasks[item.id];
-  
-  // Цвета приоритета
-  const getPriorityColor = () => {
-    switch (item.priority) {
-      case 'high': return colors.danger1;
-      case 'medium': return colors.accent1;
-      case 'low': return colors.ok1;
-      default: return colors.textMuted;
-    }
-  };
-  
-  // Статус и цвета
-  const taskStatus = getTaskStatus(item);
-  const getStatusColor = () => {
-    if (item.completed) return colors.textMuted; // Серый если выполнено
-    if (taskStatus === 'overdue') return colors.danger1;
-    if (taskStatus === 'today') return colors.ok1;
-    return colors.borderSubtle;
-  };
-
-  // Swipe Actions
-  const renderRightActions = (progress, dragX) => {
-    const scale = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-    
     return (
-      <View style={styles.swipeActionRight}>
-        <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>
-          🗑️
-        </Animated.Text>
-      </View>
-    );
-  };
-
-  const renderLeftActions = (progress, dragX) => {
-    const scale = dragX.interpolate({
-      inputRange: [0, 100],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    });
-    
-    return (
-      <View style={styles.swipeActionLeft}>
-        <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>
-          ✓
-        </Animated.Text>
-      </View>
-    );
-  };
-
-  const onSwipeableOpen = (direction) => {
-    if (direction === 'left') {
-      // Свайп вправо (зеленый) -> Выполнить
-      toggleTask(item.id);
-    } else if (direction === 'right') {
-      // Свайп влево (красный) -> Удалить
-      setTaskToDelete(item);
-    }
-  };
-
-  // Обработчик долгого нажатия
-  const handleLongPress = () => {
-    handleEditTask(item);
-  };
-
-  return (
-    <View style={{ marginBottom: 12 }}>
-      <Swipeable
-        renderRightActions={renderRightActions}
-        renderLeftActions={renderLeftActions}
-        onSwipeableOpen={onSwipeableOpen} // <--- АВТО-ДЕЙСТВИЕ
-        containerStyle={{ borderRadius: 12, overflow: 'hidden' }}
-      >
-      <TouchableOpacity
-        style={[
-          styles.taskItem,
-          {
-            backgroundColor: colors.surface,
-            borderColor: getStatusColor(), // Цвет рамки теперь всегда актуальный
-            borderWidth: 2, // Всегда жирная рамка
-            opacity: item.completed ? 0.6 : 1,
-            marginBottom: 0,
-            borderRadius: 12, // ВЕРНУЛ СКРУГЛЕНИЕ!
-          },
-          item.completed && styles.taskCompleted,
-        ]}
-        activeOpacity={0.7}
-        onPress={() => toggleExpand(item.id)} // ТАП -> Раскрыть
-        onLongPress={handleLongPress}         // ДОЛГИЙ ТАП -> Редактировать
-      >
-        
-        {/* ЧЕКБОКС (Слева) */}
-        <TouchableOpacity 
-          style={styles.checkboxArea}
-          onPress={(e) => {
-            e.stopPropagation();
-            toggleTask(item.id);
-          }}
-        >
-          <View
+      <ScaleDecorator>
+        <View style={{ marginBottom: 12 }}>
+          <Swipeable
+            renderRightActions={renderRightActions}
+            renderLeftActions={renderLeftActions}
+            onSwipeableOpen={onSwipeableOpen}
+            containerStyle={{ borderRadius: 12, overflow: 'hidden' }}
+          >
+          <TouchableOpacity
             style={[
-              styles.checkbox,
+              styles.taskItem,
               {
-                // Цвет чекбокса совпадает с цветом рамки (статуса)
-                borderColor: getStatusColor(),
-                backgroundColor: item.completed ? getStatusColor() : 'transparent',
+                backgroundColor: isActive ? colors.surfaceHighlight : colors.surface,
+                borderColor: isActive ? colors.accent1 : getStatusColor(),
+                borderWidth: isActive ? 3 : 2, 
+                opacity: item.completed ? 0.6 : 1,
+                marginBottom: 0,
+                borderRadius: 12,
+                elevation: isActive ? 10 : 0, // Тень при перетаскивании
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: isActive ? 5 : 0 },
+                shadowOpacity: isActive ? 0.3 : 0,
+                shadowRadius: isActive ? 5 : 0,
               },
+              item.completed && styles.taskCompleted,
             ]}
+            activeOpacity={0.9}
+            onPress={() => toggleExpand(item.id)}
+            onLongPress={handleLongPress}
           >
-            {item.completed && <Text style={styles.checkmark}>✓</Text>}
-          </View>
-        </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.checkboxArea}
+              onPress={(e) => {
+                e.stopPropagation();
+                toggleTask(item.id);
+              }}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  {
+                    borderColor: getStatusColor(),
+                    backgroundColor: item.completed ? getStatusColor() : 'transparent',
+                  },
+                ]}
+              >
+                {item.completed && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+            </TouchableOpacity>
 
-        {/* КОНТЕНТ */}
-        <View style={styles.taskContent}>
-          <Text
-            style={[
-              styles.taskTitle,
-              { color: item.completed ? colors.textMuted : colors.textMain },
-              item.completed && styles.taskTitleCompleted,
-            ]}
-            numberOfLines={isExpanded ? 0 : 2}
-          >
-            {item.title}
-          </Text>
+            <View style={styles.taskContent}>
+              <Text
+                style={[
+                  styles.taskTitle,
+                  { color: item.completed ? colors.textMuted : colors.textMain },
+                  item.completed && styles.taskTitleCompleted,
+                ]}
+                numberOfLines={isExpanded ? 0 : 2}
+              >
+                {item.title}
+              </Text>
 
-          {/* БЕЙДЖИКИ (Статус, Приоритет, Дата) */}
-          {!item.completed && (
-            <View style={styles.statusBadge}>
-              {taskStatus === 'overdue' && (
-                <Text style={[styles.statusText, { color: colors.danger1 }]}>
-                  🔥 ПРОСРОЧЕНО
-                </Text>
+              {!item.completed && (
+                <View style={styles.statusBadge}>
+                  {taskStatus === 'overdue' && (
+                    <Text style={[styles.statusText, { color: colors.danger1 }]}>
+                      🔥 ПРОСРОЧЕНО
+                    </Text>
+                  )}
+                  {taskStatus === 'today' && (
+                    <Text style={[styles.statusText, { color: colors.ok1 }]}>
+                      ⚡ СЕГОДНЯ
+                    </Text>
+                  )}
+                  {taskStatus === 'future' && (
+                    <Text style={[styles.statusText, { color: colors.textMuted }]}>
+                      📅 В ПЛАНЕ
+                    </Text>
+                  )}
+                </View>
               )}
-              {taskStatus === 'today' && (
-                <Text style={[styles.statusText, { color: colors.ok1 }]}>
-                  ⚡ СЕГОДНЯ
+
+              <View style={styles.taskMeta}>
+                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
+                  <Text style={styles.priorityText}>
+                    {item.priority === 'high' ? 'Высокий' : 
+                     item.priority === 'medium' ? 'Средний' : 'Низкий'}
+                  </Text>
+                </View>
+                
+                <Text style={[styles.taskDate, { color: colors.textMuted }]}>
+                  {formatTaskDate(item)}
                 </Text>
-              )}
-              {taskStatus === 'future' && (
-                <Text style={[styles.statusText, { color: colors.textMuted }]}>
-                  📅 В ПЛАНЕ
-                </Text>
-              )}
+
+                {!isExpanded && (item.subtasks_count > 0 || taskSubtasks.length > 0) && (
+                   <Text style={{fontSize: 10, color: colors.textMuted, marginLeft: 4}}>
+                     📋 {taskSubtasks.length > 0 ? taskSubtasks.length : '...'}
+                   </Text>
+                )}
+              </View>
             </View>
-          )}
 
-          <View style={styles.taskMeta}>
-            {/* Приоритет */}
-            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
-              <Text style={styles.priorityText}>
-                {item.priority === 'high' ? 'Высокий' : 
-                 item.priority === 'medium' ? 'Средний' : 'Низкий'}
+            {/* Иконка перетаскивания (гамбургер) */}
+            <TouchableOpacity 
+              onPressIn={drag} 
+              style={{ padding: 10, justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 18, color: colors.textMuted }}>≡</Text>
+            </TouchableOpacity>
+
+            <View style={{ paddingLeft: 8, justifyContent: 'center' }}>
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                {isExpanded ? '▲' : '▼'}
               </Text>
             </View>
-            
-            {/* Дата */}
-            <Text style={[styles.taskDate, { color: colors.textMuted }]}>
-              {formatTaskDate(item)}
-            </Text>
 
-            {/* Кол-во подзадач (если есть) */}
-            {!isExpanded && (item.subtasks_count > 0 || taskSubtasks.length > 0) && (
-               <Text style={{fontSize: 10, color: colors.textMuted, marginLeft: 4}}>
-                 📋 {taskSubtasks.length > 0 ? taskSubtasks.length : '...'}
-               </Text>
-            )}
-          </View>
-        </View>
+          </TouchableOpacity>
+          </Swipeable>
 
-        {/* Стрелочка раскрытия */}
-        <View style={{ paddingLeft: 8, justifyContent: 'center' }}>
-          <Text style={{ fontSize: 12, color: colors.textMuted }}>
-            {isExpanded ? '▲' : '▼'}
-          </Text>
-        </View>
+          {isExpanded && (
+            <View style={[styles.subtasksContainer, { backgroundColor: colors.surface }]}>
+              {isLoadingSubtasks ? (
+                <ActivityIndicator size="small" color={colors.accent1} />
+              ) : (
+                <>
+                  {taskSubtasks.length === 0 && (
+                    <Text style={{color: colors.textMuted, fontSize: 12, marginBottom: 8}}>Нет подзадач</Text>
+                  )}
+                  
+                  {taskSubtasks.map(subtask => (
+                    <SubtaskItem 
+                      key={subtask.id}
+                      subtask={subtask}
+                      parentId={item.id}
+                      colors={colors}
+                      onToggle={toggleSubtask}
+                      onDelete={deleteSubtask}
+                    />
+                  ))}
 
-      </TouchableOpacity>
-      </Swipeable>
-
-      {/* ПОДЗАДАЧИ */}
-      {isExpanded && (
-        <View style={[styles.subtasksContainer, { backgroundColor: colors.surface }]}>
-          {isLoadingSubtasks ? (
-            <ActivityIndicator size="small" color={colors.accent1} />
-          ) : (
-            <>
-              {taskSubtasks.length === 0 && (
-                <Text style={{color: colors.textMuted, fontSize: 12, marginBottom: 8}}>Нет подзадач</Text>
+                  <TouchableOpacity
+                    style={styles.addSubtaskBtn}
+                    onPress={() => {
+                      setCurrentTaskForSubtask(item.id);
+                      setShowAddSubtaskModal(true);
+                    }}
+                  >
+                    <Text style={[styles.addSubtaskBtnText, { color: colors.accent1 }]}>
+                      + Добавить подзадачу
+                    </Text>
+                  </TouchableOpacity>
+                </>
               )}
-              
-              {taskSubtasks.map(subtask => (
-                <SubtaskItem 
-                  key={subtask.id}
-                  subtask={subtask}
-                  parentId={item.id}
-                  colors={colors}
-                  onToggle={toggleSubtask}
-                  onDelete={deleteSubtask}
-                />
-              ))}
-
-              <TouchableOpacity
-                style={styles.addSubtaskBtn}
-                onPress={() => {
-                  setCurrentTaskForSubtask(item.id);
-                  setShowAddSubtaskModal(true);
-                }}
-              >
-                <Text style={[styles.addSubtaskBtnText, { color: colors.accent1 }]}>
-                  + Добавить подзадачу
-                </Text>
-              </TouchableOpacity>
-            </>
+            </View>
           )}
         </View>
-      )}
-    </View>
-  );
-};
+      </ScaleDecorator>
+    );
+  };
 
 
   if (loading && tasks.length === 0) {
@@ -949,11 +902,18 @@ const renderTask = ({ item }) => {
     );
   }
 
+  // Данные для списка папок
+  const folderListData = [
+    { id: 'all', name: 'Все' },
+    { id: 'inbox', name: 'Входящие (без папки)' },
+    ...folders,
+    { id: 'add_new', name: '+ Новая папка', isAction: true }
+  ];
+
   return (
     <Background>
       <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
-        {/* Шапка */}
         <View style={[styles.header, { backgroundColor: colors.surface }]}>
           <Text style={[styles.headerTitle, { color: colors.accentText }]}>
             МОИ ЗАДАЧИ
@@ -972,7 +932,6 @@ const renderTask = ({ item }) => {
           </View>
         </View>
 
-        {/* Статистика (Серверная) */}
         <View style={styles.statsContainer}>
           <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
             <Text style={[styles.statNumber, { color: colors.accentText }]}>
@@ -997,18 +956,13 @@ const renderTask = ({ item }) => {
           </View>
         </View>
 
-        {/* ПАПКИ - ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ */}
-        <View>
+        {/* ПАПКИ - ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ С ПОДДЕРЖКОЙ DROPA */}
+        <View style={{ zIndex: 10 }}>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.foldersContainer}
-            data={[
-              { id: 'all', name: 'Все' },
-              { id: 'inbox', name: 'Входящие (без папки)' },
-              ...folders,
-              { id: 'add_new', name: '+ Новая папка', isAction: true }
-            ]}
+            data={folderListData}
             keyExtractor={item => item.id.toString()}
             renderItem={({ item }) => {
               if (item.id === 'add_new') {
@@ -1025,40 +979,62 @@ const renderTask = ({ item }) => {
               }
               
               const isActive = activeFolderId === item.id;
+              const isHovered = hoveredFolderId === item.id;
               
               return (
-                <TouchableOpacity
-                  style={[
-                    styles.folderChip, 
-                    { 
-                      backgroundColor: isActive ? colors.accent1 : colors.surface,
-                      borderColor: isActive ? colors.accent1 : colors.borderSubtle
-                    }
-                  ]}
-                  onPress={() => setActiveFolderId(item.id)}
-                  onLongPress={() => {
-                    if (item.id !== 'all' && item.id !== 'inbox') {
-                      setEditingFolder(item);
-                      setNewFolderName(item.name);
-                      setShowEditFolderModal(true);
-                    }
+                <View 
+                  collapsable={false}
+                  // Это ключевой момент для DND в React Native 
+                  // Нужно отслеживать когда элемент перетаскивают поверх папки
+                  onLayout={(event) => {
+                    // Мы могли бы сохранять координаты папок, но в DraggableFlatList 
+                    // проще обрабатывать drop по координатам глобально
                   }}
                 >
-                  <Text style={[
-                    styles.folderChipText, 
-                    { color: isActive ? '#020617' : colors.textMain }
-                  ]}>
-                    {item.name}
-                  </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.folderChip, 
+                      { 
+                        backgroundColor: isHovered 
+                          ? colors.accent2 
+                          : isActive ? colors.accent1 : colors.surface,
+                        borderColor: isHovered || isActive ? colors.accent1 : colors.borderSubtle,
+                        transform: [{ scale: isHovered ? 1.05 : 1 }]
+                      }
+                    ]}
+                    onPress={() => setActiveFolderId(item.id)}
+                    onLongPress={() => {
+                      if (item.id !== 'all' && item.id !== 'inbox') {
+                        setEditingFolder(item);
+                        setNewFolderName(item.name);
+                        setShowEditFolderModal(true);
+                      }
+                    }}
+                  >
+                    <Text style={[
+                      styles.folderChipText, 
+                      { color: isHovered || isActive ? '#020617' : colors.textMain }
+                    ]}>
+                      {item.name}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               );
             }}
           />
+          
+          {hoveredFolderId && (
+            <View style={{ position: 'absolute', top: -30, left: 0, right: 0, alignItems: 'center' }}>
+              <View style={{ backgroundColor: colors.accent1, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
+                <Text style={{ color: '#020617', fontWeight: 'bold', fontSize: 12 }}>
+                  Отпустите, чтобы переместить
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
-        {/* === ЧИПЫ ФИЛЬТРАЦИИ И СОРТИРОВКИ === */}
         <View style={styles.chipsContainer}>
-          {/* Кнопка скрытия выполненных */}
           <TouchableOpacity
             style={[
               styles.chip,
@@ -1077,14 +1053,12 @@ const renderTask = ({ item }) => {
             </Text>
           </TouchableOpacity>
 
-          {/* Кнопка сортировки */}
           <TouchableOpacity
             style={[
               styles.chip,
               { backgroundColor: colors.surface, borderColor: colors.borderSubtle }
             ]}
             onPress={() => {
-              // Циклическое переключение сортировки: date -> priority -> title -> date
               const nextSort = sortBy === 'date' ? 'priority' : sortBy === 'priority' ? 'title' : 'date';
               setSortBy(nextSort);
             }}
@@ -1097,31 +1071,56 @@ const renderTask = ({ item }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Список задач */}
-        <FlatList
-          data={sortedTasks}
-          renderItem={renderTask}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.accent1}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                {activeFolderId === 'all' 
-                  ? 'У вас пока нет задач' 
-                  : 'В этой папке нет задач'}
-              </Text>
-            </View>
-          }
-        />
+        {/* СПИСОК ЗАДАЧ - ТЕПЕРЬ DRAGGABLE */}
+        <View style={{ flex: 1, zIndex: 1 }}>
+          <DraggableFlatList
+            data={sortedTasks}
+            onDragBegin={() => {
+              console.log('Начато перетаскивание');
+            }}
+            onDragEnd={({ data, from, to }) => {
+              console.log(`Перетаскивание завершено с индекса ${from} на ${to}`);
+              
+              // Если мы реализовали DND сортировку внутри папки, то обновляли бы порядок здесь
+              // Но у нас сортировка по дате/приоритету, поэтому локальный порядок не меняем
+              
+              // В реальном DND (перенос в папку) логика сложнее. 
+              // Для простоты мы можем использовать модалку редактирования для изменения папки,
+              // или реализовать сложную логику отслеживания координат drop.
+              // Сейчас пока просто сбрасываем состояние hover.
+              setHoveredFolderId(null);
+            }}
+            onPlaceholderIndexChange={(placeholderIndex) => {
+              // Если переместили на самый верх (индекс 0) - считаем что хотим перенести во "Входящие"
+              // Это простая эмуляция DND в папку, пока не будет реализован полноценный DropZone
+              if (placeholderIndex === 0) {
+                // setHoveredFolderId('inbox');
+              } else {
+                setHoveredFolderId(null);
+              }
+            }}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderTask}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.accent1}
+              />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  {activeFolderId === 'all' 
+                    ? 'У вас пока нет задач' 
+                    : 'В этой папке нет задач'}
+                </Text>
+              </View>
+            }
+          />
+        </View>
 
-        {/* Плавающая кнопка добавления (FAB) */}
         <TouchableOpacity
           style={[
             styles.fab, 
@@ -1136,7 +1135,6 @@ const renderTask = ({ item }) => {
 
       {/* ========== МОДАЛКИ ========== */}
       
-      {/* Модалка добавления папки */}
       {showAddFolderModal && (
         <Modal
           visible
@@ -1156,7 +1154,6 @@ const renderTask = ({ item }) => {
         </Modal>
       )}
 
-      {/* Модалка редактирования папки */}
       {showEditFolderModal && editingFolder && (
         <Modal
           visible
@@ -1182,10 +1179,7 @@ const renderTask = ({ item }) => {
           </TouchableOpacity>
         </Modal>
       )}
-
-      {/* Остальные модалки (оставил как были, только добавил выбор папки в showAddModal) */}
       
-      {/* Модалка добавления задачи */}
       {showAddModal && (
         <Modal
           visible
@@ -1210,7 +1204,6 @@ const renderTask = ({ item }) => {
             onChangeText={(text) => setNewTask({ ...newTask, title: text })}
           />
 
-          {/* ВЫБОР ПАПКИ В МОДАЛКЕ */}
           {folders.length > 0 && (
             <View style={styles.formGroup}>
               <Text style={[styles.formLabel, { color: colors.textMain }]}>Папка</Text>
@@ -1273,7 +1266,6 @@ const renderTask = ({ item }) => {
             }}
           />
 
-          {/* Приоритет */}
           <View style={styles.formGroup}>
             <Text style={[styles.formLabel, { color: colors.textMain }]}>
               Приоритет
@@ -1354,10 +1346,8 @@ const renderTask = ({ item }) => {
                   await tasksAPI.createTask(taskToSend);
                 }
                 
-                // Перезагружаем список
                 await loadTasks();
                 
-                // Очищаем форму
                 setNewTask({ 
                   title: '', 
                   date: new Date().toISOString().split('T')[0],
@@ -1393,10 +1383,6 @@ const renderTask = ({ item }) => {
         </Modal>
       )}
 
-      {/* ОСТАЛЬНЫЕ МОДАЛКИ (УДАЛЕНИЕ ЗАДАЧИ, ПОДЗАДАЧИ, МЕСЯЦ) */}
-      {/* ... (оставлены без изменений) ... */}
-
-      {/* Модалка удаления */}
       {taskToDelete && (
         <Modal
           visible
@@ -1446,7 +1432,6 @@ const renderTask = ({ item }) => {
         </Modal>
       )}
 
-      {/* Модалка добавления подзадачи */}
       {showAddSubtaskModal && (
         <Modal
           visible
@@ -1471,7 +1456,6 @@ const renderTask = ({ item }) => {
         </Modal>
       )}
 
-      {/* Модалка выбора месяца */}
       {showMonthPicker && (
         <Modal
           visible
@@ -1513,7 +1497,6 @@ const renderTask = ({ item }) => {
             })}
           </View>
           
-          {/* Переключатель года */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, alignItems: 'center' }}>
             <TouchableOpacity onPress={() => {
                const newDate = new Date(selectedDate.getFullYear() - 1, selectedDate.getMonth(), 1);
@@ -1534,7 +1517,6 @@ const renderTask = ({ item }) => {
         </Modal>
       )}
 
-      {/* Модалка "Чистка просроченных" */}
       {showOverdueCleanupModal && (
         <Modal
           visible
@@ -1958,7 +1940,6 @@ chipText: {
   fontSize: 12,
   fontWeight: '600',
 },
-// Стили для папок
 foldersContainer: {
   paddingHorizontal: 16,
   paddingVertical: 12,
