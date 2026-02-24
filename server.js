@@ -757,30 +757,30 @@ app.get('/api/tasks', authenticateToken, async (req, res) => {
     const { month, year } = req.query; // Ожидаем: month=1 (Февраль), year=2026
 
     // ИСПОЛЬЗУЕМ t.* ЧТОБЫ ВЕРНУТЬ ВСЕ ПОЛЯ (snake_case)
-    let query = \`
+    let query = `
       SELECT t.*,
       (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) as subtasks_count
       FROM tasks t
       WHERE t.user_id = ?
-    \`;
+    `;
 
     let params = [userId];
 
     if (month && year) {
       // РЕЖИМ АРХИВА: Показываем задачи, выполненные в конкретном месяце
       // + Задачи, созданные в этом месяце
-      query += \` AND (
+      query += ` AND (
         (t.done = 1 AND MONTH(t.done_date) = ? AND YEAR(t.done_date) = ?)
         OR 
         (t.done = 0 AND MONTH(t.date) = ? AND YEAR(t.date) = ?)
-      )\`;
+      )`;
       params.push(parseInt(month) + 1, year, parseInt(month) + 1, year); // SQL MONTH 1-12
     } else {
       // РЕЖИМ АКТУАЛЬНОЕ: Невыполненные + Выполненные в текущем месяце
-      query += \` AND (
+      query += ` AND (
         t.done = 0 
         OR (t.done = 1 AND t.done_date >= DATE_FORMAT(NOW() ,'%Y-%m-01'))
-      )\`;
+      )`;
     }
 
     query += ' ORDER BY t.done ASC, t.priority ASC, t.date DESC'; // Сортировка
@@ -818,7 +818,7 @@ app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
     
-    const [rows] = await pool.query(\`
+    const [rows] = await pool.query(`
       SELECT 
         -- СЕГОДНЯ (выполнено)
         COUNT(CASE WHEN done = 1 AND DATE(done_date) = CURDATE() THEN 1 END) as completed_today,
@@ -840,7 +840,7 @@ app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
 
       FROM tasks 
       WHERE user_id = ?
-    \`, [userId]);
+    `, [userId]);
 
     res.json(rows[0]);
   } catch (err) {
@@ -863,15 +863,15 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
     });
 
     const [result] = await pool.query(
-      \`INSERT INTO tasks (user_id, date, deadline, title, priority, comment, done, done_date, focus_sessions, is_recurring, recurrence_type, recurrence_value, is_generated, template_id) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`,
+      `INSERT INTO tasks (user_id, date, deadline, title, priority, comment, done, done_date, focus_sessions, is_recurring, recurrence_type, recurrence_value, is_generated, template_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [req.userId, date, deadline || null, title, priority || 2, comment || '', done ? 1 : 0, doneDate || null, focusSessions || 0, isRecurring ? 1 : 0, recurrenceType || null, recurrenceValue || null, isGenerated ? 1 : 0, templateId || null]
     );
 
     // Получаем созданную задачу
-    const [rows] = await pool.query(\`
+    const [rows] = await pool.query(`
       SELECT * FROM tasks WHERE id = ?
-    \`, [result.insertId]);
+    `, [result.insertId]);
 
     if (rows.length === 0) {
       return res.status(500).json({ error: 'Не удалось получить созданную задачу' });
@@ -910,22 +910,22 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
     const { date, deadline, title, priority, comment, done, doneDate, focusSessions, isRecurring, recurrenceType, recurrenceValue } = req.body;
 
     await pool.query(
-      \`UPDATE tasks SET date = ?, deadline = ?, title = ?, priority = ?, comment = ?, done = ?, done_date = ?, focus_sessions = ?, is_recurring = ?, recurrence_type = ?, recurrence_value = ? WHERE id = ? AND user_id = ?\`,
+      `UPDATE tasks SET date = ?, deadline = ?, title = ?, priority = ?, comment = ?, done = ?, done_date = ?, focus_sessions = ?, is_recurring = ?, recurrence_type = ?, recurrence_value = ? WHERE id = ? AND user_id = ?`,
       [date, deadline || null, title, priority, comment, done ? 1 : 0, doneDate || null, focusSessions || 0, isRecurring ? 1 : 0, recurrenceType || null, recurrenceValue || null, id, req.userId]
     );
 
-    const [updated] = await pool.query(\`
+    const [updated] = await pool.query(`
       SELECT t.*, (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) as subtasks_count
       FROM tasks t 
       WHERE t.id = ? AND t.user_id = ?
-    \`, [id, req.userId]);
+    `, [id, req.userId]);
     
     if (updated.length === 0) {
       return res.status(404).json({ error: 'Задача не найдена' });
     }
     
     const row = updated[0];
-    console.log(\`✓ Task updated: \${id}\`);
+    console.log(`✓ Task updated: ${id}`);
     
     res.json({
         ...row,
@@ -992,11 +992,11 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
       if (existing.length > 0) {
         // Обновляем
         await pool.query(
-          \`UPDATE tasks SET
+          `UPDATE tasks SET
             date = ?, deadline = ?, title = ?, priority = ?, comment = ?,
             done = ?, done_date = ?, focus_sessions = ?,
             is_recurring = ?, recurrence_type = ?, recurrence_value = ?
-          WHERE id = ? AND user_id = ?\`,
+          WHERE id = ? AND user_id = ?`,
           [
             task.date,
             task.deadline || null,
@@ -1016,12 +1016,12 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
       } else {
         // Вставляем новую
         await pool.query(
-          \`INSERT INTO tasks (
+          `INSERT INTO tasks (
             id, user_id, date, deadline, title, priority, comment,
             done, done_date, focus_sessions,
             is_recurring, recurrence_type, recurrence_value,
             is_generated, template_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             task.id,
             userId,
@@ -1046,7 +1046,7 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
       results.push(synced[0]);
     }
 
-    console.log(\`✓ Synced \${results.length} tasks for user \${userId}\`);
+    console.log(`✓ Synced ${results.length} tasks for user ${userId}`);
     res.json({ synced: results.length, tasks: results });
   } catch (err) {
     console.error('Ошибка синхронизации задач:', err);
@@ -1077,7 +1077,7 @@ app.post('/api/tasks/delete', authenticateToken, async (req, res) => {
       [id, req.userId]
     );
     
-    console.log(\`✅ Deleted task: \${id}\`);
+    console.log(`✅ Deleted task: ${id}`);
     res.json({ success: true, deleted: id });
   } catch (err) {
     console.error('Ошибка удаления задачи:', err);
