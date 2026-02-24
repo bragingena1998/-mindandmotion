@@ -850,38 +850,34 @@ app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
 });
 
 
-// Создание задачи
-app.post('/api/tasks', async (req, res) => {
-  // Добавили is_recurring, recurrence_interval в деструктуризацию
-  const { user_id, title, description, date, time, is_recurring, recurrence_interval } = req.body;
+
+// Добавить задачу
+app.post('/api/tasks', authenticateToken, async (req, res) => {
   try {
+    const {
+      date, deadline, title, priority, comment, done, doneDate,
+      focusSessions, isRecurring, recurrenceType, recurrenceValue,
+      isGenerated, templateId
+    } = req.body;
+
     const [result] = await pool.query(
-      'INSERT INTO tasks (user_id, title, description, date, time, is_done, is_recurring, recurrence_interval) VALUES (?, ?, ?, ?, ?, 0, ?, ?)',
-      [user_id, title, description, date, time, is_recurring || 0, recurrence_interval || null]
+      `INSERT INTO tasks (user_id, date, deadline, title, priority, comment, done, done_date, focus_sessions, is_recurring, recurrence_type, recurrence_value, is_generated, template_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.userId, date, deadline || null, title, priority || 2, comment || '', done ? 1 : 0,
+       doneDate || null, focusSessions || 0, isRecurring ? 1 : 0,
+       recurrenceType || null, recurrenceValue || null, isGenerated ? 1 : 0, templateId || null]
     );
-    res.status(201).json({ id: result.insertId, ...req.body });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-    // Получаем созданную задачу
-    const [rows] = await pool.query(`
-      SELECT * FROM tasks WHERE id = ?
-    `, [result.insertId]);
+    const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [result.insertId]);
+    if (rows.length === 0) return res.status(500).json({ error: 'Task not found after insert' });
 
-    if (rows.length === 0) {
-      return res.status(500).json({ error: 'Не удалось получить созданную задачу' });
-    }
-    
     const row = rows[0];
     const newTask = {
       ...row,
       done: Boolean(row.done),
       isRecurring: Boolean(row.is_recurring),
       isGenerated: Boolean(row.is_generated),
-      subtasks_count: 0,
-      // Алиасы для фронта
+      subtasksCount: 0,
       userId: row.user_id,
       doneDate: row.done_date,
       focusSessions: row.focus_sessions,
@@ -893,10 +889,11 @@ app.post('/api/tasks', async (req, res) => {
     console.log('✅ Task created:', { id: newTask.id, title: newTask.title });
     res.json(newTask);
   } catch (err) {
-    console.error('❌ Error creating task:', err);
-    res.status(500).json({ error: 'Ошибка сервера: ' + err.message });
+    console.error('Error creating task:', err);
+    res.status(500).json({ error: err.message });
   }
 });
+
 
 
 
