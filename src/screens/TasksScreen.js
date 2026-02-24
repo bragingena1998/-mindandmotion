@@ -112,6 +112,7 @@ const TasksScreen = ({ navigation }) => {
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [sortBy, setSortBy] = useState('date');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false); // Для скрытия времени и дедлайна
   const [newTask, setNewTask] = useState({
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -352,7 +353,7 @@ const TasksScreen = ({ navigation }) => {
 
   const toggleExpand = (taskId) => {
     const isExpanded = expandedTasks[taskId];
-    if (!isExpanded) {
+    if (!isExpanded && (!subtasks[taskId] || subtasks[taskId].length === 0)) {
       loadSubtasks(taskId);
     }
     setExpandedTasks(prev => ({ ...prev, [taskId]: !isExpanded }));
@@ -412,6 +413,7 @@ const TasksScreen = ({ navigation }) => {
       time: task.time || null,
     });
     setEditingTask(task);
+    setShowAdvancedSettings(!!(task.time || (task.deadline && task.deadline !== task.date)));
     setShowAddModal(true);
   };
 
@@ -555,9 +557,10 @@ const TasksScreen = ({ navigation }) => {
         outputRange: [1, 0],
         extrapolate: 'clamp',
       });
+      // Убран красный квадратный контур для удаления
       return (
-        <View style={styles.swipeActionRight}>
-          <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>🗑️</Animated.Text>
+        <View style={[styles.swipeActionRight, { backgroundColor: 'transparent' }]}>
+          <Animated.Text style={[{ fontSize: 24, color: colors.danger1, transform: [{ scale }] }]}>🗑️</Animated.Text>
         </View>
       );
     };
@@ -568,9 +571,10 @@ const TasksScreen = ({ navigation }) => {
         outputRange: [0, 1],
         extrapolate: 'clamp',
       });
+      // Убран зеленый квадратный контур для выполнения
       return (
-        <View style={styles.swipeActionLeft}>
-          <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>✓</Animated.Text>
+        <View style={[styles.swipeActionLeft, { backgroundColor: 'transparent' }]}>
+          <Animated.Text style={[{ fontSize: 24, color: colors.ok1, transform: [{ scale }] }]}>✓</Animated.Text>
         </View>
       );
     };
@@ -598,13 +602,24 @@ const TasksScreen = ({ navigation }) => {
               opacity: item.completed ? 0.6 : 1,
               marginBottom: 0,
               borderRadius: 12,
+              paddingRight: 40, // Отступ для кнопки редактирования
             },
             item.completed && styles.taskCompleted,
           ]}
           activeOpacity={0.7}
           onPress={() => toggleExpand(item.id)}
-          onLongPress={() => handleEditTask(item)}
         >
+          {/* Кнопка редактирования в правом верхнем углу */}
+          <TouchableOpacity 
+            style={styles.editButtonTopRight}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleEditTask(item);
+            }}
+          >
+            <Text style={{ fontSize: 16, color: colors.textMuted }}>✏️</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity 
             style={styles.checkboxArea}
             onPress={(e) => {
@@ -670,6 +685,7 @@ const TasksScreen = ({ navigation }) => {
                 </Text>
               )}
 
+              {/* Показываем значок подзадач СРАЗУ если они есть, даже если карточка свернута */}
               {!isExpanded && (item.subtasks_count > 0 || taskSubtasks.length > 0) && (
                 <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>
                   📋 {taskSubtasks.length > 0 ? taskSubtasks.length : '...'}
@@ -878,6 +894,7 @@ const TasksScreen = ({ navigation }) => {
               time: null,
             });
             setEditingTask(null);
+            setShowAdvancedSettings(false);
             setShowAddModal(false);
           }}
           title={editingTask ? "Редактировать задачу" : "Новая задача"}
@@ -897,20 +914,33 @@ const TasksScreen = ({ navigation }) => {
             }}
           />
 
-          <DatePicker
-            label="Срок (deadline)"
-            value={newTask.deadline}
-            onChangeDate={(date) => {
-              setNewTask({ ...newTask, deadline: date });
-            }}
-          />
+          {/* Коллапс дополнительных настроек */}
+          <TouchableOpacity 
+            style={[styles.advancedSettingsToggle, { borderColor: colors.borderSubtle, backgroundColor: colors.surface }]}
+            onPress={() => setShowAdvancedSettings(!showAdvancedSettings)}
+          >
+            <Text style={{ color: colors.textMain, fontWeight: '500' }}>
+              {showAdvancedSettings ? '▼ Скрыть доп. настройки' : '▶ Доп. настройки (время, дедлайн)'}
+            </Text>
+          </TouchableOpacity>
 
-          {/* ⏰ TimePicker */}
-          <TimePicker
-            label="Время (необязательно)"
-            value={newTask.time}
-            onChangeTime={(time) => setNewTask({ ...newTask, time: time })}
-          />
+          {showAdvancedSettings && (
+            <View style={{ marginTop: 12, padding: 12, borderWidth: 1, borderColor: colors.borderSubtle, borderRadius: 12 }}>
+              <DatePicker
+                label="Срок (deadline)"
+                value={newTask.deadline}
+                onChangeDate={(date) => {
+                  setNewTask({ ...newTask, deadline: date });
+                }}
+              />
+
+              <TimePicker
+                label="Точное время"
+                value={newTask.time}
+                onChangeTime={(time) => setNewTask({ ...newTask, time: time })}
+              />
+            </View>
+          )}
 
           <View style={styles.formGroup}>
             <Text style={[styles.formLabel, { color: colors.textMain }]}>Приоритет</Text>
@@ -991,6 +1021,7 @@ const TasksScreen = ({ navigation }) => {
                   time: null,
                 });
                 setEditingTask(null);
+                setShowAdvancedSettings(false);
                 setShowAddModal(false);
                 setLoading(false);
                 
@@ -1141,6 +1172,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     marginBottom: 12,
+    position: 'relative',
   },
   taskCompleted: { opacity: 0.5 },
   checkboxArea: {},
@@ -1206,9 +1238,11 @@ const styles = StyleSheet.create({
   subtaskDeleteBtn: { padding: 4 },
   addSubtaskBtn: { marginTop: 8, paddingVertical: 8, alignItems: 'center' },
   addSubtaskBtnText: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.06 },
-  swipeActionRight: { backgroundColor: '#FF4444', justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: 20, borderRadius: 12, flex: 1 },
-  swipeActionLeft: { backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'flex-start', paddingHorizontal: 20, borderRadius: 12, flex: 1 },
+  swipeActionRight: { justifyContent: 'center', alignItems: 'center', width: 60 },
+  swipeActionLeft: { justifyContent: 'center', alignItems: 'center', width: 60 },
   swipeActionText: { fontSize: 24, color: 'white' },
+  editButtonTopRight: { position: 'absolute', top: 12, right: 12, padding: 4, zIndex: 2 },
+  advancedSettingsToggle: { padding: 12, borderRadius: 12, borderWidth: 1, alignItems: 'center', marginBottom: 16 }
 });
 
 export default TasksScreen;
