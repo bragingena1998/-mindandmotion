@@ -12,7 +12,7 @@ export async function registerForPushNotificationsAsync() {
 
 export async function sendTestNotification() {
   console.log('🔔 [MOCK] sendTestNotification called');
-  Alert.alert(\"Уведомления отключены\", \"Функция Push-уведомлений временно отключена для стабильной работы Dev Client. Будет добавлена в следующей сборке.\");
+  Alert.alert('Уведомления отключены', 'Функция Push-уведомлений временно отключена для стабильной работы Dev Client. Будет добавлена в следующей сборке.');
 }
 
 export async function scheduleMorningNotification() {
