@@ -174,18 +174,35 @@ async function initializeDB() {
     `);
     console.log('✅ Table subtasks ready');
 
-    // 7. Create folders table (Папки/Категории)
+    // 7. Create folders table (Папки/Категории) - с добавлением order_index
     await pool.query(`
       CREATE TABLE IF NOT EXISTS folders (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         name VARCHAR(255) NOT NULL,
         icon VARCHAR(50) DEFAULT '📁',
+        order_index INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
     console.log('✅ Table folders ready');
+
+    // --- MIGRATION: Add order_index to folders ---
+    try {
+      const [columns] = await pool.query("SHOW COLUMNS FROM folders LIKE 'order_index'");
+      if (columns.length === 0) {
+        console.log('🔄 Adding order_index column to folders table...');
+        await pool.query(`
+          ALTER TABLE folders 
+          ADD COLUMN order_index INT DEFAULT 0
+        `);
+        console.log('✅ Column order_index added successfully');
+      }
+    } catch (err) {
+      console.error('Migration error (folders.order_index):', err.message);
+    }
+    // -----------------------------------------
 
     // --- MIGRATION: Add folder_id to tasks ---
     try {
@@ -1926,7 +1943,21 @@ app.delete('/api/birthdays/:id', authenticateToken, async (req, res) => {
 // Получить папки пользователя
 app.get('/api/folders', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM folders WHERE user_id = ? ORDER BY id ASC', [req.userId]);
+    const [rows] = await pool.query('SELECT * FROM folders WHERE user_id = ? ORDER BY order_index ASC, id ASC', [req.userId]);
+    
+    // Если папок нет, создаем базовую папку "Работа"
+    if (rows.length === 0) {
+      const [ins] = await pool.query(
+        'INSERT INTO folders (user_id, name, icon, order_index) VALUES (?, ?, ?, ?)',
+        [req.userId, 'Работа', '💼', 1]
+      );
+      const [newRows] = await pool.query(
+        'SELECT * FROM folders WHERE user_id = ? ORDER BY order_index ASC, id ASC',
+        [req.userId]
+      );
+      return res.json(newRows);
+    }
+    
     res.json(rows);
   } catch (err) {
     console.error('Get folders error:', err);
@@ -1938,22 +1969,100 @@ app.get('/api/folders', authenticateToken, async (req, res) => {
 app.post('/api/folders', authenticateToken, async (req, res) => {
   try {
     const { name, icon } = req.body;
-    if (!name) return res.status(400).json({ error: 'Название папки обязательно' });
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Название папки обязательно' });
+    
+    // Получаем максимальный order_index
+    const [maxRows] = await pool.query(
+      'SELECT COALESCE(MAX(order_index), 0) AS maxOrder FROM folders WHERE user_id = ?',
+      [req.userId]
+    );
+    const nextOrder = (maxRows[0]?.maxOrder || 0) + 1;
     
     const [result] = await pool.query(
-      'INSERT INTO folders (user_id, name, icon) VALUES (?, ?, ?)',
-      [req.userId, name, icon || '📁']
+      'INSERT INTO folders (user_id, name, icon, order_index) VALUES (?, ?, ?, ?)',
+      [req.userId, name.trim(), icon || '📁', nextOrder]
     );
-    res.json({ id: result.insertId, user_id: req.userId, name, icon: icon || '📁' });
+    res.json({ id: result.insertId, user_id: req.userId, name: name.trim(), icon: icon || '📁', order_index: nextOrder });
   } catch (err) {
     console.error('Create folder error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
+// Редактировать папку
+app.put('/api/folders/:id', authenticateToken, async (req, res) => {
+  try {
+    const folderId = req.params.id;
+    const { name, icon } = req.body;
+
+    if ((!name || !name.trim()) && (icon === undefined)) {
+      return res.status(400).json({ error: 'Нечего обновлять' });
+    }
+
+    const [existing] = await pool.query(
+      'SELECT * FROM folders WHERE id = ? AND user_id = ?',
+      [folderId, req.userId]
+    );
+    if (existing.length === 0) return res.status(404).json({ error: 'Папка не найдена' });
+
+    const current = existing[0];
+    const newName = (name !== undefined) ? name.trim() : current.name;
+    const newIcon = (icon !== undefined) ? icon : current.icon;
+
+    await pool.query(
+      'UPDATE folders SET name = ?, icon = ? WHERE id = ? AND user_id = ?',
+      [newName, newIcon, folderId, req.userId]
+    );
+
+    const [updated] = await pool.query(
+      'SELECT * FROM folders WHERE id = ? AND user_id = ?',
+      [folderId, req.userId]
+    );
+
+    res.json(updated[0]);
+  } catch (err) {
+    console.error('Update folder error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Сортировка папок
+app.put('/api/folders/reorder', authenticateToken, async (req, res) => {
+  const { folders } = req.body;
+  if (!Array.isArray(folders)) return res.status(400).json({ error: 'folders должен быть массивом' });
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    for (const f of folders) {
+      if (!f?.id && f?.id !== 0) continue;
+      const ord = Number.isFinite(Number(f.order_index)) ? Number(f.order_index) : 0;
+
+      await conn.query(
+        'UPDATE folders SET order_index = ? WHERE id = ? AND user_id = ?',
+        [ord, f.id, req.userId]
+      );
+    }
+
+    await conn.commit();
+    res.json({ success: true });
+  } catch (err) {
+    if (conn) await conn.rollback();
+    console.error('Reorder folders error:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 // Удалить папку
 app.delete('/api/folders/:id', authenticateToken, async (req, res) => {
   try {
+    // Безопасно отвязываем задачи
+    await pool.query('UPDATE tasks SET folder_id = NULL WHERE folder_id = ? AND user_id = ?', [req.params.id, req.userId]);
+    // Удаляем папку
     await pool.query('DELETE FROM folders WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
     res.json({ success: true, message: 'Папка удалена' });
   } catch (err) {
