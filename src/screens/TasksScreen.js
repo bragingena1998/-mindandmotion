@@ -69,10 +69,6 @@ const foldersAPI = {
   deleteFolder: async (id) => {
     const response = await api.delete(`/folders/${id}`);
     return response.data;
-  },
-  moveTaskToFolder: async (taskId, folderId) => {
-    const response = await api.put(`/folders/tasks/${taskId}/move`, { folder_id: folderId });
-    return response.data;
   }
 };
 
@@ -144,9 +140,6 @@ const TasksScreen = ({ navigation }) => {
   const [editingFolder, setEditingFolder] = useState(null);
   const [newFolderName, setNewFolderName] = useState('');
   
-  // Состояние DND
-  const [hoveredFolderId, setHoveredFolderId] = useState(null);
-  
   const [hideCompleted, setHideCompleted] = useState(true);
   const [editingTask, setEditingTask] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
@@ -197,7 +190,8 @@ const TasksScreen = ({ navigation }) => {
       const foldersData = await foldersAPI.getFolders();
       setFolders(foldersData);
     } catch (err) {
-      console.error('Ошибка загрузки папок:', err);
+      console.error('Ошибка загрузки папок:', err.message);
+      // Не блокируем экран, если папки не загрузились
     }
   };
 
@@ -212,7 +206,7 @@ const TasksScreen = ({ navigation }) => {
         total: response.data.completed_total || 0
       });
     } catch (err) {
-      console.error('Ошибка загрузки статистики:', err);
+      console.error('Ошибка загрузки статистики:', err.message);
     }
   };
 
@@ -276,7 +270,7 @@ const TasksScreen = ({ navigation }) => {
       }
 
     } catch (err) {
-      console.error('❌ Ошибка загрузки задач:', err);
+      console.error('❌ Ошибка загрузки задач:', err.message);
       setError('Ошибка загрузки задач');
       setTasks([]);
     }
@@ -323,7 +317,7 @@ const TasksScreen = ({ navigation }) => {
       await loadTasks(); 
       setLoading(false);
     } catch (err) {
-      console.error('❌ Ошибка удаления старых задач:', err);
+      console.error('❌ Ошибка удаления старых задач:', err.message);
       Alert.alert('Ошибка', 'Не удалось удалить все задачи');
       setLoading(false);
     }
@@ -365,7 +359,7 @@ const TasksScreen = ({ navigation }) => {
       await loadStats(); 
       
     } catch (error) {
-      console.error('❌ Ошибка переключения задачи:', error);
+      console.error('❌ Ошибка переключения задачи:', error.message);
       loadTasks();
     }
   };
@@ -395,7 +389,7 @@ const TasksScreen = ({ navigation }) => {
       
       console.log('✅ Задача удалена (UI + API)');
     } catch (error) {
-      console.error('❌ Ошибка удаления:', error);
+      console.error('❌ Ошибка удаления:', error.message);
       
       loadTasks();
       Alert.alert('Ошибка', 'Не удалось удалить задачу');
@@ -419,7 +413,7 @@ const TasksScreen = ({ navigation }) => {
       setSubtasks(prev => ({ ...prev, [taskId]: formattedSubtasks }));
       setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
     } catch (err) {
-      console.error('Ошибка загрузки подзадач:', err);
+      console.error('Ошибка загрузки подзадач:', err.message);
       setSubtasks(prev => ({ ...prev, [taskId]: [] }));
       setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
     }
@@ -445,7 +439,7 @@ const TasksScreen = ({ navigation }) => {
         )
       }));
     } catch (err) {
-      console.error('Ошибка переключения подзадачи:', err);
+      console.error('Ошибка переключения подзадачи:', err.message);
     }
   };
 
@@ -466,7 +460,7 @@ const TasksScreen = ({ navigation }) => {
       setShowAddSubtaskModal(false);
       setCurrentTaskForSubtask(null);
     } catch (err) {
-      console.error('Ошибка добавления подзадачи:', err);
+      console.error('Ошибка добавления подзадачи:', err.message);
     }
   };
 
@@ -478,18 +472,20 @@ const TasksScreen = ({ navigation }) => {
         [taskId]: prev[taskId].filter(st => st.id !== subtaskId)
       }));
     } catch (err) {
-      console.error('Ошибка удаления подзадачи:', err);
+      console.error('Ошибка удаления подзадачи:', err.message);
     }
   };
 
+  // === ИСПРАВЛЕНО: ФУНКЦИЯ РЕДАКТИРОВАНИЯ ЗАДАЧИ ===
   const handleEditTask = (task) => {
+    console.log('✏️ Открываем редактирование задачи:', task.id);
     setNewTask({
       title: task.title,
-      date: task.date.split('T')[0],
-      deadline: task.deadline.split('T')[0],
+      date: task.date ? task.date.split('T')[0] : new Date().toISOString().split('T')[0],
+      deadline: task.deadline ? task.deadline.split('T')[0] : new Date().toISOString().split('T')[0],
       priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
       comment: task.comment || '',
-      folder_id: task.folder_id
+      folder_id: task.folder_id || null
     });
     setEditingTask(task);
     setShowAddModal(true);
@@ -503,8 +499,8 @@ const TasksScreen = ({ navigation }) => {
       setNewFolderName('');
       setShowAddFolderModal(false);
     } catch (err) {
-      console.error('Ошибка создания папки:', err);
-      Alert.alert('Ошибка', 'Не удалось создать папку');
+      console.error('Ошибка создания папки:', err.message);
+      Alert.alert('Ошибка', 'Не удалось создать папку. Проверьте БД (таблица folders).');
     }
   };
 
@@ -517,7 +513,7 @@ const TasksScreen = ({ navigation }) => {
       setEditingFolder(null);
       setShowEditFolderModal(false);
     } catch (err) {
-      console.error('Ошибка обновления папки:', err);
+      console.error('Ошибка обновления папки:', err.message);
       Alert.alert('Ошибка', 'Не удалось обновить папку');
     }
   };
@@ -533,35 +529,8 @@ const TasksScreen = ({ navigation }) => {
       setEditingFolder(null);
       setShowEditFolderModal(false);
     } catch (err) {
-      console.error('Ошибка удаления папки:', err);
+      console.error('Ошибка удаления папки:', err.message);
       Alert.alert('Ошибка', 'Не удалось удалить папку. Возможно, в ней есть задачи.');
-    }
-  };
-
-  // Перемещение задачи в папку (Drag-and-Drop)
-  const handleDropTaskToFolder = async (taskId, targetFolderId) => {
-    console.log(`📦 Перемещаем задачу ${taskId} в папку ${targetFolderId}`);
-    try {
-      // 1. Оптимистичное обновление UI
-      const resolvedFolderId = targetFolderId === 'inbox' ? null : targetFolderId;
-      
-      setTasks(prevTasks => 
-        prevTasks.map(t => 
-          t.id === taskId ? { ...t, folder_id: resolvedFolderId } : t
-        )
-      );
-      
-      // 2. Сбрасываем подсвеченную папку
-      setHoveredFolderId(null);
-      
-      // 3. Отправляем на сервер
-      await foldersAPI.moveTaskToFolder(taskId, resolvedFolderId);
-      
-    } catch (err) {
-      console.error('Ошибка при перемещении задачи:', err);
-      Alert.alert('Ошибка', 'Не удалось переместить задачу');
-      // Откатываем UI
-      await loadTasks();
     }
   };
 
@@ -657,7 +626,7 @@ const TasksScreen = ({ navigation }) => {
     return `${formatDate(dateStr)} - ${formatDate(deadlineStr)}`;
   };
 
-  // === ОБНОВЛЕННЫЙ РЕНДЕР ЗАДАЧИ ДЛЯ DRAG AND DROP ===
+  // === РЕНДЕР ЗАДАЧИ ===
   const renderTask = ({ item, drag, isActive }) => {
     const isExpanded = expandedTasks[item.id];
     const taskSubtasks = subtasks[item.id] || [];
@@ -720,13 +689,9 @@ const TasksScreen = ({ navigation }) => {
       }
     };
 
+    // === ИСПРАВЛЕНО: Долгий тап открывает редактирование ===
     const handleLongPress = () => {
-      // Инициируем DND при долгом нажатии
-      if (drag) {
-        drag();
-      } else {
-        handleEditTask(item); // Фолбэк, если drag недоступен
-      }
+      handleEditTask(item);
     };
 
     return (
@@ -748,7 +713,7 @@ const TasksScreen = ({ navigation }) => {
                 opacity: item.completed ? 0.6 : 1,
                 marginBottom: 0,
                 borderRadius: 12,
-                elevation: isActive ? 10 : 0, // Тень при перетаскивании
+                elevation: isActive ? 10 : 0, 
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: isActive ? 5 : 0 },
                 shadowOpacity: isActive ? 0.3 : 0,
@@ -758,7 +723,7 @@ const TasksScreen = ({ navigation }) => {
             ]}
             activeOpacity={0.9}
             onPress={() => toggleExpand(item.id)}
-            onLongPress={handleLongPress}
+            onLongPress={handleLongPress} // <-- ТЕПЕРЬ ОТКРЫВАЕТ РЕДАКТИРОВАНИЕ
           >
             
             <TouchableOpacity 
@@ -956,7 +921,7 @@ const TasksScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* ПАПКИ - ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ С ПОДДЕРЖКОЙ DROPA */}
+        {/* ПАПКИ - ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ */}
         <View style={{ zIndex: 10 }}>
           <FlatList
             horizontal
@@ -979,27 +944,15 @@ const TasksScreen = ({ navigation }) => {
               }
               
               const isActive = activeFolderId === item.id;
-              const isHovered = hoveredFolderId === item.id;
               
               return (
-                <View 
-                  collapsable={false}
-                  // Это ключевой момент для DND в React Native 
-                  // Нужно отслеживать когда элемент перетаскивают поверх папки
-                  onLayout={(event) => {
-                    // Мы могли бы сохранять координаты папок, но в DraggableFlatList 
-                    // проще обрабатывать drop по координатам глобально
-                  }}
-                >
+                <View collapsable={false}>
                   <TouchableOpacity
                     style={[
                       styles.folderChip, 
                       { 
-                        backgroundColor: isHovered 
-                          ? colors.accent2 
-                          : isActive ? colors.accent1 : colors.surface,
-                        borderColor: isHovered || isActive ? colors.accent1 : colors.borderSubtle,
-                        transform: [{ scale: isHovered ? 1.05 : 1 }]
+                        backgroundColor: isActive ? colors.accent1 : colors.surface,
+                        borderColor: isActive ? colors.accent1 : colors.borderSubtle,
                       }
                     ]}
                     onPress={() => setActiveFolderId(item.id)}
@@ -1013,7 +966,7 @@ const TasksScreen = ({ navigation }) => {
                   >
                     <Text style={[
                       styles.folderChipText, 
-                      { color: isHovered || isActive ? '#020617' : colors.textMain }
+                      { color: isActive ? '#020617' : colors.textMain }
                     ]}>
                       {item.name}
                     </Text>
@@ -1022,16 +975,6 @@ const TasksScreen = ({ navigation }) => {
               );
             }}
           />
-          
-          {hoveredFolderId && (
-            <View style={{ position: 'absolute', top: -30, left: 0, right: 0, alignItems: 'center' }}>
-              <View style={{ backgroundColor: colors.accent1, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
-                <Text style={{ color: '#020617', fontWeight: 'bold', fontSize: 12 }}>
-                  Отпустите, чтобы переместить
-                </Text>
-              </View>
-            </View>
-          )}
         </View>
 
         <View style={styles.chipsContainer}>
@@ -1080,24 +1023,8 @@ const TasksScreen = ({ navigation }) => {
             }}
             onDragEnd={({ data, from, to }) => {
               console.log(`Перетаскивание завершено с индекса ${from} на ${to}`);
-              
-              // Если мы реализовали DND сортировку внутри папки, то обновляли бы порядок здесь
-              // Но у нас сортировка по дате/приоритету, поэтому локальный порядок не меняем
-              
-              // В реальном DND (перенос в папку) логика сложнее. 
-              // Для простоты мы можем использовать модалку редактирования для изменения папки,
-              // или реализовать сложную логику отслеживания координат drop.
-              // Сейчас пока просто сбрасываем состояние hover.
-              setHoveredFolderId(null);
-            }}
-            onPlaceholderIndexChange={(placeholderIndex) => {
-              // Если переместили на самый верх (индекс 0) - считаем что хотим перенести во "Входящие"
-              // Это простая эмуляция DND в папку, пока не будет реализован полноценный DropZone
-              if (placeholderIndex === 0) {
-                // setHoveredFolderId('inbox');
-              } else {
-                setHoveredFolderId(null);
-              }
+              // Просто обновляем стейт визуально, чтобы не крашилось
+              // Полноценная сортировка требует сохранения порядка в БД
             }}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderTask}
@@ -1362,7 +1289,7 @@ const TasksScreen = ({ navigation }) => {
                 setLoading(false);
                 
               } catch (err) {
-                console.error('❌ Ошибка:', err);
+                console.error('❌ Ошибка:', err.message);
                 setError('Не удалось сохранить задачу: ' + err.message);
                 setLoading(false);
               }
