@@ -1,6 +1,6 @@
 // ВРЕМЕННАЯ ЗАГЛУШКА ДЛЯ EXPO GO
 // Библиотека expo-notifications временно отключена, так как в Expo SDK 52
-// она вызывает ошибку \"Cannot find native module 'ExpoPushTokenManager'\"
+// она вызывает ошибку "Cannot find native module 'ExpoPushTokenManager'"
 // при использовании стандартного приложения Expo Go.
 // Чтобы уведомления заработали, необходимо собрать Development Build (npx expo run:android)
 
@@ -13,8 +13,8 @@ export async function registerForPushNotificationsAsync() {
 
 export async function sendTestNotification() {
   Alert.alert(
-    \"Уведомления отключены\", 
-    \"Для работы уведомлений требуется собрать собственную версию приложения (Development Build). В Expo Go они временно отключены во избежание сбоев.\"
+    "Уведомления отключены", 
+    "Для работы уведомлений требуется собрать собственную версию приложения (Development Build). В Expo Go они временно отключены во избежание сбоев."
   );
 }
 
