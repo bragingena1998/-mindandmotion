@@ -1,1 +1,118 @@
-import * as Notifications from 'expo-notifications';\nimport * as Device from 'expo-device';\nimport { Platform, Alert } from 'react-native';\n\n// Конфигурация: как показывать уведомления, когда приложение открыто\nNotifications.setNotificationHandler({\n  handleNotification: async () => ({\n    shouldShowAlert: true,\n    shouldPlaySound: true,\n    shouldSetBadge: false,\n  }),\n});\n\n// Регистрация и получение разрешений для локальных уведомлений\nexport async function registerForPushNotificationsAsync() {\n  if (!Device.isDevice) {\n    console.log('Must use physical device for Push Notifications');\n    return null;\n  }\n\n  try {\n    if (Platform.OS === 'android') {\n      await Notifications.setNotificationChannelAsync('default', {\n        name: 'default',\n        importance: Notifications.AndroidImportance.MAX,\n        vibrationPattern: [0, 250, 250, 250],\n        lightColor: '#FF231F7C',\n      });\n    }\n\n    const { status: existingStatus } = await Notifications.getPermissionsAsync();\n    let finalStatus = existingStatus;\n    \n    if (existingStatus !== 'granted') {\n      const { status } = await Notifications.requestPermissionsAsync();\n      finalStatus = status;\n    }\n    \n    if (finalStatus !== 'granted') {\n      console.log('Failed to get permissions for notifications!');\n      return null;\n    }\n    \n    // ВНИМАНИЕ: Вызов getExpoPushTokenAsync убран.\n    // В новых версиях Expo Go (SDK 52+) модуль ExpoPushTokenManager вырезан,\n    // поэтому попытка получить токен роняет приложение.\n    // Для локальных уведомлений токен не нужен.\n    console.log('Local notifications permissions granted.');\n    return 'local-notifications-only'; // Возвращаем заглушку вместо реального токена\n    \n  } catch (error) {\n    console.log('Error in registerForPushNotificationsAsync:', error);\n    return null;\n  }\n}\n\n// Отправка тестового уведомления\nexport async function sendTestNotification() {\n  try {\n    await Notifications.scheduleNotificationAsync({\n      content: {\n        title: \"Mind & Motion 🚀\",\n        body: \"Это тестовое локальное уведомление! Система работает отлично.\",\n        sound: true,\n      },\n      trigger: null,\n    });\n    Alert.alert(\"Успех\", \"Уведомление отправлено! Если не пришло - проверьте шторку.\");\n  } catch (error) {\n    Alert.alert(\"Ошибка\", \"Не удалось отправить уведомление. Возможно, нет прав.\");\n    console.log(error);\n  }\n}\n\n// Планирование ежедневных уведомлений\nexport async function scheduleMorningNotification() {\n  try {\n    await cancelAllNotifications();\n\n    // Утро 9:00\n    await Notifications.scheduleNotificationAsync({\n      content: {\n        title: \"Доброе утро! ☀️\",\n        body: \"Посмотри свой план на сегодня. Время побеждать!\",\n        sound: true,\n      },\n      trigger: {\n        hour: 9,\n        minute: 0,\n        repeats: true,\n      },\n    });\n\n    // Вечер 20:00\n    await Notifications.scheduleNotificationAsync({\n      content: {\n        title: \"Как успехи? 👀\",\n        body: \"Не забудь отметить выполненные привычки и задачи!\",\n        sound: true,\n      },\n      trigger: {\n        hour: 20,\n        minute: 0,\n        repeats: true,\n      },\n    });\n  } catch (error) {\n    console.log('Error scheduling notifications:', error);\n  }\n}\n\nexport async function cancelAllNotifications() {\n  try {\n    await Notifications.cancelAllScheduledNotificationsAsync();\n  } catch (error) {\n    console.log('Error canceling notifications:', error);\n  }\n}\n
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import { Platform, Alert } from 'react-native';
+
+// Конфигурация: как показывать уведомления, когда приложение открыто
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+// Регистрация и получение разрешений для локальных уведомлений
+export async function registerForPushNotificationsAsync() {
+  if (!Device.isDevice) {
+    console.log('Must use physical device for Push Notifications');
+    return null;
+  }
+
+  try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    
+    if (finalStatus !== 'granted') {
+      console.log('Failed to get permissions for notifications!');
+      return null;
+    }
+    
+    // ВНИМАНИЕ: Вызов getExpoPushTokenAsync убран.
+    // В новых версиях Expo Go (SDK 52+) модуль ExpoPushTokenManager вырезан,
+    // поэтому попытка получить токен роняет приложение.
+    // Для локальных уведомлений токен не нужен.
+    console.log('Local notifications permissions granted.');
+    return 'local-notifications-only'; // Возвращаем заглушку вместо реального токена
+    
+  } catch (error) {
+    console.log('Error in registerForPushNotificationsAsync:', error);
+    return null;
+  }
+}
+
+// Отправка тестового уведомления
+export async function sendTestNotification() {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Mind & Motion 🚀",
+        body: "Это тестовое локальное уведомление! Система работает отлично.",
+        sound: true,
+      },
+      trigger: null,
+    });
+    Alert.alert("Успех", "Уведомление отправлено! Если не пришло - проверьте шторку.");
+  } catch (error) {
+    Alert.alert("Ошибка", "Не удалось отправить уведомление. Возможно, нет прав.");
+    console.log(error);
+  }
+}
+
+// Планирование ежедневных уведомлений
+export async function scheduleMorningNotification() {
+  try {
+    await cancelAllNotifications();
+
+    // Утро 9:00
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Доброе утро! ☀️",
+        body: "Посмотри свой план на сегодня. Время побеждать!",
+        sound: true,
+      },
+      trigger: {
+        hour: 9,
+        minute: 0,
+        repeats: true,
+      },
+    });
+
+    // Вечер 20:00
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Как успехи? 👀",
+        body: "Не забудь отметить выполненные привычки и задачи!",
+        sound: true,
+      },
+      trigger: {
+        hour: 20,
+        minute: 0,
+        repeats: true,
+      },
+    });
+  } catch (error) {
+    console.log('Error scheduling notifications:', error);
+  }
+}
+
+export async function cancelAllNotifications() {
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch (error) {
+    console.log('Error canceling notifications:', error);
+  }
+}
