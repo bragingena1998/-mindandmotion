@@ -907,7 +907,7 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
       done: Boolean(row.done),
       isRecurring: Boolean(row.is_recurring),
       isGenerated: Boolean(row.is_generated),
-      subtasksCount: 0,
+      subtasks_count: 0,
       userId: row.user_id,
       time: row.time,
       doneDate: row.done_date,
