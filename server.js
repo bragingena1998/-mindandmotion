@@ -54,6 +54,7 @@ async function initializeDB() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         date DATE NOT NULL,
+        time VARCHAR(5) DEFAULT NULL,
         deadline DATE,
         title VARCHAR(255) NOT NULL,
         priority INT DEFAULT 2,
@@ -66,11 +67,33 @@ async function initializeDB() {
         recurrence_value VARCHAR(50),
         is_generated BOOLEAN DEFAULT FALSE,
         template_id INT,
+        folder_id INT DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
+
+    // --- MIGRATION: Add time and folder_id column to tasks table ---
+    try {
+      const [columnsTime] = await pool.query("SHOW COLUMNS FROM tasks LIKE 'time'");
+      if (columnsTime.length === 0) {
+        console.log('🔄 Adding time column to tasks table...');
+        await pool.query("ALTER TABLE tasks ADD COLUMN time VARCHAR(5) DEFAULT NULL");
+        console.log('✅ Column time added successfully');
+      }
+      
+      const [columnsFolder] = await pool.query("SHOW COLUMNS FROM tasks LIKE 'folder_id'");
+      if (columnsFolder.length === 0) {
+         console.log('🔄 Adding folder_id column to tasks table...');
+         await pool.query("ALTER TABLE tasks ADD COLUMN folder_id INT DEFAULT NULL");
+         console.log('✅ Column folder_id added successfully');
+      }
+    } catch (err) {
+      console.error('Migration error (tasks):', err.message);
+    }
+    // ---------------------------------------------------------------
+
 
     // 2. Create habits table
     await pool.query(`
@@ -173,6 +196,21 @@ async function initializeDB() {
       )
     `);
     console.log('✅ Table subtasks ready');
+
+    // 7. Create folders table (Папки/Категории)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS folders (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        icon VARCHAR(50) DEFAULT '📁',
+        order_index INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    console.log('✅ Table folders ready');
+
 
     console.log('✓ Database tables initialized');
   } catch (err) {
@@ -690,48 +728,100 @@ app.get('/api/habits/:habitId/record/:year/:month/:day', authenticateToken, asyn
   }
 });
 
+// ==================== FOLDERS API ====================
+
+// Get all folders
+app.get('/api/folders', authenticateToken, async (req, res) => {
+  try {
+    const [folders] = await pool.query(
+      'SELECT * FROM folders WHERE user_id = ? ORDER BY order_index ASC, created_at ASC',
+      [req.userId]
+    );
+    res.json(folders);
+  } catch (err) {
+    console.error('Get folders error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create folder
+app.post('/api/folders', authenticateToken, async (req, res) => {
+  try {
+    const { name, color, icon } = req.body;
+    if (!name) return res.status(400).json({ error: 'Название обязательно' });
+
+    const [result] = await pool.query(
+      'INSERT INTO folders (user_id, name, icon) VALUES (?, ?, ?)',
+      [req.userId, name, icon || '📁']
+    );
+    
+    res.json({ id: result.insertId, user_id: req.userId, name, icon: icon || '📁' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete folder
+app.delete('/api/folders/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM folders WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // ========================================
 // API: ЗАДАЧИ (TASKS)
 // ========================================
 
-// Get tasks with month filtering
+// Get tasks with month filtering AND subtasks count included
 app.get('/api/tasks', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
-    const { month, year } = req.query; // Ожидаем: month=1 (Февраль), year=2026
+    const { month, year } = req.query; 
 
-    let query = 'SELECT * FROM tasks WHERE user_id = ?';
+    // Считаем подзадачи прямо в запросе
+    let query = `
+      SELECT t.*,
+      (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) as subtasks_count
+      FROM tasks t
+      WHERE t.user_id = ?
+    `;
     let params = [userId];
 
     if (month && year) {
-      // РЕЖИМ АРХИВА: Показываем задачи, выполненные в конкретном месяце
-      // + Задачи, созданные в этом месяце (даже если не выполнены, хотя это редкость для архива)
-      // Логика: done_date попадает в этот месяц
       query += ` AND (
-        (done = 1 AND MONTH(done_date) = ? AND YEAR(done_date) = ?)
+        (t.done = 1 AND MONTH(t.done_date) = ? AND YEAR(t.done_date) = ?)
         OR 
-        (done = 0 AND MONTH(date) = ? AND YEAR(date) = ?) -- Или созданные тогда
+        (t.done = 0 AND MONTH(t.date) = ? AND YEAR(t.date) = ?)
       )`;
-      params.push(parseInt(month) + 1, year, parseInt(month) + 1, year); // SQL MONTH 1-12
+      params.push(parseInt(month) + 1, year, parseInt(month) + 1, year);
     } else {
-      // РЕЖИМ АКТУАЛЬНОЕ (По умолчанию):
-      // 1. Невыполненные (Все)
-      // 2. Выполненные в ТЕКУЩЕМ месяце
       query += ` AND (
-        done = 0 
-        OR (done = 1 AND done_date >= DATE_FORMAT(NOW() ,'%Y-%m-01'))
+        t.done = 0 
+        OR (t.done = 1 AND t.done_date >= DATE_FORMAT(NOW() ,'%Y-%m-01'))
       )`;
     }
 
-    query += ' ORDER BY done ASC, priority ASC, date DESC'; // Сортировка
+    query += ' ORDER BY t.done ASC, t.priority ASC, t.date DESC';
 
     const [rows] = await pool.query(query, params);
 
     const formatted = rows.map(row => ({
       ...row,
       done: Boolean(row.done),
-      isRecurring: Boolean(row.isRecurring),
-      isGenerated: Boolean(row.isGenerated)
+      isRecurring: Boolean(row.is_recurring),
+      isGenerated: Boolean(row.is_generated),
+      subtasks_count: row.subtasks_count || 0,
+      userId: row.user_id,
+      doneDate: row.done_date,
+      focusSessions: row.focus_sessions,
+      recurrenceType: row.recurrence_type,
+      recurrenceValue: row.recurrence_value,
+      templateId: row.template_id,
+      folderId: row.folder_id
     }));
 
     res.json(formatted);
@@ -742,35 +832,21 @@ app.get('/api/tasks', authenticateToken, async (req, res) => {
 });
 
 
-// Get task statistics (Сегодня, Неделя, Месяц, Всего)
+// Get task statistics
 app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
-    const now = new Date();
-    
-    // Формируем даты начала периодов (с учетом UTC или локального времени сервера)
-    // Лучше всего считать в базе данных средствами SQL
     
     const [rows] = await pool.query(`
       SELECT 
-        -- СЕГОДНЯ (выполнено)
         COUNT(CASE WHEN done = 1 AND DATE(done_date) = CURDATE() THEN 1 END) as completed_today,
-        
-        -- СЕГОДНЯ (план: не выполнено и (дедлайн <= сегодня или нет дедлайна) + выполнено сегодня)
         COUNT(CASE WHEN 
           (done = 0 AND (deadline IS NULL OR date <= CURDATE())) 
           OR (done = 1 AND DATE(done_date) = CURDATE()) 
         THEN 1 END) as total_today_plan,
-
-        -- НЕДЕЛЯ (выполнено с понедельника)
         COUNT(CASE WHEN done = 1 AND YEARWEEK(done_date, 1) = YEARWEEK(CURDATE(), 1) THEN 1 END) as completed_week,
-
-        -- МЕСЯЦ (выполнено в этом месяце)
         COUNT(CASE WHEN done = 1 AND YEAR(done_date) = YEAR(CURDATE()) AND MONTH(done_date) = MONTH(CURDATE()) THEN 1 END) as completed_month,
-
-        -- ВСЕГО (за всё время)
         COUNT(CASE WHEN done = 1 THEN 1 END) as completed_total
-
       FROM tasks 
       WHERE user_id = ?
     `, [userId]);
@@ -783,12 +859,12 @@ app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
 });
 
 
-// ✅ ИСПРАВЛЕНИЕ 2: Добавить задачу (добавлен authenticateToken и req.userId)
-// Проверь, что это есть в server.js:
+// Добавить задачу (с поддержкой time)
 app.post('/api/tasks', authenticateToken, async (req, res) => {
   try {
     const {
       date,
+      time,
       deadline,
       title,
       priority,
@@ -800,27 +876,21 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
       recurrenceType,
       recurrenceValue,
       isGenerated,
-      templateId
+      templateId,
+      folderId
     } = req.body;
-
-    console.log('📥 Creating task:', {
-      user_id: req.userId,
-      title,
-      isRecurring,
-      recurrenceType,
-      recurrenceValue
-    });
 
     const [result] = await pool.query(
       `INSERT INTO tasks (
-        user_id, date, deadline, title, priority, comment,
+        user_id, date, time, deadline, title, priority, comment,
         done, done_date, focus_sessions,
         is_recurring, recurrence_type, recurrence_value,
-        is_generated, template_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        is_generated, template_id, folder_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.userId,
         date,
+        time || null,
         deadline || null,
         title,
         priority || 2,
@@ -832,51 +902,28 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
         recurrenceType || null,
         recurrenceValue || null,
         isGenerated ? 1 : 0,
-        templateId || null
+        templateId || null,
+        folderId || null
       ]
     );
 
-    // Получаем созданную задачу
-    const [rows] = await pool.query(`
-      SELECT 
-        id,
-        user_id,
-        date,
-        deadline,
-        title,
-        priority,
-        comment,
-        done,
-        done_date as doneDate,
-        focus_sessions as focusSessions,
-        is_recurring as isRecurring,
-        recurrence_type as recurrenceType,
-        recurrence_value as recurrenceValue,
-        is_generated as isGenerated,
-        template_id as templateId,
-        created_at,
-        updated_at
-      FROM tasks 
-      WHERE id = ?
-    `, [result.insertId]);
-
-    if (rows.length === 0) {
-      return res.status(500).json({ error: 'Не удалось получить созданную задачу' });
-    }
+    const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [result.insertId]);
+    if (rows.length === 0) return res.status(500).json({ error: 'Task not found after insert' });
 
     const newTask = {
       ...rows[0],
       done: Boolean(rows[0].done),
-      isRecurring: Boolean(rows[0].isRecurring),
-      isGenerated: Boolean(rows[0].isGenerated)
+      isRecurring: Boolean(rows[0].is_recurring),
+      isGenerated: Boolean(rows[0].is_generated),
+      subtasks_count: 0,
+      userId: rows[0].user_id,
+      doneDate: rows[0].done_date,
+      focusSessions: rows[0].focus_sessions,
+      recurrenceType: rows[0].recurrence_type,
+      recurrenceValue: rows[0].recurrence_value,
+      templateId: rows[0].template_id,
+      folderId: rows[0].folder_id
     };
-
-    console.log('✅ Task created:', {
-      id: newTask.id,
-      title: newTask.title,
-      isRecurring: newTask.isRecurring,
-      recurrenceType: newTask.recurrenceType
-    });
 
     res.json(newTask);
   } catch (err) {
@@ -887,63 +934,116 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
 
 
 
-// ✅ ИСПРАВЛЕНИЕ 3: Обновить задачу (добавлен authenticateToken и req.userId)
+// Обновить задачу (с поддержкой time, folder_id, recurrence creation)
 app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    const taskId = req.params.id;
     const {
       date,
+      time,
       deadline,
       title,
       priority,
       comment,
       done,
       doneDate,
-      focus_sessions,
-      is_recurring,
-      recurrence_type,
-      recurrence_value
+      focusSessions,
+      isRecurring,
+      recurrenceType,
+      recurrenceValue,
+      isGenerated,
+      templateId,
+      folderId
     } = req.body;
+
+    // Получаем текущую задачу для проверки смены статуса done
+    const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [taskId, req.userId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Task not found' });
+    const oldTask = rows[0];
 
     await pool.query(
       `UPDATE tasks SET
-        date = ?,
-        deadline = ?,
-        title = ?,
-        priority = ?,
-        comment = ?,
-        done = ?,
-        done_date = ?,
-        focus_sessions = ?,
-        is_recurring = ?,
-        recurrence_type = ?,
-        recurrence_value = ?
+        date = ?, time = ?, deadline = ?, title = ?, priority = ?, comment = ?,
+        done = ?, done_date = ?, focus_sessions = ?,
+        is_recurring = ?, recurrence_type = ?, recurrence_value = ?,
+        is_generated = ?, template_id = ?, folder_id = ?
       WHERE id = ? AND user_id = ?`,
       [
         date,
+        time || null,
         deadline || null,
         title,
-        priority,
-        comment,
+        priority || 2,
+        comment || '',
         done ? 1 : 0,
         doneDate || null,
-        focus_sessions,
-        is_recurring ? 1 : 0,
-        recurrence_type || null,
-        recurrence_value || null,
-        id,
+        focusSessions || 0,
+        isRecurring ? 1 : 0,
+        recurrenceType || null,
+        recurrenceValue || null,
+        isGenerated ? 1 : 0,
+        templateId || null,
+        folderId || null,
+        taskId,
         req.userId
       ]
     );
 
-    const [updated] = await pool.query('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [id, req.userId]);
-    
-    if (updated.length === 0) {
-      return res.status(404).json({ error: 'Задача не найдена' });
+    // ЛОГИКА ЦИКЛИЧНОСТИ
+    if (isRecurring && done && !oldTask.done) {
+      let nextDate = new Date(date);
+      let isValidRecurrence = true;
+
+      if (recurrenceType === 'daily') {
+        nextDate.setDate(nextDate.getDate() + 1);
+      } else if (recurrenceType === 'weekly') {
+        nextDate.setDate(nextDate.getDate() + 7);
+      } else if (recurrenceType === 'monthly') {
+        nextDate.setMonth(nextDate.getMonth() + 1);
+      } else if (recurrenceType === 'custom' && recurrenceValue) {
+        try {
+          const days = JSON.parse(recurrenceValue);
+          if (Array.isArray(days) && days.length > 0) {
+            let found = false;
+            for (let i = 1; i <= 7; i++) {
+              nextDate.setDate(nextDate.getDate() + 1);
+              if (days.includes(nextDate.getDay())) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) nextDate.setDate(nextDate.getDate() + 1);
+          } else {
+            nextDate.setDate(nextDate.getDate() + 1);
+          }
+        } catch(e) {
+          nextDate.setDate(nextDate.getDate() + 1);
+        }
+      } else {
+         isValidRecurrence = false; // Неизвестный тип
+      }
+
+      if (isValidRecurrence) {
+        const nextDateStr = nextDate.toISOString().split('T')[0];
+        await pool.query(
+          `INSERT INTO tasks (user_id, date, time, deadline, title, priority, comment, done, focus_sessions, is_recurring, recurrence_type, recurrence_value, is_generated, template_id, folder_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 1, ?, ?, 1, ?, ?)`,
+          [req.userId, nextDateStr, time || null, deadline || null, title, priority || 2, comment || '', recurrenceType, recurrenceValue || null, taskId, folderId || null]
+        );
+        console.log(`♻️ Цикличная задача создана на ${nextDateStr}`);
+      }
     }
 
-    console.log(`✓ Task updated: ${id}`);
-    res.json(updated[0]);
+    const [updated] = await pool.query('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [taskId, req.userId]);
+    
+    // Также подтягиваем subtasks_count
+    const [subcount] = await pool.query('SELECT COUNT(*) as count FROM subtasks WHERE task_id = ?', [taskId]);
+    
+    const taskData = updated[0];
+    taskData.subtasks_count = subcount[0].count;
+
+    console.log(`✓ Task updated: ${taskId}`);
+    res.json(taskData);
   } catch (err) {
     console.error('Ошибка обновления задачи:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -974,7 +1074,7 @@ app.delete('/api/tasks/:id', authenticateToken, async (req, res) => {
 });
 
 
-// ✅ ИСПРАВЛЕНИЕ 5: Массовое обновление задач (добавлен authenticateToken и req.userId)
+// Массовое обновление задач
 app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
   try {
     const { tasks } = req.body;
@@ -997,12 +1097,13 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
         // Обновляем
         await pool.query(
           `UPDATE tasks SET
-            date = ?, deadline = ?, title = ?, priority = ?, comment = ?,
+            date = ?, time = ?, deadline = ?, title = ?, priority = ?, comment = ?,
             done = ?, done_date = ?, focus_sessions = ?,
-            is_recurring = ?, recurrence_type = ?, recurrence_value = ?
+            is_recurring = ?, recurrence_type = ?, recurrence_value = ?, folder_id = ?
           WHERE id = ? AND user_id = ?`,
           [
             task.date,
+            task.time || null,
             task.deadline || null,
             task.title,
             task.priority || 2,
@@ -1013,6 +1114,7 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
             task.isRecurring ? 1 : 0,
             task.recurrenceType || null,
             task.recurrenceValue || null,
+            task.folderId || null,
             task.id,
             userId
           ]
@@ -1021,15 +1123,16 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
         // Вставляем новую
         await pool.query(
           `INSERT INTO tasks (
-            id, user_id, date, deadline, title, priority, comment,
+            id, user_id, date, time, deadline, title, priority, comment,
             done, done_date, focus_sessions,
             is_recurring, recurrence_type, recurrence_value,
-            is_generated, template_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            is_generated, template_id, folder_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             task.id,
             userId,
             task.date,
+            task.time || null,
             task.deadline || null,
             task.title,
             task.priority || 2,
@@ -1041,7 +1144,8 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
             task.recurrenceType || null,
             task.recurrenceValue || null,
             task.isGenerated ? 1 : 0,
-            task.templateId || null
+            task.templateId || null,
+            task.folderId || null
           ]
         );
       }
@@ -1058,7 +1162,7 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
   }
 });
 
-// ✅ ИСПРАВЛЕНИЕ 6: Удалить задачу (новый endpoint, добавлен authenticateToken и req.userId)
+// Удалить задачу (новый endpoint)
 app.post('/api/tasks/delete', authenticateToken, async (req, res) => {
   try {
     const { id } = req.body;
@@ -1204,14 +1308,7 @@ app.post('/api/verify-code', async (req, res) => {
   try {
     // Проверяем код (с учётом UTC)
     const [verifications] = await pool.query(
-      `SELECT *, 
-              expires_at as expires_at_utc,
-              UTC_TIMESTAMP() as current_time_utc,
-              TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left
-       FROM email_verifications 
-       WHERE email = ? 
-         AND REPLACE(code, ' ', '') = ? 
-         AND expires_at > UTC_TIMESTAMP()`,
+      `SELECT *, \n              expires_at as expires_at_utc,\n              UTC_TIMESTAMP() as current_time_utc,\n              TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left\n       FROM email_verifications \n       WHERE email = ? \n         AND REPLACE(code, ' ', '') = ? \n         AND expires_at > UTC_TIMESTAMP()`,
       [email, cleanCode]
     );
 
@@ -1227,12 +1324,7 @@ app.post('/api/verify-code', async (req, res) => {
     } else {
       // Дополнительная проверка
       const [allVerifications] = await pool.query(
-        `SELECT code, 
-                expires_at as expires_at_utc,
-                UTC_TIMESTAMP() as current_time_utc,
-                TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left
-         FROM email_verifications 
-         WHERE email = ?`,
+        `SELECT code, \n                expires_at as expires_at_utc,\n                UTC_TIMESTAMP() as current_time_utc,\n                TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left\n         FROM email_verifications \n         WHERE email = ?`,
         [email]
       );
       console.log('📋 All verifications for this email:', allVerifications);
@@ -1458,14 +1550,7 @@ const newPassword = new_password;  // используем как раньше
   try {
     // Проверяем код (с учётом UTC)
     const [resets] = await pool.query(
-      `SELECT *, 
-              expires_at as expires_at_utc,
-              UTC_TIMESTAMP() as current_time_utc,
-              TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left
-       FROM password_resets 
-       WHERE email = ? 
-         AND REPLACE(code, ' ', '') = ? 
-         AND expires_at > UTC_TIMESTAMP()`,
+      `SELECT *, \n              expires_at as expires_at_utc,\n              UTC_TIMESTAMP() as current_time_utc,\n              TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left\n       FROM password_resets \n       WHERE email = ? \n         AND REPLACE(code, ' ', '') = ? \n         AND expires_at > UTC_TIMESTAMP()`,
       [email, cleanCode]
     );
 
@@ -1481,12 +1566,7 @@ const newPassword = new_password;  // используем как раньше
     } else {
       // Дополнительная проверка
       const [allResets] = await pool.query(
-        `SELECT code, 
-                expires_at as expires_at_utc,
-                UTC_TIMESTAMP() as current_time_utc,
-                TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left
-         FROM password_resets 
-         WHERE email = ?`,
+        `SELECT code, \n                expires_at as expires_at_utc,\n                UTC_TIMESTAMP() as current_time_utc,\n                TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left\n         FROM password_resets \n         WHERE email = ?`,
         [email]
       );
       console.log('📋 All resets for this email:', allResets);
@@ -1513,55 +1593,6 @@ const newPassword = new_password;  // используем как раньше
   }
 });
 
-// Get subtasks for a task
-app.get('/api/tasks/:taskId/subtasks', authenticateToken, async (req, res) => {
-  try {
-    const [subtasks] = await pool.query(
-      'SELECT * FROM subtasks WHERE task_id = ? ORDER BY id ASC',
-      [req.params.taskId]
-    );
-    res.json(subtasks);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Create subtask
-app.post('/api/tasks/:taskId/subtasks', authenticateToken, async (req, res) => {
-  try {
-    const { title } = req.body;
-    const [result] = await pool.query(
-      'INSERT INTO subtasks (task_id, title) VALUES (?, ?)',
-      [req.params.taskId, title]
-    );
-    res.json({ id: result.insertId, task_id: req.params.taskId, title, completed: false });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Toggle subtask
-app.put('/api/subtasks/:id/toggle', authenticateToken, async (req, res) => {
-  try {
-    await pool.query(
-      'UPDATE subtasks SET completed = NOT completed WHERE id = ?',
-      [req.params.id]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Delete subtask
-app.delete('/api/subtasks/:id', authenticateToken, async (req, res) => {
-  try {
-    await pool.query('DELETE FROM subtasks WHERE id = ?', [req.params.id]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // ============================================
 // SUBTASKS API (Подзадачи)
