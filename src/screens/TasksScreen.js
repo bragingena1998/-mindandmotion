@@ -84,10 +84,11 @@ const TasksScreen = ({ navigation }) => {
   const [focusVisible, setFocusVisible] = useState(false);
   const swipeableRefs = useRef({});
 
+  // deadline=null означает «не задан» — НЕ копируем date в deadline
   const emptyTask = () => ({
     title: '',
     date: new Date().toISOString().split('T')[0],
-    deadline: null, // null = не задан, не совпадает с датой
+    deadline: null,
     time: null,
     priority: 2,
     comment: '',
@@ -230,7 +231,6 @@ const TasksScreen = ({ navigation }) => {
       await tasksAPI.stopRecurring(taskId);
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, isRecurring: 0, recurrenceType: null } : t));
       setEditingTask(prev => prev ? { ...prev, isRecurring: 0, recurrenceType: null } : prev);
-      // Обновляем и newTask чтобы отобразилось в UI
       setNewTask(prev => ({ ...prev, isRecurring: 0, recurrenceType: null }));
       Alert.alert('Успешно', 'Повторения для этой задачи отключены.');
     } catch { Alert.alert('Ошибка', 'Не удалось отключить повторения'); }
@@ -296,10 +296,10 @@ const TasksScreen = ({ navigation }) => {
   };
 
   const handleEditTask = (task) => {
-    // deadline может совпадать с датой - считаем это «не задан»
     const dateStr = task.date ? task.date.split('T')[0] : null;
-    const deadlineStr = task.deadline ? task.deadline.split('T')[0] : null;
-    const effectiveDeadline = (deadlineStr && deadlineStr !== dateStr) ? deadlineStr : null;
+    const deadlineRaw = task.deadline ? task.deadline.split('T')[0] : null;
+    // Если deadline совпадает с date или отсутствует — считаем «не задан» (null)
+    const effectiveDeadline = (deadlineRaw && deadlineRaw !== dateStr) ? deadlineRaw : null;
 
     setNewTask({
       title: task.title,
@@ -629,7 +629,6 @@ const TasksScreen = ({ navigation }) => {
 
           {showAdvancedSettings && (
             <View style={styles.advancedSettings}>
-              {/* Deadline с кнопкой сброса */}
               <DatePicker
                 label="Срок (deadline) — необязательно"
                 value={newTask.deadline}
@@ -682,21 +681,23 @@ const TasksScreen = ({ navigation }) => {
                 if (!newTask.title.trim()) { Alert.alert('Ошибка', 'Название не может быть пустым'); return; }
                 try {
                   setLoading(true);
-                  // deadline: если не задан — приравниваем дате
-                  const effectiveDeadline = newTask.deadline || newTask.date;
+                  // deadline: если пользователь явно не задал — отправляем null
+                  // Сервер сам знает что делать (для цикличных задач deadline не нужен)
+                  const payload = {
+                    title: newTask.title,
+                    date: newTask.date,
+                    deadline: newTask.deadline || null,  // null если не выбран
+                    time: newTask.time,
+                    priority: newTask.priority,
+                    comment: newTask.comment || '',
+                    done: false,
+                    doneDate: null,
+                    isRecurring: newTask.isRecurring,
+                    recurrenceType: newTask.recurrenceType,
+                  };
                   await (editingTask
-                    ? tasksAPI.updateTask(editingTask.id, {
-                        title: newTask.title, date: newTask.date, deadline: effectiveDeadline,
-                        time: newTask.time, priority: newTask.priority, comment: newTask.comment || '',
-                        done: false, doneDate: null,
-                        isRecurring: newTask.isRecurring, recurrenceType: newTask.recurrenceType,
-                      })
-                    : tasksAPI.createTask({
-                        title: newTask.title, date: newTask.date, deadline: effectiveDeadline,
-                        time: newTask.time, priority: newTask.priority, comment: newTask.comment || '',
-                        done: false, doneDate: null,
-                        isRecurring: newTask.isRecurring, recurrenceType: newTask.recurrenceType,
-                      })
+                    ? tasksAPI.updateTask(editingTask.id, payload)
+                    : tasksAPI.createTask(payload)
                   );
                   setShowAddModal(false);
                   setTimeout(() => loadTasks(), 300);
