@@ -1,5 +1,5 @@
 // src/components/FocusSessionModal.js
-// Таймер «Концентрат»: пресеты, ручной ввод, стоп+сохранить, фоновый таймер (скрыть)
+// Концентрат: название по центру, скрыть в правом верхнем углу, тап вне = скрыть
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -7,6 +7,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   Modal as RNModal,
   Vibration,
@@ -27,7 +28,6 @@ const formatTime = (secs) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-// Глобальный синглтон состояния таймера — сохраняется при скрытии модалки
 let _globalTimer = null;
 
 const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) => {
@@ -39,7 +39,6 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
 
-  // Ручной ввод минут
   const [manualMode, setManualMode] = useState(false);
   const [manualInput, setManualInput] = useState('');
 
@@ -47,11 +46,9 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
   const appStateRef = useRef(AppState.currentState);
   const backgroundTimeRef = useRef(null);
 
-  // Восстановление состояния при открытии (если таймер бежал в фоне)
   useEffect(() => {
     if (visible) {
       if (_globalTimer && _globalTimer.taskId === task?.id) {
-        // Восстанавливаем из глобального состояния
         const elapsed = _globalTimer.isRunning
           ? Math.floor((Date.now() - _globalTimer.startedAt) / 1000)
           : 0;
@@ -62,7 +59,6 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
         setIsFinished(restored === 0);
         setSelectedPreset(_globalTimer.selectedPreset);
       } else {
-        // Новая сессия
         setIsRunning(false);
         setIsFinished(false);
         setSelectedPreset(1);
@@ -76,7 +72,6 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
     }
   }, [visible]);
 
-  // Сохраняем в глобал при каждом изменении
   useEffect(() => {
     if (task && (isRunning || timeLeft > 0)) {
       _globalTimer = {
@@ -90,7 +85,6 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
     }
   }, [timeLeft, isRunning]);
 
-  // Обработка сворачивания приложения
   useEffect(() => {
     const sub = AppState.addEventListener('change', (nextState) => {
       if (appStateRef.current === 'active' && nextState.match(/inactive|background/)) {
@@ -115,7 +109,6 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
     return () => sub.remove();
   }, [isRunning]);
 
-  // Тик таймера
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
@@ -155,7 +148,7 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
     setTimeLeft(t);
     setTotalTime(t);
     setIsFinished(false);
-    setSelectedPreset(-1); // убираем выделение пресетов
+    setSelectedPreset(-1);
     setManualMode(false);
   };
 
@@ -173,15 +166,13 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
     _globalTimer = null;
   };
 
-  // Стоп и сохранить — фиксируем сессию досрочно
   const handleStopAndSave = () => {
     setIsRunning(false);
     clearInterval(intervalRef.current);
     _globalTimer = null;
-    onComplete(); // засчитываем +1 фокус-сессию
+    onComplete();
   };
 
-  // Скрыть модалку, таймер продолжает тикать
   const handleMinimize = () => {
     if (_globalTimer) {
       _globalTimer.startedAt = isRunning ? Date.now() : null;
@@ -189,7 +180,7 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
     if (onMinimize) {
       onMinimize();
     } else {
-      onClose(); // fallback если onMinimize не передан
+      onClose();
     }
   };
 
@@ -197,151 +188,154 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
 
   return (
     <RNModal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
+      {/* Тап вне модалки = скрыть */}
+      <TouchableWithoutFeedback onPress={handleMinimize}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation ? e.stopPropagation() : null}>
+            <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
 
-          {/* Верхняя строка: заголовок + скрыть */}
-          <View style={styles.topRow}>
-            <Text style={[styles.title, { color: colors.accentText }]}>🎯 КОНЦЕНТРАТ</Text>
-            <TouchableOpacity onPress={handleMinimize} style={[styles.minimizeBtn, { borderColor: colors.borderSubtle }]}>
-              <Text style={[styles.minimizeBtnText, { color: colors.textMuted }]}>— Скрыть</Text>
-            </TouchableOpacity>
-          </View>
+              {/* Шапка: заголовок по центру, кнопка «—» в правом верхнем углу */}
+              <View style={styles.topRow}>
+                <View style={{ flex: 1 }} />
+                <Text style={[styles.title, { color: colors.accentText }]}>🎯 КОНЦЕНТРАТ</Text>
+                <View style={[styles.minimizeSide, { flex: 1, alignItems: 'flex-end' }]}>
+                  <TouchableOpacity
+                    onPress={handleMinimize}
+                    style={[styles.minimizeBtn, { borderColor: colors.borderSubtle }]}
+                  >
+                    <Text style={[styles.minimizeBtnText, { color: colors.textMuted }]}>—</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-          {task && (
-            <Text style={[styles.taskName, { color: colors.textMuted }]} numberOfLines={2}>
-              {task.title}
-            </Text>
-          )}
-
-          {/* Пресеты */}
-          <View style={styles.presets}>
-            {PRESETS.map((p, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[
-                  styles.presetBtn,
-                  {
-                    backgroundColor: selectedPreset === i ? colors.accent1 : colors.background,
-                    borderColor: selectedPreset === i ? colors.accent1 : colors.borderSubtle,
-                  }
-                ]}
-                onPress={() => handleSelectPreset(i)}
-              >
-                <Text style={[styles.presetText, { color: selectedPreset === i ? '#020617' : colors.textMuted }]}>
-                  {p.label}
+              {task && (
+                <Text style={[styles.taskName, { color: colors.textMuted }]} numberOfLines={2}>
+                  {task.title}
                 </Text>
-              </TouchableOpacity>
-            ))}
-            {/* Кнопка ручного ввода */}
-            <TouchableOpacity
-              style={[
-                styles.presetBtn,
-                {
-                  backgroundColor: manualMode ? colors.accent1 : colors.background,
-                  borderColor: manualMode ? colors.accent1 : colors.borderSubtle,
-                }
-              ]}
-              onPress={() => { if (!isRunning) setManualMode(!manualMode); }}
-            >
-              <Text style={[styles.presetText, { color: manualMode ? '#020617' : colors.textMuted }]}>✏️</Text>
-            </TouchableOpacity>
-          </View>
+              )}
 
-          {/* Ввод вручную */}
-          {manualMode && !isRunning && (
-            <View style={styles.manualRow}>
-              <TextInput
-                style={[styles.manualInput, { borderColor: colors.borderSubtle, color: colors.textMain, backgroundColor: colors.background }]}
-                keyboardType="number-pad"
-                placeholder="мин"
-                placeholderTextColor={colors.textMuted}
-                value={manualInput}
-                onChangeText={setManualInput}
-                maxLength={3}
-              />
-              <TouchableOpacity
-                style={[styles.manualApplyBtn, { backgroundColor: colors.accent1 }]}
-                onPress={handleApplyManual}
-              >
-                <Text style={{ color: '#020617', fontWeight: '700', fontSize: 13 }}>ОК</Text>
+              {/* Пресеты */}
+              <View style={styles.presets}>
+                {PRESETS.map((p, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[
+                      styles.presetBtn,
+                      {
+                        backgroundColor: selectedPreset === i ? colors.accent1 : colors.background,
+                        borderColor: selectedPreset === i ? colors.accent1 : colors.borderSubtle,
+                      }
+                    ]}
+                    onPress={() => handleSelectPreset(i)}
+                  >
+                    <Text style={[styles.presetText, { color: selectedPreset === i ? '#020617' : colors.textMuted }]}>
+                      {p.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  style={[
+                    styles.presetBtn,
+                    {
+                      backgroundColor: manualMode ? colors.accent1 : colors.background,
+                      borderColor: manualMode ? colors.accent1 : colors.borderSubtle,
+                    }
+                  ]}
+                  onPress={() => { if (!isRunning) setManualMode(!manualMode); }}
+                >
+                  <Text style={[styles.presetText, { color: manualMode ? '#020617' : colors.textMuted }]}>✏️</Text>
+                </TouchableOpacity>
+              </View>
+
+              {manualMode && !isRunning && (
+                <View style={styles.manualRow}>
+                  <TextInput
+                    style={[styles.manualInput, { borderColor: colors.borderSubtle, color: colors.textMain, backgroundColor: colors.background }]}
+                    keyboardType="number-pad"
+                    placeholder="мин"
+                    placeholderTextColor={colors.textMuted}
+                    value={manualInput}
+                    onChangeText={setManualInput}
+                    maxLength={3}
+                  />
+                  <TouchableOpacity
+                    style={[styles.manualApplyBtn, { backgroundColor: colors.accent1 }]}
+                    onPress={handleApplyManual}
+                  >
+                    <Text style={{ color: '#020617', fontWeight: '700', fontSize: 13 }}>ОК</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={[styles.timerCircle, { borderColor: isFinished ? colors.ok1 : isRunning ? colors.accent1 : colors.borderSubtle }]}>
+                <Text style={[styles.timerText, { color: isFinished ? colors.ok1 : colors.textMain }]}>
+                  {isFinished ? '✓' : formatTime(timeLeft)}
+                </Text>
+                {!isFinished && (
+                  <Text style={[styles.timerSubText, { color: colors.textMuted }]}>
+                    {isRunning ? 'В ПРОЦЕССЕ' : 'ГОТОВ'}
+                  </Text>
+                )}
+                {isFinished && (
+                  <Text style={[styles.timerSubText, { color: colors.ok1 }]}>ГОТОВО!</Text>
+                )}
+              </View>
+
+              <View style={[styles.progressBar, { backgroundColor: colors.borderSubtle }]}>
+                <View style={[
+                  styles.progressFill,
+                  { width: `${Math.round(progress * 100)}%`, backgroundColor: isFinished ? colors.ok1 : colors.accent1 }
+                ]} />
+              </View>
+
+              <View style={styles.controls}>
+                <TouchableOpacity
+                  style={[styles.controlBtn, { backgroundColor: colors.background, borderColor: colors.borderSubtle }]}
+                  onPress={handleReset}
+                >
+                  <Text style={[styles.controlBtnText, { color: colors.textMuted }]}>↺</Text>
+                </TouchableOpacity>
+
+                {!isFinished ? (
+                  <TouchableOpacity
+                    style={[styles.controlBtn, styles.mainBtn, { backgroundColor: isRunning ? colors.danger1 : colors.accent1 }]}
+                    onPress={handleStartPause}
+                  >
+                    <Text style={[styles.controlBtnText, { color: '#020617' }]}>
+                      {isRunning ? '⏸ ПАУЗА' : '▶ СТАРТ'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.controlBtn, styles.mainBtn, { backgroundColor: colors.ok1 }]}
+                    onPress={onComplete}
+                  >
+                    <Text style={[styles.controlBtnText, { color: '#020617' }]}>✓ ЗАЧЕСТЬ</Text>
+                  </TouchableOpacity>
+                )}
+
+                {isRunning && (
+                  <TouchableOpacity
+                    style={[styles.controlBtn, { backgroundColor: colors.ok1, borderColor: colors.ok1 }]}
+                    onPress={handleStopAndSave}
+                  >
+                    <Text style={[styles.controlBtnText, { color: '#020617' }]}>⏹ +1</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+                <Text style={[styles.closeBtnText, { color: colors.textMuted }]}>Закрыть без зачёта</Text>
               </TouchableOpacity>
+
             </View>
-          )}
-
-          {/* Большой таймер */}
-          <View style={[styles.timerCircle, { borderColor: isFinished ? colors.ok1 : isRunning ? colors.accent1 : colors.borderSubtle }]}>
-            <Text style={[styles.timerText, { color: isFinished ? colors.ok1 : colors.textMain }]}>
-              {isFinished ? '✓' : formatTime(timeLeft)}
-            </Text>
-            {!isFinished && (
-              <Text style={[styles.timerSubText, { color: colors.textMuted }]}>
-                {isRunning ? 'В ПРОЦЕССЕ' : 'ГОТОВ'}
-              </Text>
-            )}
-            {isFinished && (
-              <Text style={[styles.timerSubText, { color: colors.ok1 }]}>ГОТОВО!</Text>
-            )}
-          </View>
-
-          {/* Прогресс-бар */}
-          <View style={[styles.progressBar, { backgroundColor: colors.borderSubtle }]}>
-            <View style={[
-              styles.progressFill,
-              { width: `${Math.round(progress * 100)}%`, backgroundColor: isFinished ? colors.ok1 : colors.accent1 }
-            ]} />
-          </View>
-
-          {/* Кнопки управления */}
-          <View style={styles.controls}>
-            <TouchableOpacity
-              style={[styles.controlBtn, { backgroundColor: colors.background, borderColor: colors.borderSubtle }]}
-              onPress={handleReset}
-            >
-              <Text style={[styles.controlBtnText, { color: colors.textMuted }]}>↺</Text>
-            </TouchableOpacity>
-
-            {!isFinished ? (
-              <TouchableOpacity
-                style={[styles.controlBtn, styles.mainBtn, { backgroundColor: isRunning ? colors.danger1 : colors.accent1 }]}
-                onPress={handleStartPause}
-              >
-                <Text style={[styles.controlBtnText, { color: '#020617' }]}>
-                  {isRunning ? '⏸ ПАУЗА' : '▶ СТАРТ'}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.controlBtn, styles.mainBtn, { backgroundColor: colors.ok1 }]}
-                onPress={onComplete}
-              >
-                <Text style={[styles.controlBtnText, { color: '#020617' }]}>✓ ЗАЧЕСТЬ</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Стоп и сохранить — только если таймер запущен или был запущен */}
-            {isRunning && (
-              <TouchableOpacity
-                style={[styles.controlBtn, { backgroundColor: colors.ok1, borderColor: colors.ok1 }]}
-                onPress={handleStopAndSave}
-              >
-                <Text style={[styles.controlBtnText, { color: '#020617' }]}>⏹ +1</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Закрыть без зачёта */}
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={[styles.closeBtnText, { color: colors.textMuted }]}>Закрыть без зачёта</Text>
-          </TouchableOpacity>
-
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </RNModal>
   );
 };
 
-// Утилита: есть ли активная фоновая сессия
 export const hasFocusSession = () => !!_globalTimer;
 export const getFocusSession = () => _globalTimer;
 export const clearFocusSession = () => { _globalTimer = null; };
@@ -349,10 +343,11 @@ export const clearFocusSession = () => { _globalTimer = null; };
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   container: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, padding: 24, paddingBottom: 40, alignItems: 'center' },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 6 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', marginBottom: 6 },
   title: { fontSize: 20, fontWeight: '800', letterSpacing: 2 },
-  minimizeBtn: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
-  minimizeBtnText: { fontSize: 12, fontWeight: '600' },
+  minimizeSide: {},
+  minimizeBtn: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 },
+  minimizeBtnText: { fontSize: 16, fontWeight: '700', lineHeight: 20 },
   taskName: { fontSize: 13, marginBottom: 20, textAlign: 'center', maxWidth: '90%' },
   presets: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap', justifyContent: 'center' },
   presetBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },

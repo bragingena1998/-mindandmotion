@@ -1,5 +1,5 @@
 // src/screens/TasksScreen.js
-// Этап 2: свайп лево=выполнено, право=фокус. Фоновый таймер, стоп+сохранить, ручной ввод времени
+// deadline → в доп. настройки; повторение фиксит (isRecurring/recurrenceType); свайп threshold 60px; кнопка «стоп повторений» всегда видна если recurring
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
@@ -28,42 +28,21 @@ import DatePicker from '../components/DatePicker';
 import TimePicker from '../components/TimePicker';
 import FocusSessionModal, { hasFocusSession, getFocusSession } from '../components/FocusSessionModal';
 
-const toMysqlFormat = (date) => {
-  return date.toISOString().slice(0, 19).replace('T', ' ');
-};
+const toMysqlFormat = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
 
 const tasksAPI = {
-  getTasks: async (params) => {
-    const response = await api.get('/tasks', { params });
-    return response.data;
-  },
-  createTask: async (taskData) => {
-    const response = await api.post('/tasks', taskData);
-    return response.data;
-  },
-  updateTask: async (id, taskData) => {
-    const response = await api.put(`/tasks/${id}`, taskData);
-    return response.data;
-  },
-  deleteTask: async (id) => {
-    const response = await api.delete(`/tasks/${id}`);
-    return response.data;
-  },
-  stopRecurring: async (id) => {
-    const response = await api.put(`/tasks/${id}/stop-recurring`);
-    return response.data;
-  },
-  addFocusSession: async (id) => {
-    const response = await api.post(`/tasks/${id}/focus`);
-    return response.data;
-  },
+  getTasks: async (params) => (await api.get('/tasks', { params })).data,
+  createTask: async (taskData) => (await api.post('/tasks', taskData)).data,
+  updateTask: async (id, taskData) => (await api.put(`/tasks/${id}`, taskData)).data,
+  deleteTask: async (id) => (await api.delete(`/tasks/${id}`)).data,
+  stopRecurring: async (id) => (await api.put(`/tasks/${id}/stop-recurring`)).data,
+  addFocusSession: async (id) => (await api.post(`/tasks/${id}/focus`)).data,
 };
 
 
 // === ПОДЗАДАЧА ===
 const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete }) => {
   const isCompleted = !!subtask.completed;
-
   return (
     <View style={styles.subtaskItem}>
       <TouchableOpacity onPress={() => onToggle(subtask.id, parentId)} style={styles.subtaskCheckbox}>
@@ -78,9 +57,7 @@ const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete 
         styles.subtaskTitle,
         { color: isCompleted ? colors.textMuted : colors.textMain },
         isCompleted && { textDecorationLine: 'line-through' }
-      ]}>
-        {subtask.title || '(без названия)'}
-      </Text>
+      ]}>{subtask.title || '(без названия)'}</Text>
       <TouchableOpacity onPress={() => onDelete(subtask.id, parentId)} style={styles.subtaskDeleteBtn}>
         <Text style={{ fontSize: 14 }}>🗑️</Text>
       </TouchableOpacity>
@@ -90,25 +67,24 @@ const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete 
 
 
 const TasksScreen = ({ navigation }) => {
-  const { colors, spacing, theme } = useTheme();
+  const { colors } = useTheme();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date()); 
-  const [showMonthPicker, setShowMonthPicker] = useState(false); 
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [hideCompleted, setHideCompleted] = useState(true);
   const [editingTask, setEditingTask] = useState(null);
-  const [taskToDelete, setTaskToDelete] = useState(null); 
+  const [taskToDelete, setTaskToDelete] = useState(null);
   const [sortBy, setSortBy] = useState('date');
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
-  // Фокус-сессия
   const [focusTask, setFocusTask] = useState(null);
-  const [focusVisible, setFocusVisible] = useState(false); // управляет видимостью без удаления задачи
+  const [focusVisible, setFocusVisible] = useState(false);
   const swipeableRefs = useRef({});
-  
+
   const [newTask, setNewTask] = useState({
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -116,39 +92,31 @@ const TasksScreen = ({ navigation }) => {
     time: null,
     priority: 2,
     comment: '',
-    isrecurring: 0,
-    recurrencetype: null,
+    isRecurring: 0,
+    recurrenceType: null,
   });
-  
+
   const [stats, setStats] = useState({ today: 0, todayPlan: 0, week: 0, month: 0, total: 0 });
-  
-  // Подзадачи
-  const [expandedTasks, setExpandedTasks] = useState({}); 
-  const [subtasks, setSubtasks] = useState({}); 
+
+  const [expandedTasks, setExpandedTasks] = useState({});
+  const [subtasks, setSubtasks] = useState({});
   const [loadingSubtasks, setLoadingSubtasks] = useState({});
   const [showAddSubtaskModal, setShowAddSubtaskModal] = useState(false);
   const [currentTaskForSubtask, setCurrentTaskForSubtask] = useState(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
-  // Чистка старых задач
   const [showOverdueCleanupModal, setShowOverdueCleanupModal] = useState(false);
   const [overdueTasksList, setOverdueTasksList] = useState([]);
 
 
-  useEffect(() => {
-    loadTasks();
-  }, []);
+  useEffect(() => { loadTasks(); }, []);
 
-  // Восстановить фокус-сессию если была фоновая
   useEffect(() => {
     if (!focusVisible && hasFocusSession()) {
       const session = getFocusSession();
       if (session) {
         const found = tasks.find(t => t.id === session.taskId);
-        if (found) {
-          setFocusTask(found);
-          // не открываем автоматически, просто показываем баннер
-        }
+        if (found) setFocusTask(found);
       }
     }
   }, [tasks]);
@@ -163,12 +131,10 @@ const TasksScreen = ({ navigation }) => {
         month: response.data.completed_month || 0,
         total: response.data.completed_total || 0
       });
-    } catch (err) {
-      console.error('Ошибка загрузки статистики:', err);
-    }
+    } catch (err) { console.error('Ошибка загрузки статистики:', err); }
   };
 
-  const loadTasks = async (date = selectedDate) => { 
+  const loadTasks = async (date = selectedDate) => {
     try {
       setError('');
       const token = await getToken();
@@ -181,9 +147,7 @@ const TasksScreen = ({ navigation }) => {
       const isCurrentMonth = (targetMonth === currentMonth && targetYear === currentYear);
 
       let params = {};
-      if (!isCurrentMonth) {
-        params = { month: targetMonth, year: targetYear };
-      }
+      if (!isCurrentMonth) params = { month: targetMonth, year: targetYear };
 
       let tasksData = [];
       if (isCurrentMonth) {
@@ -192,26 +156,22 @@ const TasksScreen = ({ navigation }) => {
       } else {
         tasksData = await tasksAPI.getTasks(params);
       }
-      
+
       const formattedTasks = tasksData.map(task => ({
         ...task,
         priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
         dueDate: task.deadline || task.date,
         completed: task.done || false,
         time: task.time || null,
-        isrecurring: task.isrecurring || 0,
-        recurrencetype: task.recurrencetype || null,
+        // Унификация полей — сервер может вернуть snake_case или camelCase
+        isRecurring: task.isRecurring ?? task.is_recurring ?? task.isrecurring ?? 0,
+        recurrenceType: task.recurrenceType ?? task.recurrence_type ?? task.recurrencetype ?? null,
         focusSessions: task.focusSessions || 0,
       }));
-      
-      setTasks(formattedTasks);
-      
-      if (loading) {
-        checkOverdueTasks(formattedTasks);
-      }
 
+      setTasks(formattedTasks);
+      if (loading) checkOverdueTasks(formattedTasks);
       setLoading(false);
-      
     } catch (err) {
       console.error('❌ Ошибка загрузки задач:', err);
       setError('Ошибка загрузки задач');
@@ -222,25 +182,19 @@ const TasksScreen = ({ navigation }) => {
 
   const checkOverdueTasks = async (allTasks) => {
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
-
       const oldTasks = allTasks.filter(t => {
         if (t.completed) return false;
         const taskDate = t.deadline ? t.deadline.split('T')[0] : (t.date ? t.date.split('T')[0] : null);
         return taskDate && taskDate < oneWeekAgoStr;
       });
-
       if (oldTasks.length > 0) {
         setOverdueTasksList(oldTasks);
         setShowOverdueCleanupModal(true);
-        await AsyncStorage.setItem('lastOverdueCheckDate', todayStr);
       }
-    } catch (e) {
-      console.error('Ошибка проверки просрочки:', e);
-    }
+    } catch (e) { console.error('Ошибка проверки просрочки:', e); }
   };
 
   const handleDeleteOldTasks = async () => {
@@ -249,7 +203,7 @@ const TasksScreen = ({ navigation }) => {
       await Promise.all(overdueTasksList.map(t => tasksAPI.deleteTask(t.id)));
       setShowOverdueCleanupModal(false);
       setOverdueTasksList([]);
-      await loadTasks(); 
+      await loadTasks();
     } catch (err) {
       Alert.alert('Ошибка', 'Не удалось удалить все задачи');
       setLoading(false);
@@ -266,35 +220,23 @@ const TasksScreen = ({ navigation }) => {
     try {
       const taskToUpdate = tasks.find(t => t.id === taskId);
       if (!taskToUpdate) return;
-
-      setTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.id === taskId ? { ...task, completed: !task.completed } : task
-        )
-      );
-
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t));
       const newDoneState = !taskToUpdate.completed;
       const newDoneDate = newDoneState ? toMysqlFormat(new Date()) : null;
-
       await tasksAPI.updateTask(taskId, {
         title: taskToUpdate.title,
         date: taskToUpdate.date,
         deadline: taskToUpdate.deadline,
         priority: taskToUpdate.priority === 'high' ? 1 : taskToUpdate.priority === 'low' ? 3 : 2,
         comment: taskToUpdate.comment || '',
-        done: newDoneState, 
+        done: newDoneState,
         doneDate: newDoneDate,
         time: taskToUpdate.time,
-        isrecurring: taskToUpdate.isrecurring,
-        recurrencetype: taskToUpdate.recurrencetype
+        isRecurring: taskToUpdate.isRecurring,
+        recurrenceType: taskToUpdate.recurrenceType,
       });
-      
-      if (newDoneState && taskToUpdate.isrecurring) {
-        setTimeout(() => loadTasks(), 1000); 
-      }
-
-      await loadStats(); 
-      
+      if (newDoneState && taskToUpdate.isRecurring) setTimeout(() => loadTasks(), 1000);
+      await loadStats();
     } catch (error) {
       console.error('❌ Ошибка переключения задачи:', error);
       loadTasks();
@@ -303,7 +245,7 @@ const TasksScreen = ({ navigation }) => {
 
   const deleteTask = useCallback(async (taskId) => {
     try {
-      setTasks((prevTasks) => prevTasks.filter(task => task.id !== taskId));
+      setTasks((prev) => prev.filter(t => t.id !== taskId));
       await tasksAPI.deleteTask(taskId);
     } catch (error) {
       loadTasks();
@@ -314,12 +256,8 @@ const TasksScreen = ({ navigation }) => {
   const stopRecurring = async (taskId) => {
     try {
       await tasksAPI.stopRecurring(taskId);
-      setTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.id === taskId ? { ...task, isrecurring: 0, recurrencetype: null } : task
-        )
-      );
-      setEditingTask(prev => prev ? { ...prev, isrecurring: 0, recurrencetype: null } : prev);
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, isRecurring: 0, recurrenceType: null } : t));
+      setEditingTask(prev => prev ? { ...prev, isRecurring: 0, recurrenceType: null } : prev);
       Alert.alert('Успешно', 'Повторения для этой задачи отключены.');
     } catch (error) {
       Alert.alert('Ошибка', 'Не удалось отключить повторения');
@@ -329,14 +267,8 @@ const TasksScreen = ({ navigation }) => {
   const handleFocusComplete = async (taskId) => {
     try {
       await tasksAPI.addFocusSession(taskId);
-      setTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.id === taskId ? { ...task, focusSessions: (task.focusSessions || 0) + 1 } : task
-        )
-      );
-    } catch (err) {
-      console.error('Focus session save error:', err);
-    }
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, focusSessions: (t.focusSessions || 0) + 1 } : t));
+    } catch (err) { console.error('Focus session save error:', err); }
   };
 
   const loadSubtasks = async (taskId) => {
@@ -344,19 +276,12 @@ const TasksScreen = ({ navigation }) => {
       setLoadingSubtasks(prev => ({ ...prev, [taskId]: true }));
       const response = await api.get(`/tasks/${taskId}/subtasks`);
       const rawData = Array.isArray(response.data) ? response.data : [];
-      const formattedSubtasks = rawData.map(st => ({
-          ...st,
-          completed: Boolean(st.completed || st.done),
-      }));
-      setSubtasks(prev => ({ ...prev, [taskId]: formattedSubtasks }));
-      setTasks(prevTasks => 
-        prevTasks.map(task => 
-          task.id === taskId ? { ...task, subtasks_count: formattedSubtasks.length } : task
-        )
-      );
+      const formatted = rawData.map(st => ({ ...st, completed: Boolean(st.completed || st.done) }));
+      setSubtasks(prev => ({ ...prev, [taskId]: formatted }));
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, subtasks_count: formatted.length } : t));
       setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
     } catch (err) {
-      setSubtasks(prev => ({ ...prev, [taskId]: [] })); 
+      setSubtasks(prev => ({ ...prev, [taskId]: [] }));
       setLoadingSubtasks(prev => ({ ...prev, [taskId]: false }));
     }
   };
@@ -370,12 +295,7 @@ const TasksScreen = ({ navigation }) => {
   const toggleSubtask = async (subtaskId, taskId) => {
     try {
       await api.put(`/subtasks/${subtaskId}/toggle`);
-      setSubtasks(prev => ({
-        ...prev,
-        [taskId]: prev[taskId].map(st => 
-          st.id === subtaskId ? { ...st, completed: !st.completed } : st
-        )
-      }));
+      setSubtasks(prev => ({ ...prev, [taskId]: prev[taskId].map(st => st.id === subtaskId ? { ...st, completed: !st.completed } : st) }));
     } catch (err) {}
   };
 
@@ -387,11 +307,7 @@ const TasksScreen = ({ navigation }) => {
       setSubtasks(prev => {
         const currentList = prev[currentTaskForSubtask] || [];
         const newList = [...currentList, newSubtask];
-        setTasks(prevTasks => 
-          prevTasks.map(task => 
-            task.id === currentTaskForSubtask ? { ...task, subtasks_count: newList.length } : task
-          )
-        );
+        setTasks(prevTasks => prevTasks.map(t => t.id === currentTaskForSubtask ? { ...t, subtasks_count: newList.length } : t));
         return { ...prev, [currentTaskForSubtask]: newList };
       });
       setNewSubtaskTitle('');
@@ -404,70 +320,51 @@ const TasksScreen = ({ navigation }) => {
     try {
       await api.delete(`/subtasks/${subtaskId}`);
       setSubtasks(prev => {
-        const currentList = prev[taskId] || [];
-        const newList = currentList.filter(st => st.id !== subtaskId);
-        setTasks(prevTasks => 
-          prevTasks.map(task => 
-            task.id === taskId ? { ...task, subtasks_count: newList.length } : task
-          )
-        );
+        const newList = (prev[taskId] || []).filter(st => st.id !== subtaskId);
+        setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? { ...t, subtasks_count: newList.length } : t));
         return { ...prev, [taskId]: newList };
       });
     } catch (err) {}
   };
 
-
   const handleEditTask = (task) => {
     setNewTask({
       title: task.title,
-      date: task.date.split('T')[0],
-      deadline: task.deadline.split('T')[0],
+      date: task.date ? task.date.split('T')[0] : new Date().toISOString().split('T')[0],
+      deadline: task.deadline ? task.deadline.split('T')[0] : new Date().toISOString().split('T')[0],
       time: task.time || null,
       priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
       comment: task.comment || '',
-      isrecurring: task.isrecurring || 0,
-      recurrencetype: task.recurrencetype || null
+      isRecurring: task.isRecurring ?? 0,
+      recurrenceType: task.recurrenceType ?? null,
     });
     setEditingTask(task);
-    setShowAdvancedSettings(!!(task.time || task.isrecurring));
+    setShowAdvancedSettings(!!(task.time || task.isRecurring || task.recurrenceType));
     setShowAddModal(true);
   };
 
-
   const formatTaskDate = (task) => {
-    const formatDate = (isoString) => {
-      if (!isoString) return '';
-      const date = new Date(isoString);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}.${month}.${year}`;
+    const fmt = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
     };
-
     const dateStr = task.date;
     const deadlineStr = task.deadline;
     let result = '';
-
     if (!deadlineStr || dateStr === deadlineStr) {
-      result = formatDate(dateStr);
+      result = fmt(dateStr);
     } else {
-      const dateObj = new Date(dateStr);
-      const deadlineObj = new Date(deadlineStr);
-      const dayStart = String(dateObj.getDate()).padStart(2, '0');
-      const dayEnd = String(deadlineObj.getDate()).padStart(2, '0');
-      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const year = dateObj.getFullYear();
-      if (dateObj.getMonth() === deadlineObj.getMonth() && dateObj.getFullYear() === deadlineObj.getFullYear()) {
-        result = `${dayStart}-${dayEnd}.${month}.${year}`;
+      const dA = new Date(dateStr), dB = new Date(deadlineStr);
+      if (dA.getMonth() === dB.getMonth() && dA.getFullYear() === dB.getFullYear()) {
+        result = `${String(dA.getDate()).padStart(2,'0')}-${String(dB.getDate()).padStart(2,'0')}.${String(dA.getMonth()+1).padStart(2,'0')}.${dA.getFullYear()}`;
       } else {
-        result = `${formatDate(dateStr)} - ${formatDate(deadlineStr)}`;
+        result = `${fmt(dateStr)} - ${fmt(deadlineStr)}`;
       }
     }
-    
     if (task.time) result += ` • ${task.time}`;
-    if (task.isrecurring) result += ` 🔄`;
+    if (task.isRecurring) result += ` 🔄`;
     if (task.focusSessions > 0) result += ` 🎯${task.focusSessions}`;
-    
     return result;
   };
 
@@ -487,20 +384,16 @@ const TasksScreen = ({ navigation }) => {
       const statusA = getTaskStatus(a);
       const statusB = getTaskStatus(b);
       const categoryOrder = { overdue: 1, today: 2, future: 3 };
-      if (categoryOrder[statusA] !== categoryOrder[statusB]) {
-        return categoryOrder[statusA] - categoryOrder[statusB];
-      }
+      if (categoryOrder[statusA] !== categoryOrder[statusB]) return categoryOrder[statusA] - categoryOrder[statusB];
       const deadlineA = a.deadline ? a.deadline.split('T')[0] : a.date.split('T')[0];
       const deadlineB = b.deadline ? b.deadline.split('T')[0] : b.date.split('T')[0];
       const dateDiff = new Date(deadlineA) - new Date(deadlineB);
       if (dateDiff !== 0) return dateDiff;
-      const timeA = a.time || '23:59';
-      const timeB = b.time || '23:59';
-      return timeA.localeCompare(timeB);
+      return (a.time || '23:59').localeCompare(b.time || '23:59');
     }
     if (sortBy === 'priority') {
-      const priorityOrder = { high: 1, medium: 2, low: 3 };
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
+      const order = { high: 1, medium: 2, low: 3 };
+      return order[a.priority] - order[b.priority];
     }
     if (sortBy === 'title') return a.title.localeCompare(b.title, 'ru');
     return 0;
@@ -512,7 +405,7 @@ const TasksScreen = ({ navigation }) => {
     const isExpanded = expandedTasks[item.id];
     const taskSubtasks = subtasks[item.id] || [];
     const isLoadingSubtasks = loadingSubtasks[item.id];
-    
+
     const getPriorityColor = () => {
       switch (item.priority) {
         case 'high': return colors.danger1;
@@ -521,7 +414,7 @@ const TasksScreen = ({ navigation }) => {
         default: return colors.textMuted;
       }
     };
-    
+
     const taskStatus = getTaskStatus(item);
     const getStatusColor = () => {
       if (item.completed) return colors.textMuted;
@@ -530,48 +423,34 @@ const TasksScreen = ({ navigation }) => {
       return colors.borderSubtle;
     };
 
-    // СВАЙП СЛЕВА НАПРАВО (left) — Выполнено
+    // СВАЙП СЛЕВА НАПРАВО — Выполнено
     const renderLeftActions = (progress, dragX) => {
-      const scale = dragX.interpolate({
-        inputRange: [0, 80],
-        outputRange: [0.8, 1],
-        extrapolate: 'clamp',
-      });
+      const scale = dragX.interpolate({ inputRange: [0, 60], outputRange: [0.8, 1], extrapolate: 'clamp' });
       return (
         <View style={styles.swipeActionLeft}>
           <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>✓</Animated.Text>
-          <Animated.Text style={[{ fontSize: 10, color: '#020617', fontWeight: '700', marginTop: 2 }, { transform: [{ scale }] }]}>
-            ГОТОВО
-          </Animated.Text>
+          <Animated.Text style={[{ fontSize: 10, color: '#020617', fontWeight: '700', marginTop: 2 }, { transform: [{ scale }] }]}>ГОТОВО</Animated.Text>
         </View>
       );
     };
 
-    // СВАЙП СПРАВА НАЛЕВО (right) — Фокус-сессия
+    // СВАЙП СПРАВА НАЛЕВО — Фокус-сессия
     const renderRightActions = (progress, dragX) => {
-      const scale = dragX.interpolate({
-        inputRange: [-100, 0],
-        outputRange: [1, 0],
-        extrapolate: 'clamp',
-      });
+      const scale = dragX.interpolate({ inputRange: [-60, 0], outputRange: [1, 0], extrapolate: 'clamp' });
       return (
         <View style={styles.swipeActionRight}>
           <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>🎯</Animated.Text>
-          <Animated.Text style={[{ fontSize: 10, color: '#020617', fontWeight: '700', marginTop: 2 }, { transform: [{ scale }] }]}>
-            ФОКУС
-          </Animated.Text>
+          <Animated.Text style={[{ fontSize: 10, color: '#020617', fontWeight: '700', marginTop: 2 }, { transform: [{ scale }] }]}>ФОКУС</Animated.Text>
         </View>
       );
     };
 
     const onSwipeableOpen = (direction) => {
       if (direction === 'left') {
-        // Слева направо = выполнить задачу
         swipeableRefs.current[item.id]?.close();
         toggleTask(item.id);
       }
       if (direction === 'right') {
-        // Справа налево = открыть фокус-сессию
         swipeableRefs.current[item.id]?.close();
         setFocusTask(item);
         setFocusVisible(true);
@@ -586,7 +465,9 @@ const TasksScreen = ({ navigation }) => {
           renderRightActions={renderRightActions}
           onSwipeableOpen={onSwipeableOpen}
           containerStyle={{ borderRadius: 12, overflow: 'hidden' }}
-          friction={2}
+          friction={1.5}
+          leftThreshold={60}
+          rightThreshold={60}
         >
           <TouchableOpacity
             style={[
@@ -603,7 +484,7 @@ const TasksScreen = ({ navigation }) => {
             activeOpacity={0.7}
             onPress={() => toggleExpand(item.id)}
           >
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.checkboxArea}
               onPress={(e) => { e.stopPropagation(); toggleTask(item.id); }}
             >
@@ -616,13 +497,9 @@ const TasksScreen = ({ navigation }) => {
             </TouchableOpacity>
 
             <View style={styles.taskContent}>
-              <Text
-                style={[styles.taskTitle, { color: item.completed ? colors.textMuted : colors.textMain, paddingRight: 30 }]}
-                numberOfLines={isExpanded ? 0 : 2}
-              >
+              <Text style={[styles.taskTitle, { color: item.completed ? colors.textMuted : colors.textMain, paddingRight: 30 }]} numberOfLines={isExpanded ? 0 : 2}>
                 {item.title}
               </Text>
-
               {!item.completed && (
                 <View style={styles.statusBadge}>
                   {taskStatus === 'overdue' && <Text style={[styles.statusText, { color: colors.danger1 }]}>🔥 ПРОСРОЧЕНО</Text>}
@@ -630,29 +507,20 @@ const TasksScreen = ({ navigation }) => {
                   {taskStatus === 'future' && <Text style={[styles.statusText, { color: colors.textMuted }]}>📅 В ПЛАНЕ</Text>}
                 </View>
               )}
-
               <View style={styles.taskMeta}>
                 <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
                   <Text style={styles.priorityText}>
                     {item.priority === 'high' ? 'Высокий' : item.priority === 'medium' ? 'Средний' : 'Низкий'}
                   </Text>
                 </View>
-                <Text style={[styles.taskDate, { color: colors.textMuted }]}>
-                  {formatTaskDate(item)}
-                </Text>
+                <Text style={[styles.taskDate, { color: colors.textMuted }]}>{formatTaskDate(item)}</Text>
                 {((item.subtasks_count > 0) || taskSubtasks.length > 0) && (
-                  <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>
-                    📋 {taskSubtasks.length > 0 ? taskSubtasks.length : item.subtasks_count}
-                  </Text>
+                  <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>📋 {taskSubtasks.length > 0 ? taskSubtasks.length : item.subtasks_count}</Text>
                 )}
               </View>
             </View>
 
-            {/* Кнопка редактирования */}
-            <TouchableOpacity 
-              style={styles.editButton}
-              onPress={(e) => { e.stopPropagation(); handleEditTask(item); }}
-            >
+            <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); handleEditTask(item); }}>
               <Text style={{ fontSize: 16 }}>✏️</Text>
             </TouchableOpacity>
 
@@ -672,19 +540,9 @@ const TasksScreen = ({ navigation }) => {
                   <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 8 }}>Нет подзадач</Text>
                 )}
                 {taskSubtasks.map(subtask => (
-                  <SubtaskItem 
-                    key={subtask.id}
-                    subtask={subtask}
-                    parentId={item.id}
-                    colors={colors}
-                    onToggle={toggleSubtask}
-                    onDelete={deleteSubtask}
-                  />
+                  <SubtaskItem key={subtask.id} subtask={subtask} parentId={item.id} colors={colors} onToggle={toggleSubtask} onDelete={deleteSubtask} />
                 ))}
-                <TouchableOpacity
-                  style={styles.addSubtaskBtn}
-                  onPress={() => { setCurrentTaskForSubtask(item.id); setShowAddSubtaskModal(true); }}
-                >
+                <TouchableOpacity style={styles.addSubtaskBtn} onPress={() => { setCurrentTaskForSubtask(item.id); setShowAddSubtaskModal(true); }}>
                   <Text style={[styles.addSubtaskBtnText, { color: colors.accent1 }]}>+ Добавить подзадачу</Text>
                 </TouchableOpacity>
               </>
@@ -715,10 +573,7 @@ const TasksScreen = ({ navigation }) => {
         <View style={[styles.header, { backgroundColor: colors.surface }]}>
           <Text style={[styles.headerTitle, { color: colors.accentText }]}>МОИ ЗАДАЧИ</Text>
           <View style={styles.headerButtons}>
-            <TouchableOpacity 
-              onPress={() => setShowMonthPicker(true)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-            >
+            <TouchableOpacity onPress={() => setShowMonthPicker(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Text style={[styles.headerTitle, { color: colors.accentText }]}>
                 {selectedDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase()}
               </Text>
@@ -729,55 +584,37 @@ const TasksScreen = ({ navigation }) => {
 
         {/* Баннер фоновой фокус-сессии */}
         {focusTask && !focusVisible && (
-          <TouchableOpacity
-            style={[styles.focusBanner, { backgroundColor: colors.accent1 }]}
-            onPress={() => setFocusVisible(true)}
-          >
+          <TouchableOpacity style={[styles.focusBanner, { backgroundColor: colors.accent1 }]} onPress={() => setFocusVisible(true)}>
             <Text style={{ color: '#020617', fontWeight: '700', fontSize: 13 }}>🎯 Идёт фокус-сессия: {focusTask.title} — нажми чтобы открыть</Text>
           </TouchableOpacity>
         )}
 
         {/* Статистика */}
         <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-            <Text style={[styles.statNumber, { color: colors.accentText }]}>{stats.today}/{stats.todayPlan}</Text>
-            <Text style={[styles.statLabel, { color: colors.textMuted }]}>СЕГОДНЯ</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-            <Text style={[styles.statNumber, { color: colors.accentText }]}>{stats.week}</Text>
-            <Text style={[styles.statLabel, { color: colors.textMuted }]}>НЕДЕЛЯ</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-            <Text style={[styles.statNumber, { color: colors.accentText }]}>{stats.month}</Text>
-            <Text style={[styles.statLabel, { color: colors.textMuted }]}>МЕСЯЦ</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-            <Text style={[styles.statNumber, { color: colors.accentText }]}>{stats.total}</Text>
-            <Text style={[styles.statLabel, { color: colors.textMuted }]}>ВСЕГО</Text>
-          </View>
+          {[{ n: `${stats.today}/${stats.todayPlan}`, l: 'СЕГОДНЯ' }, { n: stats.week, l: 'НЕДЕЛЯ' }, { n: stats.month, l: 'МЕСЯЦ' }, { n: stats.total, l: 'ВСЕГО' }].map((s, i) => (
+            <View key={i} style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
+              <Text style={[styles.statNumber, { color: colors.accentText }]}>{s.n}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{s.l}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Фильтры/сортировка */}
+        {/* Фильтры */}
         <View style={styles.chipsContainer}>
           <TouchableOpacity
             style={[styles.chip, { backgroundColor: hideCompleted ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
             onPress={() => setHideCompleted(!hideCompleted)}
           >
-            <Text style={[styles.chipText, { color: hideCompleted ? '#020617' : colors.textMuted, fontSize: 13, fontWeight: '700' }]}>
+            <Text style={[styles.chipText, { color: hideCompleted ? '#020617' : colors.textMuted }]}>
               {hideCompleted ? 'Скрыты ✅' : 'Все задачи'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
-            onPress={() => {
-              const nextSort = sortBy === 'date' ? 'priority' : sortBy === 'priority' ? 'title' : 'date';
-              setSortBy(nextSort);
-            }}
+            onPress={() => { const next = sortBy === 'date' ? 'priority' : sortBy === 'priority' ? 'title' : 'date'; setSortBy(next); }}
           >
-            <Text style={[styles.chipText, { color: colors.textMain, fontSize: 13, fontWeight: '700' }]}>
-              {sortBy === 'date' && '📅 По дате'}
-              {sortBy === 'priority' && '🔥 По важности'}
-              {sortBy === 'title' && 'abc По имени'}
+            <Text style={[styles.chipText, { color: colors.textMain }]}>
+              {sortBy === 'date' && '📅 По дате'}{sortBy === 'priority' && '🔥 По важности'}{sortBy === 'title' && 'abc По имени'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -787,9 +624,7 @@ const TasksScreen = ({ navigation }) => {
           renderItem={renderTask}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent1} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent1} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>У вас пока нет задач</Text>
@@ -801,12 +636,7 @@ const TasksScreen = ({ navigation }) => {
         <TouchableOpacity
           style={[styles.fab, { backgroundColor: colors.accent1 }]}
           onPress={() => {
-            setNewTask({ 
-              title: '', 
-              date: new Date().toISOString().split('T')[0],
-              deadline: new Date().toISOString().split('T')[0],
-              time: null, priority: 2, comment: '', isrecurring: 0, recurrencetype: null
-            });
+            setNewTask({ title: '', date: new Date().toISOString().split('T')[0], deadline: new Date().toISOString().split('T')[0], time: null, priority: 2, comment: '', isRecurring: 0, recurrenceType: null });
             setEditingTask(null);
             setShowAdvancedSettings(false);
             setShowAddModal(true);
@@ -825,34 +655,19 @@ const TasksScreen = ({ navigation }) => {
         <FocusSessionModal
           visible={focusVisible}
           task={focusTask}
-          onClose={() => {
-            setFocusVisible(false);
-            setFocusTask(null);
-          }}
-          onComplete={() => {
-            handleFocusComplete(focusTask.id);
-            setFocusVisible(false);
-            setFocusTask(null);
-          }}
-          onMinimize={() => {
-            // Скрываем модалку, таймер продолжает тикать внутри FocusSessionModal (через _globalTimer)
-            setFocusVisible(false);
-            // focusTask остаётся, баннер покажется
-          }}
+          onClose={() => { setFocusVisible(false); setFocusTask(null); }}
+          onComplete={() => { handleFocusComplete(focusTask.id); setFocusVisible(false); setFocusTask(null); }}
+          onMinimize={() => setFocusVisible(false)}
         />
       )}
 
       {/* Чистка просроченных */}
       {showOverdueCleanupModal && (
         <Modal visible onClose={() => setShowOverdueCleanupModal(false)} title="🔥 Старые задачи">
-          <Text style={[styles.deleteModalText, { color: colors.textMain, textAlign: 'left', marginBottom: 4 }]}>
-            У вас накопились просроченные задачи (более 7 дней).
-          </Text>
-          <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 16 }}>
-            Всего: {overdueTasksList.length} шт. Рекомендуем очистить список для мотивации.
-          </Text>
+          <Text style={[styles.deleteModalText, { color: colors.textMain, textAlign: 'left', marginBottom: 4 }]}>У вас накопились просроченные задачи (более 7 дней).</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 16 }}>Всего: {overdueTasksList.length} шт.</Text>
           <View style={{ maxHeight: 200, marginBottom: 16 }}>
-            <FlatList 
+            <FlatList
               data={overdueTasksList}
               keyExtractor={item => item.id.toString()}
               renderItem={({ item }) => (
@@ -864,16 +679,10 @@ const TasksScreen = ({ navigation }) => {
             />
           </View>
           <View style={styles.deleteModalButtons}>
-            <TouchableOpacity
-              style={[styles.deleteModalButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
-              onPress={() => setShowOverdueCleanupModal(false)}
-            >
+            <TouchableOpacity style={[styles.deleteModalButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]} onPress={() => setShowOverdueCleanupModal(false)}>
               <Text style={[styles.deleteModalButtonText, { color: colors.textMain }]}>Оставить</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.deleteModalButton, { backgroundColor: colors.danger1, borderColor: colors.danger1 }]}
-              onPress={handleDeleteOldTasks}
-            >
+            <TouchableOpacity style={[styles.deleteModalButton, { backgroundColor: colors.danger1, borderColor: colors.danger1 }]} onPress={handleDeleteOldTasks}>
               <Text style={[styles.deleteModalButtonText, { color: '#020617' }]}>Удалить все</Text>
             </TouchableOpacity>
           </View>
@@ -882,26 +691,18 @@ const TasksScreen = ({ navigation }) => {
 
       {/* Модалка добавления/редактирования */}
       {showAddModal && (
-        <Modal
-          visible
-          onClose={() => setShowAddModal(false)}
-          title={editingTask ? 'Редактировать задачу' : 'Новая задача'}
-        >
+        <Modal visible onClose={() => setShowAddModal(false)} title={editingTask ? 'Редактировать задачу' : 'Новая задача'}>
           <Input
             label="Название задачи"
             placeholder="Например: Купить продукты"
             value={newTask.title}
             onChangeText={(text) => setNewTask({ ...newTask, title: text })}
           />
+
           <DatePicker
             label="Дата (когда планируете)"
             value={newTask.date}
             onChangeDate={(date) => setNewTask({ ...newTask, date: date, deadline: date })}
-          />
-          <DatePicker
-            label="Срок (deadline)"
-            value={newTask.deadline}
-            onChangeDate={(date) => setNewTask({ ...newTask, deadline: date })}
           />
 
           <View style={styles.formGroup}>
@@ -910,10 +711,7 @@ const TasksScreen = ({ navigation }) => {
               {[{val: 1, label: 'ВЫСОКИЙ', activeColor: colors.danger1}, {val: 2, label: 'СРЕДНИЙ', activeColor: colors.accent1}, {val: 3, label: 'НИЗКИЙ', activeColor: colors.ok1}].map(p => (
                 <TouchableOpacity
                   key={p.val}
-                  style={[
-                    styles.priorityBtn,
-                    { backgroundColor: newTask.priority === p.val ? p.activeColor : colors.surface, borderColor: newTask.priority === p.val ? p.activeColor : colors.borderSubtle }
-                  ]}
+                  style={[styles.priorityBtn, { backgroundColor: newTask.priority === p.val ? p.activeColor : colors.surface, borderColor: newTask.priority === p.val ? p.activeColor : colors.borderSubtle }]}
                   onPress={() => setNewTask({ ...newTask, priority: p.val })}
                 >
                   <Text style={[styles.priorityBtnText, { color: newTask.priority === p.val ? '#020617' : colors.textMain }]}>{p.label}</Text>
@@ -923,7 +721,7 @@ const TasksScreen = ({ navigation }) => {
           </View>
 
           {/* Раскрывашка доп. настройки */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.advancedToggle, { borderColor: colors.borderSubtle }]}
             onPress={() => setShowAdvancedSettings(!showAdvancedSettings)}
           >
@@ -934,11 +732,19 @@ const TasksScreen = ({ navigation }) => {
 
           {showAdvancedSettings && (
             <View style={styles.advancedSettings}>
+              {/* Дедлайн — теперь в доп. настройках */}
+              <DatePicker
+                label="Срок (deadline)"
+                value={newTask.deadline}
+                onChangeDate={(date) => setNewTask({ ...newTask, deadline: date })}
+              />
+
               <TimePicker
                 label="Точное время (необязательно)"
                 value={newTask.time}
                 onChangeTime={(time) => setNewTask({ ...newTask, time })}
               />
+
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.textMain }]}>Повторение</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -947,25 +753,26 @@ const TasksScreen = ({ navigation }) => {
                     { val: 'daily', label: '📅 Каждый день' },
                     { val: 'weekly', label: '📅 Каждую неделю' },
                     { val: 'monthly', label: '📅 Каждый месяц' }
-                  ].map(item => (
+                  ].map(opt => (
                     <TouchableOpacity
-                      key={String(item.val)}
-                      style={[
-                        styles.chip,
-                        { 
-                          backgroundColor: newTask.recurrencetype === item.val ? colors.accent1 : colors.surface,
-                          borderColor: colors.borderSubtle,
-                          paddingVertical: 6, paddingHorizontal: 10
-                        }
-                      ]}
-                      onPress={() => setNewTask({ ...newTask, isrecurring: item.val ? 1 : 0, recurrencetype: item.val })}
+                      key={String(opt.val)}
+                      style={[styles.chip, { backgroundColor: newTask.recurrenceType === opt.val ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle, paddingVertical: 6, paddingHorizontal: 10 }]}
+                      onPress={() => setNewTask({ ...newTask, isRecurring: opt.val ? 1 : 0, recurrenceType: opt.val })}
                     >
-                      <Text style={[styles.chipText, { color: newTask.recurrencetype === item.val ? '#020617' : colors.textMuted }]}>
-                        {item.label}
-                      </Text>
+                      <Text style={[styles.chipText, { color: newTask.recurrenceType === opt.val ? '#020617' : colors.textMuted }]}>{opt.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
+
+                {/* Кнопка остановки повторений — видна если задача уже recurring */}
+                {editingTask && (editingTask.isRecurring === 1 || editingTask.isRecurring === true) && (
+                  <TouchableOpacity
+                    style={[styles.stopRecurringBtn, { borderColor: colors.accent1, marginTop: 12 }]}
+                    onPress={() => stopRecurring(editingTask.id)}
+                  >
+                    <Text style={{ color: colors.accentText, textAlign: 'center' }}>🔄 Остановить повторения</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
@@ -974,10 +781,7 @@ const TasksScreen = ({ navigation }) => {
             <Button
               title={editingTask ? 'Сохранить' : 'Добавить'}
               onPress={async () => {
-                if (!newTask.title.trim()) {
-                  Alert.alert('Ошибка', 'Название задачи не может быть пустым');
-                  return;
-                }
+                if (!newTask.title.trim()) { Alert.alert('Ошибка', 'Название задачи не может быть пустым'); return; }
                 try {
                   setLoading(true);
                   const taskToSend = {
@@ -989,8 +793,8 @@ const TasksScreen = ({ navigation }) => {
                     comment: newTask.comment || '',
                     done: false,
                     doneDate: null,
-                    isrecurring: newTask.isrecurring,
-                    recurrencetype: newTask.recurrencetype
+                    isRecurring: newTask.isRecurring,
+                    recurrenceType: newTask.recurrenceType,
                   };
                   if (editingTask) {
                     await tasksAPI.updateTask(editingTask.id, taskToSend);
@@ -1007,16 +811,6 @@ const TasksScreen = ({ navigation }) => {
             />
           </View>
 
-          {/* Кнопка остановки повторений */}
-          {editingTask && editingTask.isrecurring === 1 && (
-            <TouchableOpacity
-              style={[styles.deleteButton, { marginTop: 12, borderWidth: 1, borderColor: colors.accent1 }]}
-              onPress={() => stopRecurring(editingTask.id)}
-            >
-              <Text style={{ color: colors.accentText, textAlign: 'center' }}>🔄 Остановить повторения</Text>
-            </TouchableOpacity>
-          )}
-
           {/* Кнопка удаления */}
           {editingTask && (
             <TouchableOpacity
@@ -1026,7 +820,7 @@ const TasksScreen = ({ navigation }) => {
               <Text style={{ color: colors.danger1, textAlign: 'center' }}>🗑️ Удалить задачу</Text>
             </TouchableOpacity>
           )}
-          
+
           <View style={{ height: 20 }} />
         </Modal>
       )}
@@ -1034,21 +828,13 @@ const TasksScreen = ({ navigation }) => {
       {/* Модалка удаления */}
       {taskToDelete && (
         <Modal visible onClose={() => setTaskToDelete(null)} title="Удалить задачу?">
-          <Text style={[styles.deleteModalText, { color: colors.textMain }]}>
-            Задача "{taskToDelete.title}" будет удалена.
-          </Text>
+          <Text style={[styles.deleteModalText, { color: colors.textMain }]}>Задача "{taskToDelete.title}" будет удалена.</Text>
           <Text style={[styles.deleteModalWarning, { color: colors.textMuted }]}>Это действие нельзя отменить.</Text>
           <View style={styles.deleteModalButtons}>
-            <TouchableOpacity
-              style={[styles.deleteModalButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
-              onPress={() => setTaskToDelete(null)}
-            >
+            <TouchableOpacity style={[styles.deleteModalButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]} onPress={() => setTaskToDelete(null)}>
               <Text style={[styles.deleteModalButtonText, { color: colors.textMain }]}>Отмена</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.deleteModalButton, { backgroundColor: colors.danger1, borderColor: colors.danger1 }]}
-              onPress={() => { deleteTask(taskToDelete.id); setTaskToDelete(null); }}
-            >
+            <TouchableOpacity style={[styles.deleteModalButton, { backgroundColor: colors.danger1, borderColor: colors.danger1 }]} onPress={() => { deleteTask(taskToDelete.id); setTaskToDelete(null); }}>
               <Text style={[styles.deleteModalButtonText, { color: '#020617' }]}>Удалить</Text>
             </TouchableOpacity>
           </View>
@@ -1057,11 +843,7 @@ const TasksScreen = ({ navigation }) => {
 
       {/* Модалка добавления подзадачи */}
       {showAddSubtaskModal && (
-        <Modal
-          visible
-          onClose={() => { setShowAddSubtaskModal(false); setNewSubtaskTitle(''); setCurrentTaskForSubtask(null); }}
-          title="Новая подзадача"
-        >
+        <Modal visible onClose={() => { setShowAddSubtaskModal(false); setNewSubtaskTitle(''); setCurrentTaskForSubtask(null); }} title="Новая подзадача">
           <Input label="Название" placeholder="Например: Купить молоко" value={newSubtaskTitle} onChangeText={setNewSubtaskTitle} />
           <Button title="Добавить" onPress={addSubtask} />
         </Modal>
@@ -1133,6 +915,7 @@ const styles = StyleSheet.create({
   priorityBtn: { flex: 1, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 999, borderWidth: 1, alignItems: 'center' },
   priorityBtnText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.05 },
   deleteButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' },
+  stopRecurringBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent', borderWidth: 1 },
   statusBadge: { marginBottom: 6 },
   statusText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.08 },
   deleteModalText: { fontSize: 15, lineHeight: 22, marginBottom: 12, textAlign: 'center' },

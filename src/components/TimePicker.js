@@ -1,41 +1,47 @@
 // src/components/TimePicker.js
+// Бесконечная прокрутка (infinite loop) для часов и минут
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Modal as RNModal } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
 const ITEM_HEIGHT = 44;
+const LOOP_MULTIPLIER = 200; // достаточно большой цикл для бесконечного ощущения
 
-const WheelPicker = ({ data, selectedValue, onValueChange }) => {
+const InfiniteWheelPicker = ({ data, selectedValue, onValueChange }) => {
   const { colors } = useTheme();
   const listRef = useRef(null);
-  
-  // Добавляем пустые элементы в начало и конец, чтобы первый и последний элементы могли быть по центру
-  const paddedData = ['', '', ...data, '', ''];
-  const initialIndex = Math.max(0, data.indexOf(selectedValue));
+  const count = data.length;
+  const loopedData = Array.from({ length: count * LOOP_MULTIPLIER }, (_, i) => data[i % count]);
+  const centerBlock = Math.floor(LOOP_MULTIPLIER / 2);
+  const initialIndex = data.indexOf(selectedValue);
+  const initialOffset = (centerBlock * count + initialIndex) * ITEM_HEIGHT;
 
   useEffect(() => {
     if (listRef.current) {
       setTimeout(() => {
-        listRef.current?.scrollToOffset({ offset: initialIndex * ITEM_HEIGHT, animated: false });
+        listRef.current?.scrollToOffset({ offset: initialOffset, animated: false });
       }, 50);
     }
   }, []);
 
   const handleScrollEnd = (event) => {
     const y = event.nativeEvent.contentOffset.y;
-    let index = Math.round(y / ITEM_HEIGHT);
-    
-    if (index < 0) index = 0;
-    if (index >= data.length) index = data.length - 1;
-    
-    if (data[index] !== selectedValue) {
-      onValueChange(data[index]);
+    const index = Math.round(y / ITEM_HEIGHT);
+    const realIndex = ((index % count) + count) % count;
+    if (data[realIndex] !== selectedValue) {
+      onValueChange(data[realIndex]);
+    }
+    // Тихо переходим в середину чтобы не кончились данные
+    const safeOffset = (centerBlock * count + realIndex) * ITEM_HEIGHT;
+    if (Math.abs(y - safeOffset) > count * ITEM_HEIGHT * 2) {
+      setTimeout(() => {
+        listRef.current?.scrollToOffset({ offset: safeOffset, animated: false });
+      }, 50);
     }
   };
 
   return (
     <View style={{ height: ITEM_HEIGHT * 5, width: 80, overflow: 'hidden' }}>
-      {/* Подсветка центрального элемента (эффект кодового замка) */}
       <View style={{
         position: 'absolute',
         top: ITEM_HEIGHT * 2,
@@ -48,23 +54,21 @@ const WheelPicker = ({ data, selectedValue, onValueChange }) => {
       <FlatList
         ref={listRef}
         showsVerticalScrollIndicator={false}
-        data={paddedData}
-        keyExtractor={(item, index) => index.toString()}
+        data={loopedData}
+        keyExtractor={(_, index) => index.toString()}
         snapToInterval={ITEM_HEIGHT}
         decelerationRate="fast"
         onMomentumScrollEnd={handleScrollEnd}
-        // На Android иногда onMomentumScrollEnd может не срабатывать идеально, onScrollEndDrag помогает
-        onScrollEndDrag={handleScrollEnd} 
+        onScrollEndDrag={handleScrollEnd}
         getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
-        initialScrollIndex={initialIndex}
         renderItem={({ item }) => {
-          const isSelected = item !== '' && item === selectedValue;
+          const isSelected = item === selectedValue;
           return (
             <View style={{ height: ITEM_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ 
-                fontSize: isSelected ? 22 : 18, 
-                color: isSelected ? colors.textMain : colors.textMuted, 
-                fontWeight: isSelected ? 'bold' : 'normal' 
+              <Text style={{
+                fontSize: isSelected ? 22 : 18,
+                color: isSelected ? colors.textMain : colors.textMuted,
+                fontWeight: isSelected ? 'bold' : 'normal'
               }}>
                 {item}
               </Text>
@@ -79,15 +83,13 @@ const WheelPicker = ({ data, selectedValue, onValueChange }) => {
 const TimePicker = ({ label, value, onChangeTime }) => {
   const { colors } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
-  
-  // Парсим начальное время
+
   const defaultHours = value ? value.split(':')[0] : '12';
   const defaultMinutes = value ? value.split(':')[1] : '00';
-  
+
   const [tempHours, setTempHours] = useState(defaultHours);
   const [tempMinutes, setTempMinutes] = useState(defaultMinutes);
 
-  // Массивы для часов (00-23) и минут (00-59)
   const hoursData = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
   const minutesData = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 
@@ -105,16 +107,11 @@ const TimePicker = ({ label, value, onChangeTime }) => {
   return (
     <View style={styles.container}>
       {label && (
-        <Text style={[styles.label, { color: colors.textMain }]}>
-          {label}
-        </Text>
+        <Text style={[styles.label, { color: colors.textMain }]}>{label}</Text>
       )}
-      
+
       <TouchableOpacity
-        style={[styles.button, { 
-          backgroundColor: colors.surface,
-          borderColor: colors.borderSubtle,
-        }]}
+        style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
         onPress={handleOpen}
       >
         <Text style={[styles.buttonText, { color: value ? colors.textMain : colors.textMuted }]}>
@@ -133,31 +130,31 @@ const TimePicker = ({ label, value, onChangeTime }) => {
       <RNModal visible={isOpen} transparent animationType="fade">
         <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-            
+
             <Text style={[styles.modalTitle, { color: colors.accentText }]}>ВЫБЕРИТЕ ВРЕМЯ</Text>
-            
+
             <View style={styles.pickerContainer}>
-              <WheelPicker 
-                data={hoursData} 
-                selectedValue={tempHours} 
-                onValueChange={setTempHours} 
+              <InfiniteWheelPicker
+                data={hoursData}
+                selectedValue={tempHours}
+                onValueChange={setTempHours}
               />
               <Text style={[styles.colon, { color: colors.textMain }]}>:</Text>
-              <WheelPicker 
-                data={minutesData} 
-                selectedValue={tempMinutes} 
-                onValueChange={setTempMinutes} 
+              <InfiniteWheelPicker
+                data={minutesData}
+                selectedValue={tempMinutes}
+                onValueChange={setTempMinutes}
               />
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.saveBtn, { backgroundColor: colors.accent1 }]}
               onPress={handleSave}
             >
               <Text style={styles.saveBtnText}>СОХРАНИТЬ</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[styles.closeBtn, { borderColor: colors.borderSubtle }]}
               onPress={() => setIsOpen(false)}
             >
@@ -181,9 +178,7 @@ const styles = StyleSheet.create({
   buttonText: { fontSize: 15 },
   icon: { fontSize: 20 },
   iconClear: { fontSize: 16, marginTop: 2 },
-  modalOverlay: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', zIndex: 1000
-  },
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   modalContent: {
     width: 300, padding: 24, borderRadius: 20, borderWidth: 1, alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 10

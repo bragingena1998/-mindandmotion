@@ -1,3 +1,4 @@
+// src/components/Modal.js
 import React from 'react';
 import { View, Text, Modal as RNModal, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
@@ -48,7 +49,7 @@ const Modal = ({ visible, onClose, title, children }) => {
 
             <ScrollView
               style={styles.content}
-              contentContainerStyle={{ flexGrow: 1 }}
+              contentContainerStyle={styles.contentContainer}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
@@ -71,7 +72,7 @@ const styles = StyleSheet.create({
   },
   modalWrapper: {
     width: '100%',
-    maxHeight: '90%',
+    maxHeight: '92%',
     alignItems: 'center',
   },
   modal: {
@@ -113,6 +114,10 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
+  },
+  contentContainer: {
+    // НЕ flexGrow: 1 — это и вызывало пустое место
+    paddingBottom: 4,
   },
 });
 
