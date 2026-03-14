@@ -54,7 +54,6 @@ async function initializeDB() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         date DATE NOT NULL,
-        time VARCHAR(5) DEFAULT NULL,
         deadline DATE,
         title VARCHAR(255) NOT NULL,
         priority INT DEFAULT 2,
@@ -67,29 +66,11 @@ async function initializeDB() {
         recurrence_value VARCHAR(50),
         is_generated BOOLEAN DEFAULT FALSE,
         template_id INT,
-        folder_id INT DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
-
-    // --- MIGRATION: Add time column to tasks ---
-    try {
-        const [columns] = await pool.query("SHOW COLUMNS FROM tasks LIKE 'time'");
-        if (columns.length === 0) {
-          console.log('🔄 Adding time column to tasks table...');
-          await pool.query(`
-            ALTER TABLE tasks 
-            ADD COLUMN time VARCHAR(5) DEFAULT NULL AFTER date
-          `);
-          console.log('✅ Column time added successfully');
-        }
-    } catch (err) {
-        console.error('Migration error (time):', err.message);
-    }
-    // -----------------------------------------
 
     // 2. Create habits table
     await pool.query(`
@@ -99,8 +80,6 @@ async function initializeDB() {
         name VARCHAR(255) NOT NULL,
         unit VARCHAR(50) DEFAULT 'раз',
         plan INT DEFAULT 0,
-        start_year INT DEFAULT NULL,
-        start_month INT DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
@@ -249,12 +228,23 @@ async function initializeDB() {
       console.error('Migration error (focus_sessions):', err.message);
     }
 
+    // --- MIGRATION: Add time column to tasks ---
+    try {
+      const [columns] = await pool.query("SHOW COLUMNS FROM tasks LIKE 'time'");
+      if (columns.length === 0) {
+        console.log('🔄 Adding time column to tasks table...');
+        await pool.query(`ALTER TABLE tasks ADD COLUMN time VARCHAR(5) DEFAULT NULL AFTER date`);
+        console.log('✅ Column time added successfully');
+      }
+    } catch (err) {
+      console.error('Migration error (time):', err.message);
+    }
+
     console.log('✓ Database tables initialized');
   } catch (err) {
     console.error('Database initialization error:', err);
   }
 }
-
 
 initializeDB();
 
@@ -275,6 +265,18 @@ function authenticateToken(req, res, next) {
     next();
   });
 }
+
+// Вспомогательная функция для валидации email
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+// Вспомогательная функция для дат
+const parseDateForDB = (dateStr) => {
+  if (!dateStr || dateStr === '' || dateStr === 'null') return null;
+  return dateStr;
+};
 
 // ===== РЕГИСТРАЦИЯ =====
 app.post('/api/register', async (req, res) => {
@@ -490,7 +492,7 @@ app.get('/api/habits', authenticateToken, async (req, res) => {
   }
 });
 
-
+// Reorder habits
 app.put('/api/habits/reorder', authenticateToken, async (req, res) => {
   try {
     const { habits } = req.body;
@@ -498,6 +500,8 @@ app.put('/api/habits/reorder', authenticateToken, async (req, res) => {
     if (!Array.isArray(habits)) {
       return res.status(400).json({ error: 'Invalid data format' });
     }
+
+    console.log(`🔄 Reordering ${habits.length} habits for user ${req.userId}`);
 
     for (const item of habits) {
       await pool.query(
@@ -513,12 +517,7 @@ app.put('/api/habits/reorder', authenticateToken, async (req, res) => {
   }
 });
 
-
-const parseDateForDB = (dateStr) => {
-    if (!dateStr || dateStr === '' || dateStr === 'null') return null;
-    return dateStr;
-};
-
+// Create habit
 app.post('/api/habits', authenticateToken, async (req, res) => {
   try {
     console.log('📥 CREATE HABIT DATA:', req.body); 
@@ -548,6 +547,10 @@ app.post('/api/habits', authenticateToken, async (req, res) => {
     };
     const startVal = formatDate(start_date);
     const endVal = formatDate(end_date);
+
+    console.log('Ready to insert:', { 
+        userId: req.userId, name, unit, planVal, year, month, targetTypeVal, startVal, endVal, daysJson 
+    });
 
     const [result] = await pool.query(
       `INSERT INTO habits 
@@ -579,10 +582,12 @@ app.post('/api/habits', authenticateToken, async (req, res) => {
   }
 });
 
-
+// Update habit
 app.put('/api/habits/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`📝 Updating habit ${id}:`, req.body);
+
     const { name, unit, plan, target_type, start_date, end_date, days_of_week } = req.body;
 
     const daysOfWeekJson = Array.isArray(days_of_week) ? JSON.stringify(days_of_week) : '[]';
@@ -600,6 +605,7 @@ app.put('/api/habits/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Habit not found or access denied' });
     }
     
+    console.log(`✅ Habit ${id} updated`);
     res.json({ success: true });
   } catch (err) {
     console.error('❌ Update habit error:', err);
@@ -607,54 +613,141 @@ app.put('/api/habits/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Archive/Delete habit
 app.delete('/api/habits/:id', authenticateToken, async (req, res) => {
   try {
     const habitId = req.params.id;
     const { year, month } = req.query;
 
     if (year && month) {
+      console.log(`🗑️ Archiving habit ${habitId} for ${month}.${year}`);
+      
       await pool.query(`
         INSERT INTO habit_monthly_configs (habit_id, year, month, is_archived)
         VALUES (?, ?, ?, TRUE)
         ON DUPLICATE KEY UPDATE is_archived = TRUE
       `, [habitId, year, month]);
-      
-      console.log(`✅ Habit ${habitId} archived for ${month}.${year}`);
-      return res.json({ success: true, archived: true });
-    }
 
-    await pool.query('DELETE FROM habits WHERE id = ? AND user_id = ?', [habitId, req.userId]);
-    res.json({ success: true, deleted: true });
+      res.json({ success: true, message: 'Habit archived for this month' });
+    } else {
+      await pool.query('DELETE FROM habits WHERE id = ? AND user_id = ?', [habitId, req.userId]);
+      res.json({ success: true, message: 'Habit deleted permanently' });
+    }
   } catch (err) {
-    console.error('Delete/archive habit error:', err);
+    console.error('Delete/Archive error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-
-app.get('/api/habits/:id/records', authenticateToken, async (req, res) => {
+// Get habit records for month
+app.get('/api/habits/records/:year/:month', authenticateToken, async (req, res) => {
   try {
-    const { year, month } = req.query;
+    const { year, month } = req.params;
+    
     const [records] = await pool.query(
-      'SELECT * FROM habit_records WHERE habit_id = ? AND user_id = ? AND year = ? AND month = ?',
-      [req.params.id, req.userId, year, month]
+      `SELECT habit_id as habitid, day, value FROM habit_records 
+       WHERE user_id = ? AND year = ? AND month = ? 
+       ORDER BY day`,
+      [req.userId, parseInt(year), parseInt(month)]
     );
+
+    console.log('First 3 records:', records.slice(0, 3));
+    console.log(`✓ Loaded ${records.length} records for user ${req.userId}, ${year}-${month}`);
     res.json(records);
   } catch (err) {
+    console.error('❌ Error loading records:', err);
+    res.status(500).json({ error: 'Failed to load records' });
+  }
+});
+
+// Save/update habit record (upsert)
+app.post('/api/habits/records', authenticateToken, async (req, res) => {
+  try {
+    const { habit_id, year, month, day, value } = req.body;
+    
+    const [habits] = await pool.query(
+      'SELECT id FROM habits WHERE id = ? AND user_id = ?',
+      [habit_id, req.userId]
+    );
+    
+    if (habits.length === 0) {
+      return res.status(404).json({ error: 'Habit not found' });
+    }
+    
+    await pool.query(
+      `INSERT INTO habit_records (user_id, habit_id, year, month, day, value) 
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = CURRENT_TIMESTAMP`,
+      [req.userId, habit_id, parseInt(year), parseInt(month), parseInt(day), value]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/habits/:id/records', authenticateToken, async (req, res) => {
+// Delete habit record (by body)
+app.delete('/api/habits/records', authenticateToken, async (req, res) => {
   try {
-    const { year, month, day, value } = req.body;
-    await pool.query(
-      `INSERT INTO habit_records (user_id, habit_id, year, month, day, value)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE value = ?, updated_at = CURRENT_TIMESTAMP`,
-      [req.userId, req.params.id, year, month, day, value, value]
+    const { habit_id, year, month, day } = req.body;
+    const userId = req.userId;
+
+    console.log('🧹 DELETE habit record request:', { userId, habit_id, year, month, day });
+
+    if (!habit_id || !year || !month || !day) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const [habits] = await pool.query(
+      'SELECT id FROM habits WHERE id = ? AND user_id = ?',
+      [habit_id, userId]
     );
+
+    if (habits.length === 0) {
+      return res.status(404).json({ error: 'Habit not found' });
+    }
+
+    await pool.query(
+      'DELETE FROM habit_records WHERE habit_id = ? AND year = ? AND month = ? AND day = ?',
+      [habit_id, year, month, day]
+    );
+
+    console.log(`✅ Deleted record: habit_id=${habit_id}, year=${year}, month=${month}, day=${day}`);
     res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting habit record:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete habit record (by params)
+app.delete('/api/habits/records/:habit_id/:year/:month/:day', authenticateToken, async (req, res) => {
+  try {
+    const { habit_id, year, month, day } = req.params;
+    
+    await pool.query(
+      'DELETE FROM habit_records WHERE user_id = ? AND habit_id = ? AND year = ? AND month = ? AND day = ?',
+      [req.userId, parseInt(habit_id), parseInt(year), parseInt(month), parseInt(day)]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get single habit record
+app.get('/api/habits/:habitId/record/:year/:month/:day', authenticateToken, async (req, res) => {
+  try {
+    const { habitId, year, month, day } = req.params;
+    
+    const [records] = await pool.query(
+      'SELECT value FROM habit_records WHERE user_id = ? AND habit_id = ? AND year = ? AND month = ? AND day = ?',
+      [req.userId, parseInt(habitId), parseInt(year), parseInt(month), parseInt(day)]
+    );
+    
+    res.json({ value: records.length > 0 ? records[0].value : 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -676,55 +769,192 @@ app.put('/api/habits/:id/monthly-config', authenticateToken, async (req, res) =>
 });
 
 
-// ==================== TASKS API ====================
+// ==================== FOLDERS API ====================
 
-// GET /api/tasks — получение задач
-app.get('/api/tasks', authenticateToken, async (req, res) => {
+// Получить папки пользователя
+app.get('/api/folders', authenticateToken, async (req, res) => {
   try {
-    const { month, year } = req.query;
-    let query;
-    let params;
+    const [rows] = await pool.query(
+      'SELECT * FROM folders WHERE user_id = ? ORDER BY order_index ASC, id ASC',
+      [req.userId]
+    );
+    
+    // Если папок нет, создаем базовую папку «Работа»
+    if (rows.length === 0) {
+      await pool.query(
+        'INSERT INTO folders (user_id, name, icon, order_index) VALUES (?, ?, ?, ?)',
+        [req.userId, 'Работа', '💼', 1]
+      );
+      const [newRows] = await pool.query(
+        'SELECT * FROM folders WHERE user_id = ? ORDER BY order_index ASC, id ASC',
+        [req.userId]
+      );
+      return res.json(newRows);
+    }
+    
+    res.json(rows);
+  } catch (err) {
+    console.error('Get folders error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    if (month !== undefined && year !== undefined) {
-      query = `
-        SELECT t.*, 
-          (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) as subtasks_count
-        FROM tasks t
-        WHERE t.user_id = ?
-          AND (
-            (MONTH(t.date) = ? AND YEAR(t.date) = ?)
-            OR (MONTH(t.deadline) = ? AND YEAR(t.deadline) = ?)
-            OR (t.date <= LAST_DAY(?) AND t.deadline >= ?)
-          )
-        ORDER BY t.deadline ASC, t.date ASC
-      `;
-      const monthStr = String(parseInt(month) + 1).padStart(2, '0');
-      const yearStr = String(year);
-      const firstDay = `${yearStr}-${monthStr}-01`;
-      params = [req.userId, parseInt(month) + 1, year, parseInt(month) + 1, year, firstDay, firstDay];
-    } else {
-      query = `
-        SELECT t.*, 
-          (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) as subtasks_count
-        FROM tasks t
-        WHERE t.user_id = ?
-        ORDER BY t.deadline ASC, t.date ASC
-      `;
-      params = [req.userId];
+// Создать папку
+app.post('/api/folders', authenticateToken, async (req, res) => {
+  try {
+    const { name, icon } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Название папки обязательно' });
+    
+    const [maxRows] = await pool.query(
+      'SELECT COALESCE(MAX(order_index), 0) AS maxOrder FROM folders WHERE user_id = ?',
+      [req.userId]
+    );
+    const nextOrder = (maxRows[0]?.maxOrder || 0) + 1;
+    
+    const [result] = await pool.query(
+      'INSERT INTO folders (user_id, name, icon, order_index) VALUES (?, ?, ?, ?)',
+      [req.userId, name.trim(), icon || '📁', nextOrder]
+    );
+    res.json({ id: result.insertId, user_id: req.userId, name: name.trim(), icon: icon || '📁', order_index: nextOrder });
+  } catch (err) {
+    console.error('Create folder error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Редактировать папку
+app.put('/api/folders/:id', authenticateToken, async (req, res) => {
+  try {
+    const folderId = req.params.id;
+    const { name, icon } = req.body;
+
+    if ((!name || !name.trim()) && (icon === undefined)) {
+      return res.status(400).json({ error: 'Нечего обновлять' });
     }
 
-    const [tasks] = await pool.query(query, params);
+    const [existing] = await pool.query(
+      'SELECT * FROM folders WHERE id = ? AND user_id = ?',
+      [folderId, req.userId]
+    );
+    if (existing.length === 0) return res.status(404).json({ error: 'Папка не найдена' });
 
-    // Нормализуем поля для фронта (snake_case DB -> camelCase)
-    const normalized = tasks.map(t => ({
-      ...t,
-      isrecurring: t.is_recurring ? 1 : 0,
-      recurrencetype: t.recurrence_type || null,
-      doneDate: t.done_date || null,
-      focusSessions: t.focus_sessions || 0,
+    const current = existing[0];
+    const newName = (name !== undefined) ? name.trim() : current.name;
+    const newIcon = (icon !== undefined) ? icon : current.icon;
+
+    await pool.query(
+      'UPDATE folders SET name = ?, icon = ? WHERE id = ? AND user_id = ?',
+      [newName, newIcon, folderId, req.userId]
+    );
+
+    const [updated] = await pool.query(
+      'SELECT * FROM folders WHERE id = ? AND user_id = ?',
+      [folderId, req.userId]
+    );
+
+    res.json(updated[0]);
+  } catch (err) {
+    console.error('Update folder error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Сортировка папок
+app.put('/api/folders/reorder', authenticateToken, async (req, res) => {
+  const { folders } = req.body;
+  if (!Array.isArray(folders)) return res.status(400).json({ error: 'folders должен быть массивом' });
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    for (const f of folders) {
+      if (!f?.id && f?.id !== 0) continue;
+      const ord = Number.isFinite(Number(f.order_index)) ? Number(f.order_index) : 0;
+
+      await conn.query(
+        'UPDATE folders SET order_index = ? WHERE id = ? AND user_id = ?',
+        [ord, f.id, req.userId]
+      );
+    }
+
+    await conn.commit();
+    res.json({ success: true });
+  } catch (err) {
+    if (conn) await conn.rollback();
+    console.error('Reorder folders error:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// Удалить папку
+app.delete('/api/folders/:id', authenticateToken, async (req, res) => {
+  try {
+    // Безопасно отвязываем задачи перед удалением
+    await pool.query('UPDATE tasks SET folder_id = NULL WHERE folder_id = ? AND user_id = ?', [req.params.id, req.userId]);
+    await pool.query('DELETE FROM folders WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
+    res.json({ success: true, message: 'Папка удалена' });
+  } catch (err) {
+    console.error('Delete folder error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ==================== TASKS API ====================
+
+// GET /api/tasks
+app.get('/api/tasks', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { month, year } = req.query;
+
+    let query = `
+      SELECT t.*,
+      (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) as subtasks_count
+      FROM tasks t
+      WHERE t.user_id = ?
+    `;
+
+    let params = [userId];
+
+    if (month && year) {
+      query += ` AND (
+        (t.done = 1 AND MONTH(t.done_date) = ? AND YEAR(t.done_date) = ?)
+        OR 
+        (t.done = 0 AND MONTH(t.date) = ? AND YEAR(t.date) = ?)
+      )`;
+      params.push(parseInt(month) + 1, year, parseInt(month) + 1, year);
+    } else {
+      query += ` AND (
+        t.done = 0 
+        OR (t.done = 1 AND t.done_date >= DATE_FORMAT(NOW() ,'%Y-%m-01'))
+      )`;
+    }
+
+    query += ' ORDER BY t.done ASC, t.priority ASC, t.date DESC';
+
+    const [rows] = await pool.query(query, params);
+
+    const formatted = rows.map(row => ({
+      ...row,
+      done: Boolean(row.done),
+      isRecurring: Boolean(row.is_recurring),
+      isGenerated: Boolean(row.is_generated),
+      subtasks_count: row.subtasks_count || 0,
+      userId: row.user_id,
+      doneDate: row.done_date,
+      focusSessions: row.focus_sessions,
+      recurrenceType: row.recurrence_type,
+      recurrenceValue: row.recurrence_value,
+      templateId: row.template_id,
+      folderId: row.folder_id
     }));
 
-    res.json(normalized);
+    res.json(formatted);
   } catch (err) {
     console.error('Get tasks error:', err);
     res.status(500).json({ error: err.message });
@@ -734,35 +964,25 @@ app.get('/api/tasks', authenticateToken, async (req, res) => {
 // GET /api/tasks/stats
 app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    const weekStartStr = weekStart.toISOString().split('T')[0];
-    const monthStart = today.slice(0, 7) + '-01';
+    const userId = req.userId;
+    
+    const [rows] = await pool.query(`
+      SELECT 
+        COUNT(CASE WHEN done = 1 AND DATE(done_date) = CURDATE() THEN 1 END) as completed_today,
+        COUNT(CASE WHEN 
+          (done = 0 AND (deadline IS NULL OR date <= CURDATE())) 
+          OR (done = 1 AND DATE(done_date) = CURDATE()) 
+        THEN 1 END) as total_today_plan,
+        COUNT(CASE WHEN done = 1 AND YEARWEEK(done_date, 1) = YEARWEEK(CURDATE(), 1) THEN 1 END) as completed_week,
+        COUNT(CASE WHEN done = 1 AND YEAR(done_date) = YEAR(CURDATE()) AND MONTH(done_date) = MONTH(CURDATE()) THEN 1 END) as completed_month,
+        COUNT(CASE WHEN done = 1 THEN 1 END) as completed_total
+      FROM tasks 
+      WHERE user_id = ?
+    `, [userId]);
 
-    const [[{ completed_today }]] = await pool.query(
-      `SELECT COUNT(*) as completed_today FROM tasks WHERE user_id = ? AND done = 1 AND DATE(done_date) = ?`,
-      [req.userId, today]
-    );
-    const [[{ total_today_plan }]] = await pool.query(
-      `SELECT COUNT(*) as total_today_plan FROM tasks WHERE user_id = ? AND date <= ? AND deadline >= ?`,
-      [req.userId, today, today]
-    );
-    const [[{ completed_week }]] = await pool.query(
-      `SELECT COUNT(*) as completed_week FROM tasks WHERE user_id = ? AND done = 1 AND DATE(done_date) >= ?`,
-      [req.userId, weekStartStr]
-    );
-    const [[{ completed_month }]] = await pool.query(
-      `SELECT COUNT(*) as completed_month FROM tasks WHERE user_id = ? AND done = 1 AND DATE(done_date) >= ?`,
-      [req.userId, monthStart]
-    );
-    const [[{ completed_total }]] = await pool.query(
-      `SELECT COUNT(*) as completed_total FROM tasks WHERE user_id = ? AND done = 1`,
-      [req.userId]
-    );
-
-    res.json({ completed_today, total_today_plan, completed_week, completed_month, completed_total });
+    res.json(rows[0]);
   } catch (err) {
+    console.error('Stats error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -770,103 +990,119 @@ app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
 // POST /api/tasks — создание задачи
 app.post('/api/tasks', authenticateToken, async (req, res) => {
   try {
-    const { title, date, deadline, time, priority, comment, isrecurring, recurrencetype } = req.body;
-
-    if (!title || !date) {
-      return res.status(400).json({ error: 'title and date are required' });
-    }
+    const {
+      date, deadline, title, priority, comment, done, doneDate,
+      focusSessions, isRecurring, recurrenceType, recurrenceValue,
+      isGenerated, templateId, folderId
+    } = req.body;
 
     const [result] = await pool.query(
-      `INSERT INTO tasks (user_id, title, date, deadline, time, priority, comment, is_recurring, recurrence_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.userId,
-        title,
-        date,
-        deadline || date,
-        time || null,
-        priority || 2,
-        comment || '',
-        isrecurring ? 1 : 0,
-        recurrencetype || null
-      ]
+      `INSERT INTO tasks (user_id, date, deadline, title, priority, comment, done, done_date, focus_sessions, is_recurring, recurrence_type, recurrence_value, is_generated, template_id, folder_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.userId, date, deadline || null, title, priority || 2, comment || '', done ? 1 : 0,
+       doneDate || null, focusSessions || 0, isRecurring ? 1 : 0,
+       recurrenceType || null, recurrenceValue || null, isGenerated ? 1 : 0, templateId || null, folderId || null]
     );
 
-    res.json({ id: result.insertId, success: true });
+    const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [result.insertId]);
+    if (rows.length === 0) return res.status(500).json({ error: 'Task not found after insert' });
+
+    const row = rows[0];
+    const newTask = {
+      ...row,
+      done: Boolean(row.done),
+      isRecurring: Boolean(row.is_recurring),
+      isGenerated: Boolean(row.is_generated),
+      subtasksCount: 0,
+      userId: row.user_id,
+      doneDate: row.done_date,
+      focusSessions: row.focus_sessions,
+      recurrenceType: row.recurrence_type,
+      recurrenceValue: row.recurrence_value,
+      templateId: row.template_id,
+      folderId: row.folder_id
+    };
+
+    console.log('✅ Task created:', { id: newTask.id, title: newTask.title });
+    res.json(newTask);
   } catch (err) {
-    console.error('Create task error:', err);
+    console.error('Error creating task:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // PUT /api/tasks/:id — обновление задачи
 app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
+  const taskId = req.params.id;
+  const {
+    date, deadline, title, priority, comment, done, doneDate,
+    focusSessions, isRecurring, recurrenceType, recurrenceValue,
+    isGenerated, templateId, folderId
+  } = req.body;
+
   try {
-    const { id } = req.params;
-    const { title, date, deadline, time, priority, comment, done, doneDate, isrecurring, recurrencetype } = req.body;
-
-    // Проверка владельца
-    const [existing] = await pool.query(
-      'SELECT id, is_recurring, recurrence_type, user_id FROM tasks WHERE id = ? AND user_id = ?',
-      [id, req.userId]
-    );
-    if (existing.length === 0) {
-      return res.status(404).json({ error: 'Task not found' });
-    }
-    const task = existing[0];
-
-    const priorityNum = typeof priority === 'string'
-      ? (priority === 'high' ? 1 : priority === 'low' ? 3 : 2)
-      : (priority || 2);
+    const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [taskId, req.userId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Task not found' });
+    const oldTask = rows[0];
 
     await pool.query(
-      `UPDATE tasks SET title=?, date=?, deadline=?, time=?, priority=?, comment=?,
-       done=?, done_date=?, is_recurring=?, recurrence_type=?
+      `UPDATE tasks SET date=?, deadline=?, title=?, priority=?, comment=?, done=?, done_date=?, 
+       focus_sessions=?, is_recurring=?, recurrence_type=?, recurrence_value=?, is_generated=?, template_id=?, folder_id=?
        WHERE id=? AND user_id=?`,
       [
-        title,
-        date,
-        deadline || date,
-        time || null,
-        priorityNum,
-        comment || '',
-        done ? 1 : 0,
-        doneDate || null,
-        isrecurring ? 1 : 0,
-        recurrencetype || null,
-        id,
-        req.userId
+        date, deadline || null, title, priority || 2, comment || '', done ? 1 : 0,
+        doneDate || null, focusSessions || 0, isRecurring ? 1 : 0,
+        recurrenceType || null, recurrenceValue || null,
+        isGenerated ? 1 : 0, templateId || null, folderId || null,
+        taskId, req.userId
       ]
     );
 
-    // Логика создания следующей копии при выполнении цикличной задачи
-    if (done && task.is_recurring && task.recurrence_type) {
-      const [taskData] = await pool.query('SELECT * FROM tasks WHERE id = ?', [id]);
-      const t = taskData[0];
-      const baseDate = new Date(t.deadline || t.date);
-      let nextDate = new Date(baseDate);
+    // Логика цикличности: создаём следующую копию если задача только что выполнена
+    if (isRecurring && done && !oldTask.done) {
+      let nextDate = new Date(date);
 
-      if (task.recurrence_type === 'daily') {
+      if (recurrenceType === 'daily') {
         nextDate.setDate(nextDate.getDate() + 1);
-      } else if (task.recurrence_type === 'weekly') {
+      } else if (recurrenceType === 'weekly') {
         nextDate.setDate(nextDate.getDate() + 7);
-      } else if (task.recurrence_type === 'monthly') {
+      } else if (recurrenceType === 'monthly') {
         nextDate.setMonth(nextDate.getMonth() + 1);
+      } else if (recurrenceType === 'custom' && recurrenceValue) {
+        try {
+          const days = JSON.parse(recurrenceValue);
+          if (Array.isArray(days) && days.length > 0) {
+            let found = false;
+            for (let i = 1; i <= 7; i++) {
+              nextDate.setDate(nextDate.getDate() + 1);
+              if (days.includes(nextDate.getDay())) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) nextDate.setDate(nextDate.getDate() + 1);
+          } else {
+            nextDate.setDate(nextDate.getDate() + 1);
+          }
+        } catch(e) {
+          nextDate.setDate(nextDate.getDate() + 1);
+        }
       }
 
       const nextDateStr = nextDate.toISOString().split('T')[0];
 
       await pool.query(
-        `INSERT INTO tasks (user_id, title, date, deadline, time, priority, comment, is_recurring, recurrence_type, is_generated, template_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, 1, ?)`,
-        [req.userId, t.title, nextDateStr, nextDateStr, t.time, t.priority, t.comment, task.recurrence_type, id]
+        `INSERT INTO tasks (user_id, date, deadline, title, priority, comment, done, focus_sessions, is_recurring, recurrence_type, recurrence_value, is_generated, template_id, folder_id)
+         VALUES (?, ?, ?, ?, ?, ?, 0, 0, 1, ?, ?, 1, ?, ?)`,
+        [req.userId, nextDateStr, deadline || null, title, priority || 2, comment || '', recurrenceType, recurrenceValue || null, taskId, folderId || null]
       );
-      console.log(`🔄 Created next recurring task for ${task.recurrence_type}: ${nextDateStr}`);
+
+      console.log(`♻️ Цикличная задача создана на ${nextDateStr}`);
     }
 
-    res.json({ success: true });
+    res.json({ message: 'Task updated successfully' });
   } catch (err) {
-    console.error('Update task error:', err);
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -890,7 +1126,7 @@ app.put('/api/tasks/:id/stop-recurring', authenticateToken, async (req, res) => 
   }
 });
 
-// POST /api/tasks/:id/focus — добавить фокус-сессию к задаче
+// POST /api/tasks/:id/focus — добавить фокус-сессию
 app.post('/api/tasks/:id/focus', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -912,44 +1148,144 @@ app.post('/api/tasks/:id/focus', authenticateToken, async (req, res) => {
 // DELETE /api/tasks/:id
 app.delete('/api/tasks/:id', authenticateToken, async (req, res) => {
   try {
-    const [result] = await pool.query(
-      'DELETE FROM tasks WHERE id = ? AND user_id = ?',
-      [req.params.id, req.userId]
-    );
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Task not found' });
+    const { id } = req.params;
+    
+    console.log('🗑️ Запрос на удаление задачи:', id, 'от пользователя:', req.userId);
+    
+    const [task] = await pool.query('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [id, req.userId]);
+    
+    if (task.length === 0) {
+      console.log('⚠️ Задача не найдена');
+      return res.status(404).json({ error: 'Задача не найдена' });
     }
-    res.json({ success: true });
+
+    await pool.query('DELETE FROM tasks WHERE id = ? AND user_id = ?', [id, req.userId]);
+    console.log('✅ Задача успешно удалена:', id);
+    res.json({ message: 'Задача удалена', task: task[0] });
   } catch (err) {
-    console.error('Delete task error:', err);
-    res.status(500).json({ error: err.message });
+    console.error('❌ Ошибка удаления задачи:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
+
+// POST /api/tasks/sync — массовое обновление задач
+app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
+  try {
+    const { tasks } = req.body;
+    const userId = req.userId;
+    
+    if (!Array.isArray(tasks)) {
+      return res.status(400).json({ error: 'Некорректные данные' });
+    }
+
+    const results = [];
+    
+    for (const task of tasks) {
+      const [existing] = await pool.query(
+        'SELECT id FROM tasks WHERE id = ? AND user_id = ?', 
+        [task.id, userId]
+      );
+      
+      if (existing.length > 0) {
+        await pool.query(
+          `UPDATE tasks SET
+            date = ?, deadline = ?, title = ?, priority = ?, comment = ?,
+            done = ?, done_date = ?, focus_sessions = ?,
+            is_recurring = ?, recurrence_type = ?, recurrence_value = ?, folder_id = ?
+          WHERE id = ? AND user_id = ?`,
+          [
+            task.date, task.deadline || null, task.title, task.priority || 2,
+            task.comment || '', task.done ? 1 : 0, task.doneDate || null,
+            task.focusSessions || 0, task.isRecurring ? 1 : 0,
+            task.recurrenceType || null, task.recurrenceValue || null,
+            task.folderId || null, task.id, userId
+          ]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO tasks (
+            id, user_id, date, deadline, title, priority, comment,
+            done, done_date, focus_sessions,
+            is_recurring, recurrence_type, recurrence_value,
+            is_generated, template_id, folder_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            task.id, userId, task.date, task.deadline || null, task.title,
+            task.priority || 2, task.comment || '', task.done ? 1 : 0,
+            task.doneDate || null, task.focusSessions || 0,
+            task.isRecurring ? 1 : 0, task.recurrenceType || null,
+            task.recurrenceValue || null, task.isGenerated ? 1 : 0,
+            task.templateId || null, task.folderId || null
+          ]
+        );
+      }
+      
+      const [synced] = await pool.query('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [task.id, userId]);
+      results.push(synced[0]);
+    }
+
+    console.log(`✓ Synced ${results.length} tasks for user ${userId}`);
+    res.json({ synced: results.length, tasks: results });
+  } catch (err) {
+    console.error('Ошибка синхронизации задач:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// POST /api/tasks/delete — альтернативный endpoint удаления
+app.post('/api/tasks/delete', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'ID задачи требуется' });
+    }
+
+    const [task] = await pool.query(
+      'SELECT id FROM tasks WHERE id = ? AND user_id = ?', 
+      [id, req.userId]
+    );
+    
+    if (task.length === 0) {
+      return res.status(404).json({ error: 'Задача не найдена' });
+    }
+
+    await pool.query('DELETE FROM tasks WHERE id = ? AND user_id = ?', [id, req.userId]);
+    
+    console.log(`✅ Deleted task: ${id}`);
+    res.json({ success: true, deleted: id });
+  } catch (err) {
+    console.error('Ошибка удаления задачи:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
 
 // ==================== SUBTASKS API ====================
 
-app.get('/api/tasks/:id/subtasks', authenticateToken, async (req, res) => {
+app.get('/api/tasks/:taskId/subtasks', authenticateToken, async (req, res) => {
   try {
     const [subtasks] = await pool.query(
       'SELECT * FROM subtasks WHERE task_id = ? ORDER BY id ASC',
-      [req.params.id]
+      [req.params.taskId]
     );
     res.json(subtasks);
   } catch (err) {
+    console.error('Get subtasks error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/tasks/:id/subtasks', authenticateToken, async (req, res) => {
+app.post('/api/tasks/:taskId/subtasks', authenticateToken, async (req, res) => {
   try {
     const { title } = req.body;
-    if (!title) return res.status(400).json({ error: 'title is required' });
     const [result] = await pool.query(
       'INSERT INTO subtasks (task_id, title) VALUES (?, ?)',
-      [req.params.id, title]
+      [req.params.taskId, title]
     );
-    res.json({ id: result.insertId, task_id: parseInt(req.params.id), title, completed: false });
+    res.json({ id: result.insertId, task_id: req.params.taskId, title, completed: false });
   } catch (err) {
+    console.error('Create subtask error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -960,8 +1296,10 @@ app.put('/api/subtasks/:id/toggle', authenticateToken, async (req, res) => {
       'UPDATE subtasks SET completed = NOT completed WHERE id = ?',
       [req.params.id]
     );
-    res.json({ success: true });
+    const [updated] = await pool.query('SELECT * FROM subtasks WHERE id = ?', [req.params.id]);
+    res.json(updated[0]);
   } catch (err) {
+    console.error('Toggle subtask error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -971,62 +1309,425 @@ app.delete('/api/subtasks/:id', authenticateToken, async (req, res) => {
     await pool.query('DELETE FROM subtasks WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
+    console.error('Delete subtask error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 
-// ==================== EMAIL VERIFICATION ====================
+// ==================== EMAIL VERIFICATION API ====================
 
-app.post('/api/send-verification', async (req, res) => {
+// Отправить код подтверждения на email
+app.post('/api/send-verification-code', async (req, res) => {
+  const { name, email, birthdate, password } = req.body;
+
+  if (!name || !email || !birthdate || !password) {
+    return res.status(400).json({ error: 'Все поля обязательны' });
+  }
+
+  if (!validateEmail(email)) {
+    return res.status(400).json({ error: 'Некорректный email' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Пароль должен содержать минимум 6 символов' });
+  }
+
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email required' });
+    const [existingUsers] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ error: 'Пользователь с таким email уже существует' });
+    }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    console.log('🕐 Registration - Server time (UTC):', new Date().toISOString());
+    console.log('🕐 Registration - Expires at (UTC):', expiresAt.toISOString());
+
+    await pool.query('DELETE FROM email_verifications WHERE email = ?', [email]);
 
     await pool.query(
       'INSERT INTO email_verifications (email, code, expires_at) VALUES (?, ?, ?)',
       [email, code, expiresAt]
     );
 
-    await emailService.sendVerificationEmail(email, code);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Send verification error:', err);
-    res.status(500).json({ error: err.message });
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+          .header { text-align: center; margin-bottom: 30px; }
+          .code { font-size: 36px; font-weight: bold; color: #667eea; text-align: center; background: #f0f0ff; padding: 20px; border-radius: 8px; letter-spacing: 4px; }
+          .info { color: #666; margin-top: 20px; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>🎉 Добро пожаловать в Трекер привычек!</h2>
+          </div>
+          <p>Привет, ${name.split(' ')[0]}!</p>
+          <p>Мы получили запрос на создание аккаунта с этим email адресом. Чтобы завершить регистрацию, введите код подтверждения ниже:</p>
+          <div class="code">${code}</div>
+          <p class="info">Код действителен в течение 15 минут.</p>
+          <p class="info">Если это были не вы, просто проигнорируйте это письмо.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const result = await emailService.sendEmail({
+      to: email,
+      subject: '🔐 Подтверждение регистрации — Mind and Motion',
+      html,
+      text: `Ваш код подтверждения: ${code}. Код действителен 15 минут.`
+    });
+
+    if (!result.success) {
+      console.error('❌ Ошибка отправки email:', result.error);
+      return res.status(500).json({ error: 'Не удалось отправить письмо' });
+    }
+
+    console.log(`✅ Код верификации отправлен на ${email} (код: ${code})`);
+    res.json({ success: true, message: 'Код отправлен' });
+  } catch (error) {
+    console.error('❌ Ошибка send-verification-code:', error);
+    res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
   }
 });
 
+// Проверить код и создать пользователя
 app.post('/api/verify-code', async (req, res) => {
+  const { name, email, birthdate, password, code } = req.body;
+
+  const cleanCode = String(code).replace(/\s+/g, '');
+
+  console.log('📝 Verify email request:', { 
+    email, name,
+    originalCode: code,
+    cleanCode: cleanCode,
+    serverTimeUTC: new Date().toISOString()
+  });
+
+  if (!name || !email || !birthdate || !password || !cleanCode) {
+    console.error('❌ Missing fields:', { name: !!name, email: !!email, birthdate: !!birthdate, password: !!password, code: !!cleanCode });
+    return res.status(400).json({ error: 'Все поля обязательны' });
+  }
+
   try {
-    const { email, code } = req.body;
-    const [rows] = await pool.query(
-      'SELECT * FROM email_verifications WHERE email = ? AND code = ? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
-      [email, code]
+    const [verifications] = await pool.query(
+      `SELECT *, 
+              expires_at as expires_at_utc,
+              UTC_TIMESTAMP() as current_time_utc,
+              TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left
+       FROM email_verifications 
+       WHERE email = ? 
+         AND REPLACE(code, ' ', '') = ? 
+         AND expires_at > UTC_TIMESTAMP()`,
+      [email, cleanCode]
     );
-    if (rows.length === 0) {
+
+    console.log('🔍 Found verifications:', verifications.length);
+    
+    if (verifications.length > 0) {
+      console.log('✅ Verification found:', {
+        code: verifications[0].code,
+        expires_at_utc: verifications[0].expires_at_utc,
+        current_time_utc: verifications[0].current_time_utc,
+        seconds_left: verifications[0].seconds_left
+      });
+    } else {
+      const [allVerifications] = await pool.query(
+        `SELECT code, 
+                expires_at as expires_at_utc,
+                UTC_TIMESTAMP() as current_time_utc,
+                TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left
+         FROM email_verifications 
+         WHERE email = ?`,
+        [email]
+      );
+      console.log('📋 All verifications for this email:', allVerifications);
+    }
+
+    if (verifications.length === 0) {
       return res.status(400).json({ error: 'Неверный или истёкший код' });
     }
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    const [existingUsers] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ error: 'Пользователь уже существует' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const [result] = await pool.query(
+      'INSERT INTO users (name, email, birthdate, password, email_verified) VALUES (?, ?, ?, ?, TRUE)',
+      [name, email, birthdate, hashedPassword]
+    );
+
+    const userId = result.insertId;
+
+    await pool.query('DELETE FROM email_verifications WHERE email = ?', [email]);
+
+    console.log(`✅ Пользователь создан: ${email} (userId: ${userId})`);
+
+    const welcomeHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+          .header { text-align: center; margin-bottom: 30px; }
+          .emoji { font-size: 48px; margin-bottom: 10px; }
+          .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="emoji">🎉</div>
+            <h2>Добро пожаловать в Mind and Motion!</h2>
+          </div>
+          <p>Привет, <strong>${name.split(' ')[0]}</strong>! 👋</p>
+          <p>Поздравляем с успешной регистрацией! Теперь ты можешь:</p>
+          <ul>
+            <li>📊 Отслеживать привычки каждый день</li>
+            <li>✅ Создавать и выполнять задачи</li>
+            <li>📈 Следить за своим прогрессом</li>
+            <li>🎯 Достигать целей легко и с удовольствием</li>
+          </ul>
+          <p style="text-align: center;">
+            <a href="http://mindandmotion.ru" class="button">Начать сейчас</a>
+          </p>
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">С уважением,<br>Команда Mind and Motion</p>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    emailService.sendEmail({
+      to: email,
+      subject: '🎉 Добро пожаловать в Mind and Motion!',
+      html: welcomeHtml,
+      text: `Привет, ${name}! Добро пожаловать в Mind and Motion! Начни отслеживать свои привычки прямо сейчас.`
+    }).then(result => {
+      if (result.success) {
+        console.log(`✅ Приветственное письмо отправлено на ${email}`);
+      } else {
+        console.error(`⚠️ Не удалось отправить приветственное письмо на ${email}:`, result.error);
+      }
+    }).catch(err => {
+      console.error(`⚠️ Ошибка отправки приветственного письма:`, err.message);
+    });
+
+    const token = jwt.sign(
+      { userId },
+      process.env.JWT_SECRET || 'your-secret-key-12345',
+      { expiresIn: '30d' }
+    );
+
+    res.json({ 
+      success: true, 
+      message: 'Регистрация успешна',
+      token, userId, email, name
+    });
+  } catch (error) {
+    console.error('❌ Ошибка verify-code:', error);
+    res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
   }
 });
 
+
+// ==================== PASSWORD RESET API ====================
+
+// Отправить код для сброса пароля
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email обязателен' });
+  }
+
+  try {
+    const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'Пользователь с таким email не найден' });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    console.log('🕐 Server time (UTC):', new Date().toISOString());
+    console.log('🕐 Expires at (UTC):', expiresAt.toISOString());
+
+    await pool.query('DELETE FROM password_resets WHERE email = ?', [email]);
+
+    await pool.query(
+      'INSERT INTO password_resets (email, code, expires_at) VALUES (?, ?, ?)',
+      [email, code, expiresAt]
+    );
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+          .header { text-align: center; margin-bottom: 30px; }
+          .code { font-size: 36px; font-weight: bold; color: #667eea; text-align: center; background: #f0f0ff; padding: 20px; border-radius: 8px; letter-spacing: 4px; }
+          .info { color: #666; margin-top: 20px; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>🔐 Восстановление пароля</h2>
+          </div>
+          <p>Вы запросили сброс пароля для вашего аккаунта. Используйте код ниже:</p>
+          <div class="code">${code}</div>
+          <p class="info">Код действителен в течение 15 минут.</p>
+          <p class="info">Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const result = await emailService.sendEmail({
+      to: email,
+      subject: '🔐 Восстановление пароля — Mind and Motion',
+      html,
+      text: `Ваш код для сброса пароля: ${code}. Код действителен 15 минут.`
+    });
+
+    if (!result.success) {
+      console.error('❌ Ошибка отправки email:', result.error);
+      return res.status(500).json({ error: 'Не удалось отправить письмо' });
+    }
+
+    console.log(`✅ Код сброса пароля отправлен на ${email} (код: ${code})`);
+    res.json({ success: true, message: 'Код отправлен на email' });
+  } catch (error) {
+    console.error('❌ Ошибка forgot-password:', error);
+    res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
+  }
+});
+
+// Сбросить пароль
 app.post('/api/reset-password', async (req, res) => {
+  const { email, code, new_password } = req.body;
+  const newPassword = new_password;
+
+  const cleanCode = String(code).replace(/\s+/g, '');
+
+  console.log('📝 Reset password request:', { 
+    email, 
+    originalCode: code, 
+    cleanCode: cleanCode,
+    newPasswordLength: newPassword?.length,
+    serverTimeUTC: new Date().toISOString()
+  });
+
+  if (!email || !cleanCode || !newPassword) {
+    console.error('❌ Missing fields:', { email: !!email, code: !!cleanCode, newPassword: !!newPassword });
+    return res.status(400).json({ error: 'Все поля обязательны' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Пароль должен быть минимум 6 символов' });
+  }
+
   try {
-    const { email, code, newPassword } = req.body;
-    const [rows] = await pool.query(
-      'SELECT * FROM email_verifications WHERE email = ? AND code = ? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
-      [email, code]
+    const [resets] = await pool.query(
+      `SELECT *, 
+              expires_at as expires_at_utc,
+              UTC_TIMESTAMP() as current_time_utc,
+              TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left
+       FROM password_resets 
+       WHERE email = ? 
+         AND REPLACE(code, ' ', '') = ? 
+         AND expires_at > UTC_TIMESTAMP()`,
+      [email, cleanCode]
     );
-    if (rows.length === 0) {
+
+    console.log('🔍 Found resets:', resets.length);
+    
+    if (resets.length > 0) {
+      console.log('✅ Reset found:', {
+        code: resets[0].code,
+        expires_at_utc: resets[0].expires_at_utc,
+        current_time_utc: resets[0].current_time_utc,
+        seconds_left: resets[0].seconds_left
+      });
+    } else {
+      const [allResets] = await pool.query(
+        `SELECT code, 
+                expires_at as expires_at_utc,
+                UTC_TIMESTAMP() as current_time_utc,
+                TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), expires_at) as seconds_left
+         FROM password_resets 
+         WHERE email = ?`,
+        [email]
+      );
+      console.log('📋 All resets for this email:', allResets);
+    }
+
+    if (resets.length === 0) {
       return res.status(400).json({ error: 'Неверный или истёкший код' });
     }
-    const hashed = await bcrypt.hash(newPassword, 10);
-    await pool.query('UPDATE users SET password = ? WHERE email = ?', [hashed, email]);
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password = ? WHERE email = ?', [hashedPassword, email]);
+    await pool.query('DELETE FROM password_resets WHERE email = ?', [email]);
+
+    console.log(`✅ Пароль успешно изменён для ${email}`);
+    res.json({ success: true, message: 'Пароль успешно изменён' });
+  } catch (error) {
+    console.error('❌ Ошибка reset-password:', error);
+    res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
+  }
+});
+
+
+// ==================== BIRTHDAYS API ====================
+
+app.get('/api/birthdays', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM birthdays WHERE user_id = ? ORDER BY month ASC, day ASC', 
+      [req.userId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/birthdays', authenticateToken, async (req, res) => {
+  try {
+    const { name, day, month, year } = req.body;
+    if (!name || !day || !month) return res.status(400).json({ error: 'Missing fields' });
+
+    const [result] = await pool.query(
+      'INSERT INTO birthdays (user_id, name, day, month, year) VALUES (?, ?, ?, ?, ?)',
+      [req.userId, name, day, month, year || null]
+    );
+    res.json({ id: result.insertId, ...req.body });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/birthdays/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM birthdays WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1034,7 +1735,236 @@ app.post('/api/reset-password', async (req, res) => {
 });
 
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✓ Server running on port ${PORT}`);
+// ===============================================
+// СЕКРЕТНЫЙ ЧАТ
+// ===============================================
+
+const applyGMO = (text) => {
+  const effects = [
+    t => t.toUpperCase(),
+    t => t.split('').join('-'),
+    t => t.replace(/[аоеиуыэюя]/gi, 'Ы'),
+    t => t.split(' ').reverse().join(' '),
+    t => `🥒 ${t} 🥒`
+  ];
+  const effect = effects[Math.floor(Math.random() * effects.length)];
+  return effect(text);
+};
+
+const applyMute = () => {
+  const variants = [
+    "*невнятно мычит через кабачок*",
+    "*пытается что-то сказать, но рот заклеен ботвой*",
+    "мммм... м-м-м... (звуки из подвала)",
+    "*глухие удары головой о клавиатуру*"
+  ];
+  return variants[Math.floor(Math.random() * variants.length)];
+};
+
+app.get('/api/secret-chat', async (req, res) => {
+  try {
+    const [messages] = await pool.query(`
+      SELECT sc.*, u.rank, u.name as real_name,
+      (SELECT COUNT(*) FROM message_reactions mr WHERE mr.message_id = sc.id AND mr.type = 'tomato') as tomato_count
+      FROM secret_chat sc 
+      LEFT JOIN users u ON sc.user_id = u.id 
+      ORDER BY sc.created_at ASC 
+      LIMIT 100
+    `);
+
+    const [settings] = await pool.query("SELECT * FROM chat_settings");
+    const settingsMap = settings.reduce((acc, row) => ({ ...acc, [row.setting_key]: row.setting_value }), {});
+
+    const formattedMessages = messages.map(msg => ({
+      id: msg.id,
+      text: msg.content,
+      userName: msg.user_name || msg.real_name || 'Аноним',
+      userRank: msg.rank || 'Семечка Сомнения',
+      isAuthor: msg.user_id === 999,
+      timestamp: msg.created_at,
+      userId: msg.user_id,
+      tomatoCount: msg.tomato_count || 0
+    }));
+    
+    res.json({ messages: formattedMessages, settings: settingsMap });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
+app.post('/api/secret-chat', async (req, res) => {
+  try {
+    let { text, isAuthorMode, userId } = req.body; 
+    
+    if (!text || !text.trim()) return res.status(400).json({ error: 'Пустое сообщение' });
+
+    if (text.trim() === '/roll') {
+      const rolls = [
+        "выиграл право на лишний полив!",
+        "должен присесть 10 раз во славу Моркови.",
+        "назначается Гнилым Бананом на 5 минут.",
+        "получает благословение Великой Свеклы.",
+        "должен съесть сырую картофелину."
+      ];
+      const result = rolls[Math.floor(Math.random() * rolls.length)];
+      
+      let rollerName = 'Аноним';
+      if (userId) {
+        const [u] = await pool.query('SELECT name FROM users WHERE id = ?', [userId]);
+        if (u.length) rollerName = u[0].name;
+      }
+
+      await pool.query(
+        'INSERT INTO secret_chat (user_id, user_name, content) VALUES (?, ?, ?)',
+        [999, 'ОВОЩНАЯ РУЛЕТКА', `${rollerName} ${result}`]
+      );
+      return res.json({ success: true });
+    }
+
+    if (userId === 4 && isAuthorMode) {
+      await pool.query(
+        'INSERT INTO secret_chat (user_id, user_name, content) VALUES (?, ?, ?)',
+        [999, 'ГОЛОС АВТОРА', text]
+      );
+      return res.status(201).json({ success: true });
+    }
+
+    let senderId = userId || 0;
+    let senderName = 'Аноним';
+    let isMuted = false;
+    let isInfected = false;
+
+    if (userId) {
+      const [userRows] = await pool.query('SELECT name, muted_until, gmo_infected FROM users WHERE id = ?', [userId]);
+      if (userRows.length > 0) {
+        senderName = userRows[0].name;
+        isInfected = userRows[0].gmo_infected;
+        
+        if (userRows[0].muted_until) {
+          const mutedUntil = new Date(userRows[0].muted_until);
+          if (mutedUntil > new Date()) isMuted = true;
+        }
+      }
+    }
+
+    if (isMuted) {
+      text = applyMute();
+    } else if (isInfected) {
+      text = applyGMO(text);
+    }
+
+    await pool.query(
+      'INSERT INTO secret_chat (user_id, user_name, content) VALUES (?, ?, ?)',
+      [senderId, senderName, text]
+    );
+    
+    res.status(201).json({ success: true });
+  } catch (err) {
+    console.error('Send Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/secret-chat/tomato', async (req, res) => {
+  const { messageId, userId } = req.body;
+  try {
+    await pool.query('INSERT IGNORE INTO message_reactions (message_id, user_id, type) VALUES (?, ?, ?)', [messageId, userId, 'tomato']);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/secret-chat/punish', async (req, res) => {
+  const { targetId, targetName, type, duration, reason } = req.body; 
+  
+  try {
+    let systemMessage = '';
+
+    if (type === 'mute') {
+      const muteTime = new Date(Date.now() + duration * 60000);
+      await pool.query('UPDATE users SET muted_until = ? WHERE id = ?', [muteTime, targetId]);
+      systemMessage = `🔇 ${targetName} отправлен в компостную яму на ${duration} мин.`;
+    } 
+    else if (type === 'gmo') {
+      await pool.query('UPDATE users SET gmo_infected = 1 WHERE id = ?', [targetId]);
+      systemMessage = `🧬 ${targetName} заражен ГМО-вирусом! Его речь мутирует.`;
+    }
+    else if (type === 'cure') {
+      await pool.query('UPDATE users SET gmo_infected = 0, muted_until = NULL WHERE id = ?', [targetId]);
+      systemMessage = `💊 ${targetName} исцелен молитвами Свеклы.`;
+    }
+    else {
+      systemMessage = `🍆 Админ наказал ${targetName}: ${reason}`;
+    }
+
+    await pool.query(
+      'INSERT INTO secret_chat (user_id, user_name, content) VALUES (?, ?, ?)',
+      [999, 'СИСТЕМА НАКАЗАНИЙ', systemMessage]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/secret-chat/settings', async (req, res) => {
+  const { key, value } = req.body;
+  try {
+    await pool.query(`
+      INSERT INTO chat_settings (setting_key, setting_value) VALUES (?, ?)
+      ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+    `, [key, value]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/secret-chat/login', async (req, res) => {
+  const { userId, password } = req.body;
+  try {
+    const [rows] = await pool.query("SELECT setting_value FROM chat_settings WHERE setting_key = 'chat_password'");
+    const currentPassword = rows[0]?.setting_value || 'семечка сомнения';
+
+    if (password.toLowerCase().trim() === currentPassword.toLowerCase().trim()) {
+      if (userId) await pool.query('UPDATE users SET is_cult_member = 1 WHERE id = ?', [userId]);
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: 'Неверный пароль' });
+    }
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/secret-chat/users', async (req, res) => {
+  try { 
+    const [users] = await pool.query('SELECT id, name, rank, gmo_infected FROM users WHERE is_cult_member = 1'); 
+    res.json(users); 
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/secret-chat/rank', async (req, res) => {
+  const { userId, newRank } = req.body;
+  try { 
+    await pool.query('UPDATE users SET rank = ? WHERE id = ?', [newRank, userId]); 
+    res.json({ success: true }); 
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/secret-chat/clear', async (req, res) => {
+  try { 
+    await pool.query('TRUNCATE TABLE secret_chat'); 
+    await pool.query('TRUNCATE TABLE message_reactions'); 
+    res.json({ success: true }); 
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, async () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  await emailService.verifyConnection();
+});
+
+module.exports = pool;
