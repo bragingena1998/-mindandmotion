@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Modal as RNModal, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Modal as RNModal, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Modal = ({ visible, onClose, title, children }) => {
@@ -12,36 +12,31 @@ const Modal = ({ visible, onClose, title, children }) => {
       animationType="fade"
       onRequestClose={onClose}
     >
-      {/* Затемнённый фон */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
         onPress={onClose}
       >
-        {/* Контент модалки (не закрывается при клике внутри) */}
-        <TouchableOpacity 
+        <TouchableOpacity
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
-          style={{ width: '100%', alignItems: 'center' }}
+          style={styles.modalWrapper}
         >
           <View
             style={[
               styles.modal,
               {
                 backgroundColor: colors.surface,
-                borderColor: colors.accent1 || '#333', // Fallback цвет
-                borderRadius: 20, // <-- ЖЕСТКО ЗАДАЕМ РАДИУС ВМЕСТО spacing.radiusLg
+                borderColor: colors.accent1 || '#333',
+                borderRadius: 20,
               },
             ]}
           >
-            {/* Заголовок */}
             {title && (
               <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.textMain }]}>
                   {title}
                 </Text>
-                
-                {/* Кнопка закрытия */}
                 <TouchableOpacity
                   style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
                   onPress={onClose}
@@ -51,10 +46,14 @@ const Modal = ({ visible, onClose, title, children }) => {
               </View>
             )}
 
-            {/* Контент */}
-            <View style={styles.content}>
+            <ScrollView
+              style={styles.content}
+              contentContainerStyle={{ flexGrow: 1 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               {children}
-            </View>
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -69,6 +68,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  modalWrapper: {
+    width: '100%',
+    maxHeight: '90%',
+    alignItems: 'center',
   },
   modal: {
     width: '100%',
