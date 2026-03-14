@@ -1,6 +1,9 @@
 // src/components/Modal.js
 import React from 'react';
-import { View, Text, Modal as RNModal, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  View, Text, Modal as RNModal, StyleSheet,
+  TouchableOpacity, ScrollView, TouchableWithoutFeedback,
+} from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Modal = ({ visible, onClose, title, children }) => {
@@ -9,55 +12,46 @@ const Modal = ({ visible, onClose, title, children }) => {
   return (
     <RNModal
       visible={visible}
-      transparent={true}
+      transparent
       animationType="fade"
       onRequestClose={onClose}
     >
-      <TouchableOpacity
-        style={styles.backdrop}
-        activeOpacity={1}
-        onPress={onClose}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={(e) => e.stopPropagation()}
-          style={styles.modalWrapper}
-        >
-          <View
-            style={[
-              styles.modal,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.accent1 || '#333',
-                borderRadius: 20,
-              },
-            ]}
-          >
-            {title && (
-              <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.textMain }]}>
-                  {title}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
-                  onPress={onClose}
-                >
-                  <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+      {/* Тап по фону — закрывает */}
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.backdrop}>
+          {/* Тап внутри — не проваливает, но не поглощает gesture-события */}
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={styles.modalWrapper}>
+              <View style={[
+                styles.modal,
+                { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333', borderRadius: 20 },
+              ]}>
+                {title && (
+                  <View style={styles.header}>
+                    <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
+                    <TouchableOpacity
+                      style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
+                      onPress={onClose}
+                    >
+                      <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
-            <ScrollView
-              style={styles.content}
-              contentContainerStyle={styles.contentContainer}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {children}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
+                <ScrollView
+                  style={styles.content}
+                  contentContainerStyle={styles.contentContainer}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled
+                >
+                  {children}
+                </ScrollView>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
     </RNModal>
   );
 };
@@ -65,7 +59,7 @@ const Modal = ({ visible, onClose, title, children }) => {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -100,25 +94,12 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 32, height: 32, borderRadius: 16, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
   },
-  closeIcon: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: -2,
-  },
-  content: {
-    width: '100%',
-  },
-  contentContainer: {
-    // НЕ flexGrow: 1 — это и вызывало пустое место
-    paddingBottom: 4,
-  },
+  closeIcon: { fontSize: 14, fontWeight: 'bold', marginTop: -2 },
+  content: { width: '100%' },
+  contentContainer: { paddingBottom: 4 },
 });
 
 export default Modal;

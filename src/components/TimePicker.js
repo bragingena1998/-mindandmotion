@@ -5,10 +5,10 @@ import {
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
-const ITEM_HEIGHT = 50;
+const ITEM_HEIGHT = 52;
 const VISIBLE = 5;
 const CENTER = Math.floor(VISIBLE / 2); // 2
-const MULT = 40; // итого: 24*40=960 или 60*40=2400 — приемлемо
+const MULT = 40;
 
 const InfiniteWheel = ({ data, value, onChange }) => {
   const { colors } = useTheme();
@@ -16,31 +16,35 @@ const InfiniteWheel = ({ data, value, onChange }) => {
   const count = data.length;
   const total = count * MULT;
   const midBlock = Math.floor(MULT / 2);
-  const valIdx = data.indexOf(value);
-  // индекс элемента который окажется в центре при старте
+  const valIdx = Math.max(0, data.indexOf(value));
+
+  // индекс элемента, который должен быть в центре
+  // offset = startIdx * ITEM_HEIGHT (т.е. это индекс верхнего видимого)
   const startIdx = midBlock * count + valIdx - CENTER;
 
-  const scrollToIdx = useCallback((idx, animated = false) => {
-    listRef.current?.scrollToIndex({ index: Math.max(0, idx), animated, viewPosition: 0 });
-  }, []);
+  const scrollToSafe = useCallback((realIdx, animated = false) => {
+    const safeTop = midBlock * count + realIdx - CENTER;
+    listRef.current?.scrollToOffset({ offset: safeTop * ITEM_HEIGHT, animated });
+  }, [midBlock, count]);
 
   const onLayout = useCallback(() => {
-    // даём FlatList отрендериться, потом прыгаем
-    requestAnimationFrame(() => scrollToIdx(startIdx));
-  }, [startIdx, scrollToIdx]);
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToOffset({ offset: startIdx * ITEM_HEIGHT, animated: false });
+    });
+  }, [startIdx]);
 
-  const onMomentumEnd = useCallback((e) => {
+  const onScrollEnd = useCallback((e) => {
     const y = e.nativeEvent.contentOffset.y;
     const topIdx = Math.round(y / ITEM_HEIGHT);
     const centerAbsIdx = topIdx + CENTER;
     const realIdx = ((centerAbsIdx % count) + count) % count;
     onChange(data[realIdx]);
-    // возврат в безопасную середину если близко к краям
+    // возврат к безопасной середине если подошли близко к краю
     const safeTop = midBlock * count + realIdx - CENTER;
     if (Math.abs(topIdx - safeTop) > count * 3) {
-      setTimeout(() => scrollToIdx(safeTop), 50);
+      setTimeout(() => scrollToSafe(realIdx), 50);
     }
-  }, [count, data, onChange, midBlock, scrollToIdx]);
+  }, [count, data, onChange, midBlock, CENTER, scrollToSafe]);
 
   const looped = Array.from({ length: total }, (_, i) => ({ key: String(i), val: data[i % count] }));
 
@@ -49,7 +53,7 @@ const InfiniteWheel = ({ data, value, onChange }) => {
     return (
       <View style={{ height: ITEM_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
         <Text style={{
-          fontSize: isSelected ? 26 : 19,
+          fontSize: isSelected ? 28 : 20,
           fontWeight: isSelected ? '800' : '400',
           color: isSelected ? colors.textMain : colors.textMuted,
         }}>{item.val}</Text>
@@ -58,12 +62,18 @@ const InfiniteWheel = ({ data, value, onChange }) => {
   }, [value, colors]);
 
   return (
-    <View style={{ width: 76, height: ITEM_HEIGHT * VISIBLE, overflow: 'hidden' }}>
-      {/* Подсветка центра */}
+    <View style={{ width: 80, height: ITEM_HEIGHT * VISIBLE, overflow: 'hidden' }}>
+      {/* Подсветка центральной строки */}
       <View pointerEvents="none" style={{
-        position: 'absolute', top: CENTER * ITEM_HEIGHT, height: ITEM_HEIGHT,
-        left: 0, right: 0, borderTopWidth: 1.5, borderBottomWidth: 1.5,
-        borderColor: colors.accent1, opacity: 0.6, zIndex: 10,
+        position: 'absolute',
+        top: CENTER * ITEM_HEIGHT,
+        height: ITEM_HEIGHT,
+        left: 4, right: 4,
+        borderTopWidth: 1.5,
+        borderBottomWidth: 1.5,
+        borderColor: colors.accent1,
+        opacity: 0.7,
+        zIndex: 10,
       }} />
       <FlatList
         ref={listRef}
@@ -71,16 +81,19 @@ const InfiniteWheel = ({ data, value, onChange }) => {
         keyExtractor={item => item.key}
         renderItem={renderItem}
         getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
-        initialScrollIndex={startIdx}
+        // НЕ используем initialScrollIndex — только onLayout
         snapToInterval={ITEM_HEIGHT}
+        snapToAlignment="start"
         decelerationRate="fast"
+        disableIntervalMomentum
         showsVerticalScrollIndicator={false}
-        onMomentumScrollEnd={onMomentumEnd}
-        onScrollEndDrag={onMomentumEnd}
+        onMomentumScrollEnd={onScrollEnd}
+        onScrollEndDrag={onScrollEnd}
         onLayout={onLayout}
-        windowSize={5}
-        maxToRenderPerBatch={20}
+        windowSize={7}
+        maxToRenderPerBatch={15}
         removeClippedSubviews
+        scrollEventThrottle={16}
       />
     </View>
   );
@@ -125,7 +138,7 @@ const TimePicker = ({ label, value, onChangeTime }) => {
       </View>
 
       <RNModal visible={isOpen} transparent animationType="fade">
-        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.65)' }]}>
+        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
           <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
             <Text style={[styles.title, { color: colors.accentText }]}>ВЫБЕРИТЕ ВРЕМЯ</Text>
             <View style={styles.row}>
@@ -155,7 +168,7 @@ const styles = StyleSheet.create({
   sheet: { width: 300, padding: 24, borderRadius: 20, borderWidth: 1, alignItems: 'center', elevation: 10 },
   title: { fontSize: 16, fontWeight: '700', letterSpacing: 1, marginBottom: 20 },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
-  colon: { fontSize: 30, fontWeight: 'bold', marginHorizontal: 10 },
+  colon: { fontSize: 32, fontWeight: 'bold', marginHorizontal: 12 },
   saveBtn: { width: '100%', paddingVertical: 14, borderRadius: 999, alignItems: 'center', marginBottom: 12 },
   saveTxt: { color: '#020617', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 },
   cancelBtn: { width: '100%', paddingVertical: 14, borderRadius: 999, borderWidth: 1, alignItems: 'center' },
