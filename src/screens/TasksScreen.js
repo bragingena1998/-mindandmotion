@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Alert,
   Animated,
+  ScrollView,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Background from '../components/Background';
@@ -35,6 +36,14 @@ const tasksAPI = {
   stopRecurring: async (id) => (await api.put(`/tasks/${id}/stop-recurring`)).data,
   addFocusSession: async (id) => (await api.post(`/tasks/${id}/focus`)).data,
 };
+
+const foldersAPI = {
+  getFolders: async () => (await api.get('/folders')).data,
+  createFolder: async (data) => (await api.post('/folders', data)).data,
+  deleteFolder: async (id) => (await api.delete(`/folders/${id}`)).data,
+};
+
+const EMOJI_LIST = ['📁','💼','🏠','🎯','📚','💡','🏋️','🎨','🛒','❤️','⭐','🚀'];
 
 const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete }) => {
   const isCompleted = !!subtask.completed;
@@ -73,8 +82,15 @@ const TasksScreen = ({ navigation }) => {
   const [editingTask, setEditingTask] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [sortBy, setSortBy] = useState('date');
-  // Доп. настройки скрыты по умолчанию
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+
+  // --- Папки ---
+  const [folders, setFolders] = useState([]);
+  const [activeFolderId, setActiveFolderId] = useState(null); // null = «Все задачи»
+  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderEmoji, setNewFolderEmoji] = useState('📁');
+  const [folderToDelete, setFolderToDelete] = useState(null);
 
   const [focusTask, setFocusTask] = useState(null);
   const [focusVisible, setFocusVisible] = useState(false);
@@ -89,6 +105,7 @@ const TasksScreen = ({ navigation }) => {
     comment: '',
     isRecurring: 0,
     recurrenceType: null,
+    folderId: null,
   });
 
   const [newTask, setNewTask] = useState(emptyTask());
@@ -102,7 +119,7 @@ const TasksScreen = ({ navigation }) => {
   const [showOverdueCleanupModal, setShowOverdueCleanupModal] = useState(false);
   const [overdueTasksList, setOverdueTasksList] = useState([]);
 
-  useEffect(() => { loadTasks(); }, []);
+  useEffect(() => { loadTasks(); loadFolders(); }, []);
 
   useEffect(() => {
     if (!focusVisible && hasFocusSession()) {
@@ -113,6 +130,47 @@ const TasksScreen = ({ navigation }) => {
       }
     }
   }, [tasks]);
+
+  // ==================== FOLDERS ====================
+
+  const loadFolders = async () => {
+    try {
+      const data = await foldersAPI.getFolders();
+      setFolders(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('loadFolders error:', err);
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    try {
+      const created = await foldersAPI.createFolder({ name: newFolderName.trim(), icon: newFolderEmoji });
+      setFolders(prev => [...prev, created]);
+      setNewFolderName('');
+      setNewFolderEmoji('📁');
+      setShowCreateFolderModal(false);
+    } catch (err) {
+      Alert.alert('Ошибка', 'Не удалось создать папку');
+    }
+  };
+
+  const handleDeleteFolder = async (folder) => {
+    try {
+      await foldersAPI.deleteFolder(folder.id);
+      setFolders(prev => prev.filter(f => f.id !== folder.id));
+      if (activeFolderId === folder.id) setActiveFolderId(null);
+      // Задачи этой папки уже отвязаны на сервере (folder_id = NULL)
+      setTasks(prev => prev.map(t => t.folderId === folder.id ? { ...t, folderId: null } : t));
+      setFolderToDelete(null);
+    } catch (err) {
+      Alert.alert('Ошибка', 'Не удалось удалить папку');
+    }
+  };
+
+  const getFolderById = (id) => folders.find(f => f.id === id) || null;
+
+  // ==================== STATS & TASKS ====================
 
   const loadStats = async () => {
     try {
@@ -151,6 +209,7 @@ const TasksScreen = ({ navigation }) => {
         isRecurring: task.isRecurring ?? task.is_recurring ?? task.isrecurring ?? 0,
         recurrenceType: task.recurrenceType ?? task.recurrence_type ?? task.recurrencetype ?? null,
         focusSessions: task.focusSessions || 0,
+        folderId: task.folderId ?? task.folder_id ?? null,
       }));
       setTasks(formatted);
       if (loading) checkOverdueTasks(formatted);
@@ -200,6 +259,7 @@ const TasksScreen = ({ navigation }) => {
         priority: t.priority === 'high' ? 1 : t.priority === 'low' ? 3 : 2,
         comment: t.comment || '', done, doneDate: done ? toMysqlFormat(new Date()) : null,
         time: t.time, isRecurring: t.isRecurring, recurrenceType: t.recurrenceType,
+        folderId: t.folderId || null,
       });
       if (done && t.isRecurring) setTimeout(() => loadTasks(), 1000);
       await loadStats();
@@ -295,10 +355,10 @@ const TasksScreen = ({ navigation }) => {
       comment: task.comment || '',
       isRecurring: task.isRecurring ?? 0,
       recurrenceType: task.recurrenceType ?? null,
+      folderId: task.folderId ?? null,
     });
     setEditingTask(task);
-    // Раскрываем доп. настройки автоматически только если есть что показывать
-    setShowAdvancedSettings(!!(task.time || task.isRecurring || task.recurrenceType || effectiveDeadline));
+    setShowAdvancedSettings(!!(task.time || task.isRecurring || task.recurrenceType || effectiveDeadline || task.folderId));
     setShowAddModal(true);
   };
 
@@ -327,7 +387,10 @@ const TasksScreen = ({ navigation }) => {
     return result;
   };
 
-  const filteredTasks = hideCompleted ? tasks.filter(t => !t.completed) : tasks;
+  // Фильтр по папке + по статусу выполнения
+  const filteredTasks = tasks
+    .filter(t => !hideCompleted || !t.completed)
+    .filter(t => activeFolderId === null || t.folderId === activeFolderId);
 
   const getTaskStatus = (task) => {
     const today = new Date().toISOString().split('T')[0];
@@ -354,6 +417,8 @@ const TasksScreen = ({ navigation }) => {
     return 0;
   });
 
+  // ==================== RENDER ====================
+
   const renderTask = ({ item }) => {
     const isExpanded = expandedTasks[item.id];
     const taskSubtasks = subtasks[item.id] || [];
@@ -366,6 +431,7 @@ const TasksScreen = ({ navigation }) => {
       if (taskStatus === 'today') return colors.ok1;
       return colors.borderSubtle;
     };
+    const folder = getFolderById(item.folderId);
 
     const renderLeftActions = (progress, dragX) => {
       const scale = dragX.interpolate({ inputRange: [0, 60], outputRange: [0.8, 1], extrapolate: 'clamp' });
@@ -433,6 +499,9 @@ const TasksScreen = ({ navigation }) => {
                 {((item.subtasks_count > 0) || taskSubtasks.length > 0) && (
                   <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>📋 {taskSubtasks.length > 0 ? taskSubtasks.length : item.subtasks_count}</Text>
                 )}
+                {folder && (
+                  <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>{folder.icon} {folder.name}</Text>
+                )}
               </View>
             </View>
             <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); handleEditTask(item); }}>
@@ -467,6 +536,7 @@ const TasksScreen = ({ navigation }) => {
     <Background>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.container}>
+          {/* HEADER */}
           <View style={[styles.header, { backgroundColor: colors.surface }]}>
             <Text style={[styles.headerTitle, { color: colors.accentText }]}>МОИ ЗАДАЧИ</Text>
             <TouchableOpacity onPress={() => setShowMonthPicker(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -477,12 +547,14 @@ const TasksScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
+          {/* ФОКУС-БАННЕР */}
           {focusTask && !focusVisible && (
             <TouchableOpacity style={[styles.focusBanner, { backgroundColor: colors.accent1 }]} onPress={() => setFocusVisible(true)}>
               <Text style={{ color: '#020617', fontWeight: '700', fontSize: 13 }}>🎯 Идёт фокус-сессия: {focusTask.title}</Text>
             </TouchableOpacity>
           )}
 
+          {/* СТАТИСТИКА */}
           <View style={styles.statsContainer}>
             {[{ n: `${stats.today}/${stats.todayPlan}`, l: 'СЕГОДНЯ' }, { n: stats.week, l: 'НЕДЕЛЯ' }, { n: stats.month, l: 'МЕСЯЦ' }, { n: stats.total, l: 'ВСЕГО' }].map((s, i) => (
               <View key={i} style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
@@ -492,6 +564,45 @@ const TasksScreen = ({ navigation }) => {
             ))}
           </View>
 
+          {/* ПАПКИ — горизонтальный список */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.foldersScroll}
+            style={{ flexShrink: 0 }}
+          >
+            {/* Кнопка «Все» */}
+            <TouchableOpacity
+              style={[styles.folderChip, { backgroundColor: activeFolderId === null ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
+              onPress={() => setActiveFolderId(null)}
+            >
+              <Text style={[styles.folderChipText, { color: activeFolderId === null ? '#020617' : colors.textMain }]}>📋 Все</Text>
+            </TouchableOpacity>
+
+            {/* Существующие папки */}
+            {folders.map(folder => (
+              <TouchableOpacity
+                key={folder.id}
+                style={[styles.folderChip, { backgroundColor: activeFolderId === folder.id ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
+                onPress={() => setActiveFolderId(activeFolderId === folder.id ? null : folder.id)}
+                onLongPress={() => setFolderToDelete(folder)}
+              >
+                <Text style={[styles.folderChipText, { color: activeFolderId === folder.id ? '#020617' : colors.textMain }]}>
+                  {folder.icon} {folder.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            {/* Кнопка создать папку */}
+            <TouchableOpacity
+              style={[styles.folderChip, { backgroundColor: colors.surface, borderColor: colors.borderSubtle, borderStyle: 'dashed' }]}
+              onPress={() => setShowCreateFolderModal(true)}
+            >
+              <Text style={[styles.folderChipText, { color: colors.textMuted }]}>＋ Папка</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {/* ЧИПЫ ФИЛЬТРА */}
           <View style={styles.chipsContainer}>
             <TouchableOpacity
               style={[styles.chip, { backgroundColor: hideCompleted ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
@@ -511,21 +622,28 @@ const TasksScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
+          {/* СПИСОК ЗАДАЧ */}
           <FlatList
             data={sortedTasks}
             renderItem={renderTask}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.listContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent1} />}
-            ListEmptyComponent={<View style={styles.emptyContainer}><Text style={[styles.emptyText, { color: colors.textMuted }]}>У вас пока нет задач</Text></View>}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  {activeFolderId ? 'В этой папке нет задач' : 'У вас пока нет задач'}
+                </Text>
+              </View>
+            }
           />
 
+          {/* FAB */}
           <TouchableOpacity
             style={[styles.fab, { backgroundColor: colors.accent1 }]}
             onPress={() => {
-              setNewTask(emptyTask());
+              setNewTask({ ...emptyTask(), folderId: activeFolderId });
               setEditingTask(null);
-              // Доп. настройки скрыты по умолчанию
               setShowAdvancedSettings(false);
               setShowAddModal(true);
             }}
@@ -535,6 +653,7 @@ const TasksScreen = ({ navigation }) => {
         </View>
       </GestureHandlerRootView>
 
+      {/* ФОКУС-СЕССИЯ */}
       {focusTask && (
         <FocusSessionModal
           visible={focusVisible}
@@ -545,6 +664,7 @@ const TasksScreen = ({ navigation }) => {
         />
       )}
 
+      {/* МОДАЛ ПРОСРОЧЕННЫХ */}
       {showOverdueCleanupModal && (
         <Modal visible onClose={() => setShowOverdueCleanupModal(false)} title="🔥 Старые задачи">
           <Text style={[styles.deleteModalText, { color: colors.textMain, textAlign: 'left', marginBottom: 4 }]}>Просроченные задачи (более 7 дней). Всего: {overdueTasksList.length}</Text>
@@ -567,6 +687,7 @@ const TasksScreen = ({ navigation }) => {
         </Modal>
       )}
 
+      {/* МОДАЛ ДОБАВЛЕНИЯ/РЕДАКТИРОВАНИЯ ЗАДАЧИ */}
       {showAddModal && (
         <Modal visible onClose={() => setShowAddModal(false)} title={editingTask ? 'Редактировать' : 'Новая задача'}>
           <Input
@@ -596,6 +717,7 @@ const TasksScreen = ({ navigation }) => {
             </View>
           </View>
 
+          {/* КНОПКА ДОП. НАСТРОЕК */}
           <TouchableOpacity
             style={[styles.advancedToggle, { borderColor: colors.borderSubtle }]}
             onPress={() => setShowAdvancedSettings(p => !p)}
@@ -618,6 +740,32 @@ const TasksScreen = ({ navigation }) => {
                 value={newTask.time}
                 onChangeTime={(t) => setNewTask(p => ({ ...p, time: t }))}
               />
+
+              {/* ВЫБОР ПАПКИ */}
+              {folders.length > 0 && (
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { color: colors.textMain }]}>Папка</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+                    <TouchableOpacity
+                      style={[styles.chip, { backgroundColor: !newTask.folderId ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
+                      onPress={() => setNewTask(p => ({ ...p, folderId: null }))}
+                    >
+                      <Text style={[styles.chipText, { color: !newTask.folderId ? '#020617' : colors.textMuted }]}>Без папки</Text>
+                    </TouchableOpacity>
+                    {folders.map(f => (
+                      <TouchableOpacity
+                        key={f.id}
+                        style={[styles.chip, { backgroundColor: newTask.folderId === f.id ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
+                        onPress={() => setNewTask(p => ({ ...p, folderId: f.id }))}
+                      >
+                        <Text style={[styles.chipText, { color: newTask.folderId === f.id ? '#020617' : colors.textMuted }]}>{f.icon} {f.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* ПОВТОРЕНИЕ */}
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.textMain }]}>Повторение</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -667,6 +815,7 @@ const TasksScreen = ({ navigation }) => {
                     doneDate: null,
                     isRecurring: newTask.isRecurring,
                     recurrenceType: newTask.recurrenceType,
+                    folderId: newTask.folderId || null,
                   };
                   await (editingTask
                     ? tasksAPI.updateTask(editingTask.id, payload)
@@ -694,6 +843,7 @@ const TasksScreen = ({ navigation }) => {
         </Modal>
       )}
 
+      {/* МОДАЛ УДАЛЕНИЯ ЗАДАЧИ */}
       {taskToDelete && (
         <Modal visible onClose={() => setTaskToDelete(null)} title="Удалить?">
           <Text style={[styles.deleteModalText, { color: colors.textMain }]}>Задача "{taskToDelete.title}" будет удалена.</Text>
@@ -709,6 +859,7 @@ const TasksScreen = ({ navigation }) => {
         </Modal>
       )}
 
+      {/* МОДАЛ ДОБАВЛЕНИЯ ПОДЗАДАЧИ */}
       {showAddSubtaskModal && (
         <Modal visible onClose={() => { setShowAddSubtaskModal(false); setNewSubtaskTitle(''); setCurrentTaskForSubtask(null); }} title="Новая подзадача">
           <Input label="Название" placeholder="Например: Купить молоко" value={newSubtaskTitle} onChangeText={setNewSubtaskTitle} />
@@ -716,6 +867,7 @@ const TasksScreen = ({ navigation }) => {
         </Modal>
       )}
 
+      {/* МОДАЛ ВЫБОРА МЕСЯЦА */}
       {showMonthPicker && (
         <Modal visible onClose={() => setShowMonthPicker(false)} title="Выберите месяц">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
@@ -741,6 +893,54 @@ const TasksScreen = ({ navigation }) => {
             <Text style={{ fontSize: 18, color: colors.textMain, fontWeight: 'bold' }}>{selectedDate.getFullYear()}</Text>
             <TouchableOpacity onPress={() => setSelectedDate(new Date(selectedDate.getFullYear() + 1, selectedDate.getMonth(), 1))}>
               <Text style={{ fontSize: 24, color: colors.textMain }}>→</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+      )}
+
+      {/* МОДАЛ СОЗДАНИЯ ПАПКИ */}
+      {showCreateFolderModal && (
+        <Modal visible onClose={() => { setShowCreateFolderModal(false); setNewFolderName(''); setNewFolderEmoji('📁'); }} title="Новая папка">
+          <Input
+            label="Название"
+            placeholder="Например: Работа"
+            value={newFolderName}
+            onChangeText={setNewFolderName}
+          />
+          <View style={styles.formGroup}>
+            <Text style={[styles.formLabel, { color: colors.textMain }]}>Эмодзи</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {EMOJI_LIST.map(e => (
+                <TouchableOpacity
+                  key={e}
+                  onPress={() => setNewFolderEmoji(e)}
+                  style={[
+                    styles.emojiBtn,
+                    { borderColor: newFolderEmoji === e ? colors.accent1 : colors.borderSubtle, backgroundColor: newFolderEmoji === e ? colors.accent1 + '33' : 'transparent' }
+                  ]}
+                >
+                  <Text style={{ fontSize: 22 }}>{e}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <Button title="Создать папку" onPress={handleCreateFolder} />
+          <View style={{ height: 12 }} />
+        </Modal>
+      )}
+
+      {/* МОДАЛ УДАЛЕНИЯ ПАПКИ */}
+      {folderToDelete && (
+        <Modal visible onClose={() => setFolderToDelete(null)} title="Удалить папку?">
+          <Text style={[styles.deleteModalText, { color: colors.textMain }]}>
+            Папка «{folderToDelete.icon} {folderToDelete.name}» будет удалена.{`\n`}Задачи останутся, но будут откреплены от неё.
+          </Text>
+          <View style={styles.deleteModalButtons}>
+            <TouchableOpacity style={[styles.deleteModalButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]} onPress={() => setFolderToDelete(null)}>
+              <Text style={[styles.deleteModalButtonText, { color: colors.textMain }]}>Отмена</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.deleteModalButton, { backgroundColor: colors.danger1, borderColor: colors.danger1 }]} onPress={() => handleDeleteFolder(folderToDelete)}>
+              <Text style={[styles.deleteModalButtonText, { color: '#020617' }]}>Удалить</Text>
             </TouchableOpacity>
           </View>
         </Modal>
@@ -771,6 +971,10 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1, alignItems: 'center', elevation: 4 },
   statNumber: { fontSize: 28, fontWeight: '700', marginBottom: 4 },
   statLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.08 },
+  // Папки
+  foldersScroll: { paddingHorizontal: 16, paddingBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  folderChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, flexShrink: 0 },
+  folderChipText: { fontSize: 13, fontWeight: '600' },
   formGroup: { marginBottom: 16 },
   formLabel: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
   priorityRow: { flexDirection: 'row', gap: 6 },
@@ -804,6 +1008,7 @@ const styles = StyleSheet.create({
   advancedSettings: { padding: 12, borderWidth: 1, borderColor: 'rgba(148,163,184,0.2)', borderRadius: 8, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.05)' },
   subtaskCheckbox: { padding: 2 },
   focusBanner: { paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 16, marginTop: 8, borderRadius: 10 },
+  emojiBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 });
 
 export default TasksScreen;
