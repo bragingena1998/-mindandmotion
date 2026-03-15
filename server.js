@@ -761,6 +761,37 @@ app.post('/api/folders', authenticateToken, async (req, res) => {
   }
 });
 
+// Update folder (name & icon)
+app.put('/api/folders/:id', authenticateToken, async (req, res) => {
+  try {
+    const folderId = req.params.id;
+    const { name, icon } = req.body;
+
+    if (!name) return res.status(400).json({ error: 'Название обязательно' });
+
+    const [existing] = await pool.query(
+      'SELECT id FROM folders WHERE id = ? AND user_id = ?',
+      [folderId, req.userId]
+    );
+    if (existing.length === 0) return res.status(404).json({ error: 'Папка не найдена' });
+
+    await pool.query(
+      'UPDATE folders SET name = ?, icon = ? WHERE id = ? AND user_id = ?',
+      [name, icon || '📁', folderId, req.userId]
+    );
+
+    const [updated] = await pool.query(
+      'SELECT * FROM folders WHERE id = ?',
+      [folderId]
+    );
+    console.log(`✅ Folder ${folderId} updated: name=${name}, icon=${icon}`);
+    res.json(updated[0]);
+  } catch (err) {
+    console.error('Update folder error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete folder
 app.delete('/api/folders/:id', authenticateToken, async (req, res) => {
   try {
@@ -1653,255 +1684,7 @@ app.delete('/api/subtasks/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// ===============================================
-// СЕКРЕТНЫЙ ЧАТ 4.0 (ОВОЩНОЙ АПОКАЛИПСИС)
-// ===============================================
-
-// Хелпер для ГМО-эффектов
-const applyGMO = (text) => {
-  const effects = [
-    t => t.toUpperCase(), // КАПС
-    t => t.split('').join('-'), // Р-а-з-р-я-д-к-а
-    t => t.replace(/[аоеиуыэюя]/gi, 'Ы'), // Ы-фикация
-    t => t.split(' ').reverse().join(' '), // Реверс слов
-    t => `🥒 ${t} 🥒` // Огурцы
-  ];
-  const effect = effects[Math.floor(Math.random() * effects.length)];
-  return effect(text);
-};
-
-// Хелпер для МУТА (Мычание)
-const applyMute = () => {
-  const variants = [
-    "*невнятно мычит через кабачок*",
-    "*пытается что-то сказать, но рот заклеен ботвой*",
-    "мммм... м-м-м... (звуки из подвала)",
-    "*глухие удары головой о клавиатуру*"
-  ];
-  return variants[Math.floor(Math.random() * variants.length)];
-};
-
-// 1. ПОЛУЧИТЬ СООБЩЕНИЯ + НАСТРОЙКИ
-app.get('/api/secret-chat', async (req, res) => {
-  try {
-    const [messages] = await pool.query(`
-      SELECT sc.*, u.rank, u.name as real_name,
-      (SELECT COUNT(*) FROM message_reactions mr WHERE mr.message_id = sc.id AND mr.type = 'tomato') as tomato_count
-      FROM secret_chat sc 
-      LEFT JOIN users u ON sc.user_id = u.id 
-      ORDER BY sc.created_at ASC 
-      LIMIT 100
-    `);
-
-    const [settings] = await pool.query("SELECT * FROM chat_settings");
-    const settingsMap = settings.reduce((acc, row) => ({ ...acc, [row.setting_key]: row.setting_value }), {});
-
-    const formattedMessages = messages.map(msg => ({
-      id: msg.id,
-      text: msg.content,
-      userName: msg.user_name || msg.real_name || 'Аноним',
-      userRank: msg.rank || 'Семечка Сомнения',
-      isAuthor: msg.user_id === 999,
-      timestamp: msg.created_at,
-      userId: msg.user_id,
-      tomatoCount: msg.tomato_count || 0
-    }));
-    
-    // ВАЖНО: Добавляем текущий пароль в настройки, чтобы клиент мог проверить, не изменился ли он
-    // (В реальном продакшене так делать НЕЛЬЗЯ, надо отдавать хеш, но для нас пойдет)
-    res.json({ messages: formattedMessages, settings: settingsMap });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✓ Server running on port ${PORT}`);
 });
-
-
-// 2. ОТПРАВИТЬ СООБЩЕНИЕ (С ЛОГИКОЙ МУТА И ГМО)
-app.post('/api/secret-chat', async (req, res) => {
-  try {
-    let { text, isAuthorMode, userId } = req.body; 
-    
-    if (!text || !text.trim()) return res.status(400).json({ error: 'Пустое сообщение' });
-
-    // РУЛЕТКА (/roll)
-    if (text.trim() === '/roll') {
-      const rolls = [
-        "выиграл право на лишний полив!",
-        "должен присесть 10 раз во славу Моркови.",
-        "назначается Гнилым Бананом на 5 минут.",
-        "получает благословение Великой Свеклы.",
-        "должен съесть сырую картофелину."
-      ];
-      const result = rolls[Math.floor(Math.random() * rolls.length)];
-      
-      // Ищем имя юзера
-      let rollerName = 'Аноним';
-      if (userId) {
-        const [u] = await pool.query('SELECT name FROM users WHERE id = ?', [userId]);
-        if (u.length) rollerName = u[0].name;
-      }
-
-      await pool.query(
-        'INSERT INTO secret_chat (user_id, user_name, content) VALUES (?, ?, ?)',
-        [999, 'ОВОЩНАЯ РУЛЕТКА', `${rollerName} ${result}`]
-      );
-      return res.json({ success: true });
-    }
-
-    // РЕЖИМ АВТОРА
-    if (userId === 4 && isAuthorMode) {
-      await pool.query(
-        'INSERT INTO secret_chat (user_id, user_name, content) VALUES (?, ?, ?)',
-        [999, 'ГОЛОС АВТОРА', text]
-      );
-      return res.status(201).json({ success: true });
-    }
-
-    // ОБЫЧНЫЙ ЮЗЕР
-    let senderId = userId || 0;
-    let senderName = 'Аноним';
-    let isMuted = false;
-    let isInfected = false;
-
-    if (userId) {
-      const [userRows] = await pool.query('SELECT name, muted_until, gmo_infected FROM users WHERE id = ?', [userId]);
-      if (userRows.length > 0) {
-        senderName = userRows[0].name;
-        isInfected = userRows[0].gmo_infected; // Проверка ГМО
-        
-        // Проверка МУТА
-        if (userRows[0].muted_until) {
-          const mutedUntil = new Date(userRows[0].muted_until);
-          if (mutedUntil > new Date()) isMuted = true;
-        }
-      }
-    }
-
-    // ПРИМЕНЯЕМ ЭФФЕКТЫ
-    if (isMuted) {
-      text = applyMute(); // Заменяем текст на мычание
-    } else if (isInfected) {
-      text = applyGMO(text); // Искажаем текст
-    }
-
-    await pool.query(
-      'INSERT INTO secret_chat (user_id, user_name, content) VALUES (?, ?, ?)',
-      [senderId, senderName, text]
-    );
-    
-    res.status(201).json({ success: true });
-  } catch (err) {
-    console.error('Send Error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 3. ПОМИДОРЫ (ДИЗЛАЙКИ)
-app.post('/api/secret-chat/tomato', async (req, res) => {
-  const { messageId, userId } = req.body;
-  try {
-    await pool.query('INSERT IGNORE INTO message_reactions (message_id, user_id, type) VALUES (?, ?, ?)', [messageId, userId, 'tomato']);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 4. НАКАЗАНИЯ И ГМО
-app.post('/api/secret-chat/punish', async (req, res) => {
-  const { targetId, targetName, type, duration, reason } = req.body; 
-  
-  try {
-    let systemMessage = '';
-
-    if (type === 'mute') {
-      const muteTime = new Date(Date.now() + duration * 60000);
-      await pool.query('UPDATE users SET muted_until = ? WHERE id = ?', [muteTime, targetId]);
-      systemMessage = `🔇 ${targetName} отправлен в компостную яму на ${duration} мин.`;
-    } 
-    else if (type === 'gmo') {
-      // Заражаем ГМО
-      await pool.query('UPDATE users SET gmo_infected = 1 WHERE id = ?', [targetId]);
-      systemMessage = `🧬 ${targetName} заражен ГМО-вирусом! Его речь мутирует.`;
-    }
-    else if (type === 'cure') {
-      // Лечим
-      await pool.query('UPDATE users SET gmo_infected = 0, muted_until = NULL WHERE id = ?', [targetId]);
-      systemMessage = `💊 ${targetName} исцелен молитвами Свеклы.`;
-    }
-    else {
-      systemMessage = `🍆 Админ наказал ${targetName}: ${reason}`;
-    }
-
-    await pool.query(
-      'INSERT INTO secret_chat (user_id, user_name, content) VALUES (?, ?, ?)',
-      [999, 'СИСТЕМА НАКАЗАНИЙ', systemMessage]
-    );
-
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 5. НАСТРОЙКИ (СМЕНА ПАРОЛЯ, ЗАГОЛОВКА, ПИСАНИЯ)
-app.put('/api/secret-chat/settings', async (req, res) => {
-  const { key, value } = req.body; // key: 'chat_password' | 'login_title' | 'sacred_text'
-  try {
-    // INSERT ON DUPLICATE UPDATE
-    await pool.query(`
-      INSERT INTO chat_settings (setting_key, setting_value) VALUES (?, ?)
-      ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
-    `, [key, value]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// --- СТАНДАРТНЫЕ (Login, Users, Rank, Clear) ---
-app.post('/api/secret-chat/login', async (req, res) => {
-  const { userId, password } = req.body;
-  try {
-    const [rows] = await pool.query("SELECT setting_value FROM chat_settings WHERE setting_key = 'chat_password'");
-    const currentPassword = rows[0]?.setting_value || 'семечка сомнения';
-
-    if (password.toLowerCase().trim() === currentPassword.toLowerCase().trim()) {
-      if (userId) await pool.query('UPDATE users SET is_cult_member = 1 WHERE id = ?', [userId]);
-      res.json({ success: true });
-    } else {
-      res.status(401).json({ error: 'Неверный пароль' });
-    }
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/secret-chat/users', async (req, res) => {
-  try { const [users] = await pool.query('SELECT id, name, rank, gmo_infected FROM users WHERE is_cult_member = 1'); res.json(users); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.put('/api/secret-chat/rank', async (req, res) => {
-  const { userId, newRank } = req.body;
-  try { await pool.query('UPDATE users SET rank = ? WHERE id = ?', [newRank, userId]); res.json({ success: true }); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.post('/api/secret-chat/clear', async (req, res) => {
-  try { await pool.query('TRUNCATE TABLE secret_chat'); await pool.query('TRUNCATE TABLE message_reactions'); res.json({ success: true }); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, async () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  
-  // Проверяем SMTP соединение
-  await emailService.verifyConnection();
-});
-
-
-
-module.exports = pool;
-
