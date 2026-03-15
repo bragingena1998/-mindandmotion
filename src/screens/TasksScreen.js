@@ -12,6 +12,7 @@ import {
   Alert,
   Animated,
   ScrollView,
+  PanResponder,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Background from '../components/Background';
@@ -69,6 +70,37 @@ const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete 
   );
 });
 
+// ==================== DRAG TASK ITEM ====================
+
+const DraggableTaskItem = React.memo(({ item, colors, folders, onDrop, children }) => {
+  const dragAnim = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+  const isDragging = useRef(false);
+  const [dragging, setDragging] = useState(false);
+  const [hoveredFolderId, setHoveredFolderId] = useState(undefined); // undefined = not dragging
+
+  // Layout refs для чипов папок — передаются снаружи через prop
+  const folderChipLayouts = useRef({});
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: () => false,
+    })
+  ).current;
+
+  return (
+    <View style={{ marginBottom: 12 }}>
+      {children}
+    </View>
+  );
+});
+
+// ==================== MAIN SCREEN ====================
+
 const TasksScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const [tasks, setTasks] = useState([]);
@@ -91,6 +123,15 @@ const TasksScreen = ({ navigation }) => {
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderEmoji, setNewFolderEmoji] = useState('📁');
   const [folderToDelete, setFolderToDelete] = useState(null);
+
+  // --- Drag & Drop ---
+  const [dragTask, setDragTask] = useState(null); // задача которую тащим
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 }); // позиция призрака
+  const [hoveredFolder, setHoveredFolder] = useState(null); // id папки под пальцем (null = «без папки»)
+  const dragAnim = useRef(new Animated.ValueXY()).current;
+  const folderChipLayouts = useRef({}); // { folderId: { x, y, width, height } }
+  const foldersRowRef = useRef(null);
+  const foldersRowY = useRef(0); // Y-координата строки папок на экране
 
   const [focusTask, setFocusTask] = useState(null);
   const [focusVisible, setFocusVisible] = useState(false);
@@ -169,6 +210,77 @@ const TasksScreen = ({ navigation }) => {
   };
 
   const getFolderById = (id) => folders.find(f => f.id === id) || null;
+
+  // ==================== DRAG & DROP ====================
+
+  const handleLongPress = useCallback((task, evt) => {
+    const { pageY, pageX } = evt.nativeEvent;
+    setDragTask(task);
+    setDragPos({ x: pageX, y: pageY });
+    dragAnim.setValue({ x: pageX - 160, y: pageY - 30 });
+  }, [dragAnim]);
+
+  const handleDragMove = useCallback((evt) => {
+    if (!dragTask) return;
+    const { pageX, pageY } = evt.nativeEvent;
+    dragAnim.setValue({ x: pageX - 160, y: pageY - 30 });
+
+    // Проверяем над какой папкой находится палец
+    // Строка папок находится вверху — проверяем Y
+    const rowY = foldersRowY.current;
+    if (pageY >= rowY - 10 && pageY <= rowY + 60) {
+      // Палец в зоне папок — ищем нужный чип
+      let found = null;
+      for (const [fid, layout] of Object.entries(folderChipLayouts.current)) {
+        if (pageX >= layout.x && pageX <= layout.x + layout.width) {
+          found = fid === 'null' ? null : parseInt(fid);
+          break;
+        }
+      }
+      setHoveredFolder(found !== undefined ? found : 'none');
+    } else {
+      setHoveredFolder('none');
+    }
+  }, [dragTask, dragAnim]);
+
+  const handleDragEnd = useCallback(async () => {
+    if (!dragTask) return;
+    const task = dragTask;
+    const targetFolderId = hoveredFolder === 'none' ? undefined : hoveredFolder;
+
+    setDragTask(null);
+    setHoveredFolder('none');
+
+    if (targetFolderId === undefined) return; // отпустили вне зоны папок
+
+    // Назначаем папку
+    const newFolderId = targetFolderId; // null = «без папки», number = папка
+    if (newFolderId === task.folderId) return; // ничего не изменилось
+
+    try {
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, folderId: newFolderId } : t));
+      await tasksAPI.updateTask(task.id, {
+        title: task.title,
+        date: task.date,
+        deadline: task.deadline,
+        priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
+        comment: task.comment || '',
+        done: task.completed ? 1 : 0,
+        doneDate: task.doneDate || null,
+        time: task.time,
+        isRecurring: task.isRecurring,
+        recurrenceType: task.recurrenceType,
+        folderId: newFolderId,
+      });
+      const folderName = newFolderId === null
+        ? 'убрана из папки'
+        : `перемещена в «${getFolderById(newFolderId)?.name}»`;
+      Alert.alert('✓', `Задача ${folderName}`);
+    } catch {
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, folderId: task.folderId } : t));
+      Alert.alert('Ошибка', 'Не удалось переместить задачу');
+    }
+  }, [dragTask, hoveredFolder, folders]);
 
   // ==================== STATS & TASKS ====================
 
@@ -431,6 +543,7 @@ const TasksScreen = ({ navigation }) => {
       return colors.borderSubtle;
     };
     const folder = getFolderById(item.folderId);
+    const isDraggingThis = dragTask?.id === item.id;
 
     const renderLeftActions = (progress, dragX) => {
       const scale = dragX.interpolate({ inputRange: [0, 60], outputRange: [0.8, 1], extrapolate: 'clamp' });
@@ -458,7 +571,7 @@ const TasksScreen = ({ navigation }) => {
     };
 
     return (
-      <View style={{ marginBottom: 12 }}>
+      <View style={{ marginBottom: 12, opacity: isDraggingThis ? 0.4 : 1 }}>
         <Swipeable
           ref={(ref) => { swipeableRefs.current[item.id] = ref; }}
           renderLeftActions={renderLeftActions}
@@ -468,13 +581,16 @@ const TasksScreen = ({ navigation }) => {
           friction={1.5}
           leftThreshold={60}
           rightThreshold={60}
+          enabled={!dragTask}
         >
           <TouchableOpacity
             style={[styles.taskItem, { backgroundColor: colors.surface, borderColor: getStatusColor(), borderWidth: 2, opacity: item.completed ? 0.6 : 1, marginBottom: 0, borderRadius: 12 }]}
             activeOpacity={0.7}
-            onPress={() => toggleExpand(item.id)}
+            onPress={() => !dragTask && toggleExpand(item.id)}
+            onLongPress={(e) => handleLongPress(item, e)}
+            delayLongPress={400}
           >
-            <TouchableOpacity style={styles.checkboxArea} onPress={(e) => { e.stopPropagation(); toggleTask(item.id); }}>
+            <TouchableOpacity style={styles.checkboxArea} onPress={(e) => { e.stopPropagation(); if (!dragTask) toggleTask(item.id); }}>
               <View style={[styles.checkbox, { borderColor: getStatusColor(), backgroundColor: item.completed ? getStatusColor() : 'transparent' }]}>
                 {item.completed && <Text style={styles.checkmark}>✓</Text>}
               </View>
@@ -503,7 +619,7 @@ const TasksScreen = ({ navigation }) => {
                 )}
               </View>
             </View>
-            <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); handleEditTask(item); }}>
+            <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); if (!dragTask) handleEditTask(item); }}>
               <Text style={{ fontSize: 16 }}>✏️</Text>
             </TouchableOpacity>
             <View style={{ paddingLeft: 8, justifyContent: 'flex-end', paddingBottom: 5 }}>
@@ -531,10 +647,19 @@ const TasksScreen = ({ navigation }) => {
 
   if (loading) return <Background><View style={styles.centerContainer}><ActivityIndicator size="large" color={colors.accent1} /></View></Background>;
 
+  // Папки для drag — добавляем «Без папки» в начало
+  const dragFolderList = [{ id: null, icon: '📋', name: 'Без папки' }, ...folders];
+
   return (
     <Background>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={styles.container}>
+        <View
+          style={styles.container}
+          onMoveShouldSetResponder={() => !!dragTask}
+          onResponderMove={handleDragMove}
+          onResponderRelease={handleDragEnd}
+          onResponderTerminate={handleDragEnd}
+        >
 
           {/* HEADER */}
           <View style={[styles.header, { backgroundColor: colors.surface }]}>
@@ -554,69 +679,129 @@ const TasksScreen = ({ navigation }) => {
             </TouchableOpacity>
           )}
 
+          {/* DRAG HINT */}
+          {dragTask && (
+            <View style={[styles.dragHint, { backgroundColor: colors.accent1 + '22', borderColor: colors.accent1 }]}>
+              <Text style={{ color: colors.accentText, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
+                📂 Перетащи в папку ниже или отпусти для отмены
+              </Text>
+            </View>
+          )}
+
           {/* СТАТИСТИКА */}
-          <View style={styles.statsContainer}>
-            {[{ n: `${stats.today}/${stats.todayPlan}`, l: 'СЕГОДНЯ' }, { n: stats.week, l: 'НЕДЕЛЯ' }, { n: stats.month, l: 'МЕСЯЦ' }, { n: stats.total, l: 'ВСЕГО' }].map((s, i) => (
-              <View key={i} style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
-                <Text style={[styles.statNumber, { color: colors.accentText }]}>{s.n}</Text>
-                <Text style={[styles.statLabel, { color: colors.textMuted }]}>{s.l}</Text>
-              </View>
-            ))}
-          </View>
+          {!dragTask && (
+            <View style={styles.statsContainer}>
+              {[{ n: `${stats.today}/${stats.todayPlan}`, l: 'СЕГОДНЯ' }, { n: stats.week, l: 'НЕДЕЛЯ' }, { n: stats.month, l: 'МЕСЯЦ' }, { n: stats.total, l: 'ВСЕГО' }].map((s, i) => (
+                <View key={i} style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.accentBorder }]}>
+                  <Text style={[styles.statNumber, { color: colors.accentText }]}>{s.n}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>{s.l}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* ЧИПЫ ФИЛЬТРА */}
-          <View style={styles.chipsContainer}>
-            <TouchableOpacity
-              style={[styles.chip, { backgroundColor: hideCompleted ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
-              onPress={() => setHideCompleted(!hideCompleted)}
-            >
-              <Text style={[styles.chipText, { color: hideCompleted ? '#020617' : colors.textMuted }]}>
-                {hideCompleted ? 'Скрыты ✅' : 'Все задачи'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
-              onPress={() => { const n = sortBy === 'date' ? 'priority' : sortBy === 'priority' ? 'title' : 'date'; setSortBy(n); }}
-            >
-              <Text style={[styles.chipText, { color: colors.textMain }]}>
-                {sortBy === 'date' && '📅 По дате'}{sortBy === 'priority' && '🔥 По важности'}{sortBy === 'title' && 'abc По имени'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {!dragTask && (
+            <View style={styles.chipsContainer}>
+              <TouchableOpacity
+                style={[styles.chip, { backgroundColor: hideCompleted ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
+                onPress={() => setHideCompleted(!hideCompleted)}
+              >
+                <Text style={[styles.chipText, { color: hideCompleted ? '#020617' : colors.textMuted }]}>
+                  {hideCompleted ? 'Скрыты ✅' : 'Все задачи'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
+                onPress={() => { const n = sortBy === 'date' ? 'priority' : sortBy === 'priority' ? 'title' : 'date'; setSortBy(n); }}
+              >
+                <Text style={[styles.chipText, { color: colors.textMain }]}>
+                  {sortBy === 'date' && '📅 По дате'}{sortBy === 'priority' && '🔥 По важности'}{sortBy === 'title' && 'abc По имени'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-          {/* ПАПКИ — горизонтальный список (всегда, кнопка + Папка есть всегда) */}
+          {/* ПАПКИ — горизонтальный список */}
           <ScrollView
+            ref={foldersRowRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.foldersScroll}
             style={styles.foldersScrollWrapper}
+            scrollEnabled={!dragTask}
+            onLayout={(e) => {
+              // Получаем Y-координату строки папок на экране
+              foldersRowRef.current?.measure?.((x, y, w, h, px, py) => {
+                foldersRowY.current = py;
+              });
+            }}
           >
-            <TouchableOpacity
-              style={[styles.folderChip, { backgroundColor: activeFolderId === null ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
-              onPress={() => setActiveFolderId(null)}
-            >
-              <Text style={[styles.folderChipText, { color: activeFolderId === null ? '#020617' : colors.textMain }]}>📋 Все</Text>
-            </TouchableOpacity>
+            {dragTask ? (
+              // В режиме drag — показываем все папки как drop-зоны
+              dragFolderList.map(folder => {
+                const fid = folder.id;
+                const isHovered = hoveredFolder === fid;
+                return (
+                  <View
+                    key={String(fid)}
+                    onLayout={(e) => {
+                      const { x, width } = e.nativeEvent.layout;
+                      // x здесь относительный, нужен абсолютный — используем measure через ref
+                    }}
+                    ref={(ref) => {
+                      if (ref) {
+                        ref.measure((lx, ly, lw, lh, px, py) => {
+                          folderChipLayouts.current[String(fid)] = { x: px, y: py, width: lw, height: lh };
+                        });
+                      }
+                    }}
+                    style={[
+                      styles.folderDropZone,
+                      {
+                        backgroundColor: isHovered ? colors.accent1 : colors.surface + 'CC',
+                        borderColor: isHovered ? colors.accent1 : colors.borderSubtle,
+                        transform: [{ scale: isHovered ? 1.08 : 1 }],
+                      }
+                    ]}
+                  >
+                    <Text style={[styles.folderChipText, { color: isHovered ? '#020617' : colors.textMain }]}>
+                      {folder.icon} {folder.name}
+                    </Text>
+                  </View>
+                );
+              })
+            ) : (
+              // Обычный режим — фильтр по папкам
+              <>
+                <TouchableOpacity
+                  style={[styles.folderChip, { backgroundColor: activeFolderId === null ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
+                  onPress={() => setActiveFolderId(null)}
+                >
+                  <Text style={[styles.folderChipText, { color: activeFolderId === null ? '#020617' : colors.textMain }]}>📋 Все</Text>
+                </TouchableOpacity>
 
-            {folders.map(folder => (
-              <TouchableOpacity
-                key={folder.id}
-                style={[styles.folderChip, { backgroundColor: activeFolderId === folder.id ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
-                onPress={() => setActiveFolderId(activeFolderId === folder.id ? null : folder.id)}
-                onLongPress={() => setFolderToDelete(folder)}
-              >
-                <Text style={[styles.folderChipText, { color: activeFolderId === folder.id ? '#020617' : colors.textMain }]}>
-                  {folder.icon} {folder.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                {folders.map(folder => (
+                  <TouchableOpacity
+                    key={folder.id}
+                    style={[styles.folderChip, { backgroundColor: activeFolderId === folder.id ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
+                    onPress={() => setActiveFolderId(activeFolderId === folder.id ? null : folder.id)}
+                    onLongPress={() => setFolderToDelete(folder)}
+                  >
+                    <Text style={[styles.folderChipText, { color: activeFolderId === folder.id ? '#020617' : colors.textMain }]}>
+                      {folder.icon} {folder.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
 
-            <TouchableOpacity
-              style={[styles.folderChip, { backgroundColor: colors.surface, borderColor: colors.borderSubtle, borderStyle: 'dashed' }]}
-              onPress={() => setShowCreateFolderModal(true)}
-            >
-              <Text style={[styles.folderChipText, { color: colors.textMuted }]}>＋ Папка</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.folderChip, { backgroundColor: colors.surface, borderColor: colors.borderSubtle, borderStyle: 'dashed' }]}
+                  onPress={() => setShowCreateFolderModal(true)}
+                >
+                  <Text style={[styles.folderChipText, { color: colors.textMuted }]}>＋ Папка</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </ScrollView>
 
           {/* СПИСОК ЗАДАЧ */}
@@ -626,6 +811,7 @@ const TasksScreen = ({ navigation }) => {
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.listContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent1} />}
+            scrollEnabled={!dragTask}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={[styles.emptyText, { color: colors.textMuted }]}>
@@ -636,17 +822,42 @@ const TasksScreen = ({ navigation }) => {
           />
 
           {/* FAB */}
-          <TouchableOpacity
-            style={[styles.fab, { backgroundColor: colors.accent1 }]}
-            onPress={() => {
-              setNewTask({ ...emptyTask(), folderId: activeFolderId });
-              setEditingTask(null);
-              setShowAdvancedSettings(false);
-              setShowAddModal(true);
-            }}
-          >
-            <Text style={[styles.fabIcon, { color: colors.background }]}>+</Text>
-          </TouchableOpacity>
+          {!dragTask && (
+            <TouchableOpacity
+              style={[styles.fab, { backgroundColor: colors.accent1 }]}
+              onPress={() => {
+                setNewTask({ ...emptyTask(), folderId: activeFolderId });
+                setEditingTask(null);
+                setShowAdvancedSettings(false);
+                setShowAddModal(true);
+              }}
+            >
+              <Text style={[styles.fabIcon, { color: colors.background }]}>+</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* ПРИЗРАК перетаскиваемой задачи */}
+          {dragTask && (
+            <Animated.View
+              style={[
+                styles.dragGhost,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.accent1,
+                  transform: dragAnim.getTranslateTransform(),
+                }
+              ]}
+              pointerEvents="none"
+            >
+              <Text style={{ color: colors.textMain, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
+                {dragTask.title}
+              </Text>
+              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
+                {getFolderById(dragTask.folderId)?.name || 'Без папки'}
+              </Text>
+            </Animated.View>
+          )}
+
         </View>
       </GestureHandlerRootView>
 
@@ -968,11 +1179,13 @@ const styles = StyleSheet.create({
   chipsContainer: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   chipText: { fontSize: 12, fontWeight: '600' },
-  // Папки: убираем лишние отступы — flexShrink:0 и минимальный paddingVertical
   foldersScrollWrapper: { flexShrink: 0, flexGrow: 0 },
   foldersScroll: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 6, gap: 8, flexDirection: 'row', alignItems: 'center' },
   folderChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, flexShrink: 0 },
   folderChipText: { fontSize: 13, fontWeight: '600' },
+  folderDropZone: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 2, flexShrink: 0, minWidth: 80, alignItems: 'center' },
+  dragGhost: { position: 'absolute', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 2, minWidth: 180, maxWidth: 300, elevation: 12, zIndex: 999, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8 },
+  dragHint: { marginHorizontal: 16, marginTop: 8, marginBottom: 4, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1 },
   formGroup: { marginBottom: 16 },
   formLabel: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
   priorityRow: { flexDirection: 'row', gap: 6 },
