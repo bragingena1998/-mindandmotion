@@ -12,7 +12,6 @@ import {
   Alert,
   Animated,
   ScrollView,
-  PanResponder,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Background from '../components/Background';
@@ -22,7 +21,12 @@ import Input from '../components/Input';
 import api from '../services/api';
 import { getToken } from '../services/storage';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import {
+  GestureHandlerRootView,
+  LongPressGestureHandler,
+  PanGestureHandler,
+  State,
+} from 'react-native-gesture-handler';
 import DatePicker from '../components/DatePicker';
 import TimePicker from '../components/TimePicker';
 import FocusSessionModal, { hasFocusSession, getFocusSession } from '../components/FocusSessionModal';
@@ -43,6 +47,7 @@ const foldersAPI = {
   createFolder: async (data) => (await api.post('/folders', data)).data,
   updateFolder: async (id, data) => (await api.put(`/folders/${id}`, data)).data,
   deleteFolder: async (id) => (await api.delete(`/folders/${id}`)).data,
+  reorderFolders: async (folders) => (await api.put('/folders/reorder', { folders })).data,
 };
 
 const EMOJI_LIST = ['📁','💼','🏠','🎯','📚','💡','🏋️','🎨','🛒','❤️','⭐','🚀','🌿','🎮','🧘','🔬','🎵','✈️','💰','🏆'];
@@ -111,6 +116,166 @@ const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete 
   );
 });
 
+// ==================== DRAGGABLE TASK ITEM ====================
+
+const DraggableTaskItem = React.memo(({
+  item,
+  colors,
+  dragTask,
+  expandedTasks,
+  subtasks,
+  loadingSubtasks,
+  swipeableRefs,
+  onLongPressStart,
+  onPanGestureEvent,
+  onPanStateChange,
+  toggleTask,
+  toggleExpand,
+  handleEditTask,
+  toggleSubtask,
+  deleteSubtask,
+  setCurrentTaskForSubtask,
+  setShowAddSubtaskModal,
+  setFocusTask,
+  setFocusVisible,
+  getFolderById,
+  getTaskStatus,
+  formatTaskDate,
+}) => {
+  const longPressRef = useRef(null);
+  const panRef = useRef(null);
+
+  const isExpanded = expandedTasks[item.id];
+  const taskSubtasks = subtasks[item.id] || [];
+  const isLoadingSubtasks = loadingSubtasks[item.id];
+  const getPriorityColor = () => ({ high: colors.danger1, medium: colors.accent1, low: colors.ok1 }[item.priority] || colors.textMuted);
+  const taskStatus = getTaskStatus(item);
+  const getStatusColor = () => {
+    if (item.completed) return colors.textMuted;
+    if (taskStatus === 'overdue') return colors.danger1;
+    if (taskStatus === 'today') return colors.ok1;
+    return colors.borderSubtle;
+  };
+  const folder = getFolderById(item.folderId);
+  const isDraggingThis = dragTask?.id === item.id;
+
+  const renderLeftActions = (progress, dragX) => {
+    const scale = dragX.interpolate({ inputRange: [0, 60], outputRange: [0.8, 1], extrapolate: 'clamp' });
+    return (
+      <View style={styles.swipeActionLeft}>
+        <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>✓</Animated.Text>
+        <Animated.Text style={[{ fontSize: 10, color: '#020617', fontWeight: '700', marginTop: 2 }, { transform: [{ scale }] }]}>ГОТОВО</Animated.Text>
+      </View>
+    );
+  };
+
+  const renderRightActions = (progress, dragX) => {
+    const scale = dragX.interpolate({ inputRange: [-60, 0], outputRange: [1, 0], extrapolate: 'clamp' });
+    return (
+      <View style={styles.swipeActionRight}>
+        <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>🎯</Animated.Text>
+        <Animated.Text style={[{ fontSize: 10, color: '#020617', fontWeight: '700', marginTop: 2 }, { transform: [{ scale }] }]}>ФОКУС</Animated.Text>
+      </View>
+    );
+  };
+
+  const onSwipeableOpen = (direction) => {
+    if (direction === 'left') { swipeableRefs.current[item.id]?.close(); toggleTask(item.id); }
+    if (direction === 'right') { swipeableRefs.current[item.id]?.close(); setFocusTask(item); setFocusVisible(true); }
+  };
+
+  return (
+    <LongPressGestureHandler
+      ref={longPressRef}
+      simultaneousHandlers={panRef}
+      minDurationMs={400}
+      onHandlerStateChange={({ nativeEvent }) => {
+        if (nativeEvent.state === State.ACTIVE) {
+          onLongPressStart(item, nativeEvent.absoluteX, nativeEvent.absoluteY);
+        }
+      }}
+    >
+      <PanGestureHandler
+        ref={panRef}
+        simultaneousHandlers={longPressRef}
+        enabled={isDraggingThis}
+        onGestureEvent={onPanGestureEvent}
+        onHandlerStateChange={onPanStateChange}
+      >
+        <Animated.View style={{ marginBottom: 12, opacity: isDraggingThis ? 0.4 : 1 }}>
+          <Swipeable
+            ref={(ref) => { swipeableRefs.current[item.id] = ref; }}
+            renderLeftActions={renderLeftActions}
+            renderRightActions={renderRightActions}
+            onSwipeableOpen={onSwipeableOpen}
+            containerStyle={{ borderRadius: 12, overflow: 'hidden' }}
+            friction={1.5}
+            leftThreshold={60}
+            rightThreshold={60}
+            enabled={!dragTask}
+          >
+            <TouchableOpacity
+              style={[styles.taskItem, { backgroundColor: colors.surface, borderColor: getStatusColor(), borderWidth: 2, opacity: item.completed ? 0.6 : 1, marginBottom: 0, borderRadius: 12 }]}
+              activeOpacity={0.7}
+              onPress={() => !dragTask && toggleExpand(item.id)}
+            >
+              <TouchableOpacity style={styles.checkboxArea} onPress={(e) => { e.stopPropagation(); if (!dragTask) toggleTask(item.id); }}>
+                <View style={[styles.checkbox, { borderColor: getStatusColor(), backgroundColor: item.completed ? getStatusColor() : 'transparent' }]}>
+                  {item.completed && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+              </TouchableOpacity>
+              <View style={styles.taskContent}>
+                <Text style={[styles.taskTitle, { color: item.completed ? colors.textMuted : colors.textMain, paddingRight: 30 }]} numberOfLines={isExpanded ? 0 : 2}>
+                  {item.title}
+                </Text>
+                {!item.completed && (
+                  <View style={styles.statusBadge}>
+                    {taskStatus === 'overdue' && <Text style={[styles.statusText, { color: colors.danger1 }]}>🔥 ПРОСРОЧЕНО</Text>}
+                    {taskStatus === 'today' && <Text style={[styles.statusText, { color: colors.ok1 }]}>⚡ СЕГОДНЯ</Text>}
+                    {taskStatus === 'future' && <Text style={[styles.statusText, { color: colors.textMuted }]}>📅 В ПЛАНЕ</Text>}
+                  </View>
+                )}
+                <View style={styles.taskMeta}>
+                  <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
+                    <Text style={styles.priorityText}>{item.priority === 'high' ? 'Высокий' : item.priority === 'medium' ? 'Средний' : 'Низкий'}</Text>
+                  </View>
+                  <Text style={[styles.taskDate, { color: colors.textMuted }]}>{formatTaskDate(item)}</Text>
+                  {((item.subtasks_count > 0) || taskSubtasks.length > 0) && (
+                    <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>📋 {taskSubtasks.length > 0 ? taskSubtasks.length : item.subtasks_count}</Text>
+                  )}
+                  {folder && (
+                    <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>{folder.icon} {folder.name}</Text>
+                  )}
+                </View>
+              </View>
+              <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); if (!dragTask) handleEditTask(item); }}>
+                <Text style={{ fontSize: 16 }}>✏️</Text>
+              </TouchableOpacity>
+              <View style={{ paddingLeft: 8, justifyContent: 'flex-end', paddingBottom: 5 }}>
+                <Text style={{ fontSize: 12, color: colors.textMuted }}>{isExpanded ? '▲' : '▼'}</Text>
+              </View>
+            </TouchableOpacity>
+          </Swipeable>
+
+          {isExpanded && (
+            <View style={[styles.subtasksContainer, { backgroundColor: colors.surface }]}>
+              {isLoadingSubtasks ? <ActivityIndicator size="small" color={colors.accent1} /> : (
+                <>
+                  {taskSubtasks.length === 0 && <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 8 }}>Нет подзадач</Text>}
+                  {taskSubtasks.map(st => <SubtaskItem key={st.id} subtask={st} parentId={item.id} colors={colors} onToggle={toggleSubtask} onDelete={deleteSubtask} />)}
+                  <TouchableOpacity style={styles.addSubtaskBtn} onPress={() => { setCurrentTaskForSubtask(item.id); setShowAddSubtaskModal(true); }}>
+                    <Text style={[styles.addSubtaskBtnText, { color: colors.accent1 }]}>+ Добавить подзадачу</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          )}
+        </Animated.View>
+      </PanGestureHandler>
+    </LongPressGestureHandler>
+  );
+});
+
 // ==================== MAIN SCREEN ====================
 
 const TasksScreen = ({ navigation }) => {
@@ -149,16 +314,17 @@ const TasksScreen = ({ navigation }) => {
   const [folderToDelete, setFolderToDelete] = useState(null);
 
   // --- Редактирование папки ---
-  const [editingFolder, setEditingFolder] = useState(null); // { id, name, icon }
+  const [editingFolder, setEditingFolder] = useState(null);
   const [editFolderName, setEditFolderName] = useState('');
   const [editFolderEmoji, setEditFolderEmoji] = useState('📁');
-  const [showFolderActionModal, setShowFolderActionModal] = useState(false); // меню: редактировать/удалить
+  const [showFolderActionModal, setShowFolderActionModal] = useState(false);
   const [selectedFolderForAction, setSelectedFolderForAction] = useState(null);
 
   // --- Drag & Drop ---
   const [dragTask, setDragTask] = useState(null);
-  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
-  const [hoveredFolder, setHoveredFolder] = useState(null);
+  const dragTaskRef = useRef(null);
+  const [hoveredFolder, setHoveredFolder] = useState('none');
+  const hoveredFolderRef = useRef('none');
   const dragAnim = useRef(new Animated.ValueXY()).current;
   const folderChipLayouts = useRef({});
   const foldersRowRef = useRef(null);
@@ -231,7 +397,7 @@ const TasksScreen = ({ navigation }) => {
   const handleUpdateFolder = async () => {
     if (!editFolderName.trim() || !editingFolder) return;
     try {
-      const updated = await foldersAPI.updateFolder(editingFolder.id, {
+      await foldersAPI.updateFolder(editingFolder.id, {
         name: editFolderName.trim(),
         icon: editFolderEmoji,
       });
@@ -256,26 +422,57 @@ const TasksScreen = ({ navigation }) => {
     }
   };
 
-  const getFolderById = (id) => folders.find(f => f.id === id) || null;
+  // Сортировка папки вверх/вниз
+  const handleMoveFolderUp = async (folder) => {
+    const idx = folders.findIndex(f => f.id === folder.id);
+    if (idx <= 0) return;
+    const newFolders = [...folders];
+    [newFolders[idx - 1], newFolders[idx]] = [newFolders[idx], newFolders[idx - 1]];
+    setFolders(newFolders);
+    setShowFolderActionModal(false);
+    try {
+      await foldersAPI.reorderFolders(newFolders.map((f, i) => ({ id: f.id, order_index: i })));
+      showToast('↑ Папка перемещена');
+    } catch {
+      loadFolders();
+      showToast('❌ Не удалось переместить папку');
+    }
+  };
 
-  // Долгое нажатие на чип папки — открыть меню действий
+  const handleMoveFolderDown = async (folder) => {
+    const idx = folders.findIndex(f => f.id === folder.id);
+    if (idx < 0 || idx >= folders.length - 1) return;
+    const newFolders = [...folders];
+    [newFolders[idx], newFolders[idx + 1]] = [newFolders[idx + 1], newFolders[idx]];
+    setFolders(newFolders);
+    setShowFolderActionModal(false);
+    try {
+      await foldersAPI.reorderFolders(newFolders.map((f, i) => ({ id: f.id, order_index: i })));
+      showToast('↓ Папка перемещена');
+    } catch {
+      loadFolders();
+      showToast('❌ Не удалось переместить папку');
+    }
+  };
+
+  const getFolderById = useCallback((id) => folders.find(f => f.id === id) || null, [folders]);
+
   const handleFolderLongPress = (folder) => {
     setSelectedFolderForAction(folder);
     setShowFolderActionModal(true);
   };
 
-  // ==================== DRAG & DROP ====================
+  // ==================== DRAG & DROP (via GestureHandler) ====================
 
-  const handleLongPress = useCallback((task, evt) => {
-    const { pageY, pageX } = evt.nativeEvent;
+  const onLongPressStart = useCallback((task, absX, absY) => {
+    dragTaskRef.current = task;
     setDragTask(task);
-    setDragPos({ x: pageX, y: pageY });
-    dragAnim.setValue({ x: pageX - 160, y: pageY - 30 });
+    dragAnim.setValue({ x: absX - 160, y: absY - 30 });
   }, [dragAnim]);
 
-  const handleDragMove = useCallback((evt) => {
-    if (!dragTask) return;
-    const { pageX, pageY } = evt.nativeEvent;
+  const onPanGestureEvent = useCallback(({ nativeEvent }) => {
+    if (!dragTaskRef.current) return;
+    const { absoluteX: pageX, absoluteY: pageY } = nativeEvent;
     dragAnim.setValue({ x: pageX - 160, y: pageY - 30 });
 
     const rowY = foldersRowY.current;
@@ -287,49 +484,52 @@ const TasksScreen = ({ navigation }) => {
           break;
         }
       }
+      hoveredFolderRef.current = found;
       setHoveredFolder(found);
     } else {
+      hoveredFolderRef.current = 'none';
       setHoveredFolder('none');
     }
-  }, [dragTask, dragAnim]);
+  }, [dragAnim]);
 
-  const handleDragEnd = useCallback(async () => {
-    if (!dragTask) return;
-    const task = dragTask;
-    const targetFolderId = hoveredFolder === 'none' ? undefined : hoveredFolder;
+  const onPanStateChange = useCallback(async ({ nativeEvent }) => {
+    if (nativeEvent.state === State.END || nativeEvent.state === State.CANCELLED || nativeEvent.state === State.FAILED) {
+      const task = dragTaskRef.current;
+      const targetFolderId = hoveredFolderRef.current;
 
-    setDragTask(null);
-    setHoveredFolder('none');
+      dragTaskRef.current = null;
+      setDragTask(null);
+      setHoveredFolder('none');
+      hoveredFolderRef.current = 'none';
 
-    if (targetFolderId === undefined) return;
+      if (!task || targetFolderId === 'none') return;
+      if (targetFolderId === task.folderId) return;
 
-    const newFolderId = targetFolderId;
-    if (newFolderId === task.folderId) return;
-
-    try {
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, folderId: newFolderId } : t));
-      await tasksAPI.updateTask(task.id, {
-        title: task.title,
-        date: task.date,
-        deadline: task.deadline,
-        priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
-        comment: task.comment || '',
-        done: task.completed ? 1 : 0,
-        doneDate: task.doneDate || null,
-        time: task.time,
-        isRecurring: task.isRecurring,
-        recurrenceType: task.recurrenceType,
-        folderId: newFolderId,
-      });
-      const folderName = newFolderId === null
-        ? 'убрана из папки'
-        : `→ «${getFolderById(newFolderId)?.name}»`;
-      showToast(`📂 ${task.title} ${folderName}`);
-    } catch {
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, folderId: task.folderId } : t));
-      showToast('❌ Не удалось переместить задачу');
+      try {
+        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, folderId: targetFolderId } : t));
+        await tasksAPI.updateTask(task.id, {
+          title: task.title,
+          date: task.date,
+          deadline: task.deadline,
+          priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
+          comment: task.comment || '',
+          done: task.completed ? 1 : 0,
+          doneDate: task.doneDate || null,
+          time: task.time,
+          isRecurring: task.isRecurring,
+          recurrenceType: task.recurrenceType,
+          folderId: targetFolderId,
+        });
+        const folderName = targetFolderId === null
+          ? 'убрана из папки'
+          : `→ «${getFolderById(targetFolderId)?.name}»`;
+        showToast(`📂 ${task.title} ${folderName}`);
+      } catch {
+        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, folderId: task.folderId } : t));
+        showToast('❌ Не удалось переместить задачу');
+      }
     }
-  }, [dragTask, hoveredFolder, folders]);
+  }, [getFolderById]);
 
   // ==================== STATS & TASKS ====================
 
@@ -525,7 +725,7 @@ const TasksScreen = ({ navigation }) => {
     setShowAddModal(true);
   };
 
-  const formatTaskDate = (task) => {
+  const formatTaskDate = useCallback((task) => {
     const fmt = (iso) => {
       if (!iso) return '';
       const d = new Date(iso);
@@ -548,20 +748,20 @@ const TasksScreen = ({ navigation }) => {
     if (task.isRecurring) result += ` 🔄`;
     if (task.focusSessions > 0) result += ` 🎯${task.focusSessions}`;
     return result;
-  };
+  }, []);
 
   const filteredTasks = tasks
     .filter(t => !hideCompleted || !t.completed)
     .filter(t => activeFolderId === null || t.folderId === activeFolderId);
 
-  const getTaskStatus = (task) => {
+  const getTaskStatus = useCallback((task) => {
     const today = new Date().toISOString().split('T')[0];
     const start = task.date ? task.date.split('T')[0] : today;
     const end = task.deadline ? task.deadline.split('T')[0] : start;
     if (today >= start && today <= end) return 'today';
     if (end < today) return 'overdue';
     return 'future';
-  };
+  }, []);
 
   const sortedTasks = [...filteredTasks].sort((a, b) => {
     if (sortBy === 'date') {
@@ -581,120 +781,32 @@ const TasksScreen = ({ navigation }) => {
 
   // ==================== RENDER ====================
 
-  const renderTask = ({ item }) => {
-    const isExpanded = expandedTasks[item.id];
-    const taskSubtasks = subtasks[item.id] || [];
-    const isLoadingSubtasks = loadingSubtasks[item.id];
-    const getPriorityColor = () => ({ high: colors.danger1, medium: colors.accent1, low: colors.ok1 }[item.priority] || colors.textMuted);
-    const taskStatus = getTaskStatus(item);
-    const getStatusColor = () => {
-      if (item.completed) return colors.textMuted;
-      if (taskStatus === 'overdue') return colors.danger1;
-      if (taskStatus === 'today') return colors.ok1;
-      return colors.borderSubtle;
-    };
-    const folder = getFolderById(item.folderId);
-    const isDraggingThis = dragTask?.id === item.id;
-
-    const renderLeftActions = (progress, dragX) => {
-      const scale = dragX.interpolate({ inputRange: [0, 60], outputRange: [0.8, 1], extrapolate: 'clamp' });
-      return (
-        <View style={styles.swipeActionLeft}>
-          <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>✓</Animated.Text>
-          <Animated.Text style={[{ fontSize: 10, color: '#020617', fontWeight: '700', marginTop: 2 }, { transform: [{ scale }] }]}>ГОТОВО</Animated.Text>
-        </View>
-      );
-    };
-
-    const renderRightActions = (progress, dragX) => {
-      const scale = dragX.interpolate({ inputRange: [-60, 0], outputRange: [1, 0], extrapolate: 'clamp' });
-      return (
-        <View style={styles.swipeActionRight}>
-          <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>🎯</Animated.Text>
-          <Animated.Text style={[{ fontSize: 10, color: '#020617', fontWeight: '700', marginTop: 2 }, { transform: [{ scale }] }]}>ФОКУС</Animated.Text>
-        </View>
-      );
-    };
-
-    const onSwipeableOpen = (direction) => {
-      if (direction === 'left') { swipeableRefs.current[item.id]?.close(); toggleTask(item.id); }
-      if (direction === 'right') { swipeableRefs.current[item.id]?.close(); setFocusTask(item); setFocusVisible(true); }
-    };
-
-    return (
-      <View style={{ marginBottom: 12, opacity: isDraggingThis ? 0.4 : 1 }}>
-        <Swipeable
-          ref={(ref) => { swipeableRefs.current[item.id] = ref; }}
-          renderLeftActions={renderLeftActions}
-          renderRightActions={renderRightActions}
-          onSwipeableOpen={onSwipeableOpen}
-          containerStyle={{ borderRadius: 12, overflow: 'hidden' }}
-          friction={1.5}
-          leftThreshold={60}
-          rightThreshold={60}
-          enabled={!dragTask}
-        >
-          <TouchableOpacity
-            style={[styles.taskItem, { backgroundColor: colors.surface, borderColor: getStatusColor(), borderWidth: 2, opacity: item.completed ? 0.6 : 1, marginBottom: 0, borderRadius: 12 }]}
-            activeOpacity={0.7}
-            onPress={() => !dragTask && toggleExpand(item.id)}
-            onLongPress={(e) => handleLongPress(item, e)}
-            delayLongPress={400}
-          >
-            <TouchableOpacity style={styles.checkboxArea} onPress={(e) => { e.stopPropagation(); if (!dragTask) toggleTask(item.id); }}>
-              <View style={[styles.checkbox, { borderColor: getStatusColor(), backgroundColor: item.completed ? getStatusColor() : 'transparent' }]}>
-                {item.completed && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-            </TouchableOpacity>
-            <View style={styles.taskContent}>
-              <Text style={[styles.taskTitle, { color: item.completed ? colors.textMuted : colors.textMain, paddingRight: 30 }]} numberOfLines={isExpanded ? 0 : 2}>
-                {item.title}
-              </Text>
-              {!item.completed && (
-                <View style={styles.statusBadge}>
-                  {taskStatus === 'overdue' && <Text style={[styles.statusText, { color: colors.danger1 }]}>🔥 ПРОСРОЧЕНО</Text>}
-                  {taskStatus === 'today' && <Text style={[styles.statusText, { color: colors.ok1 }]}>⚡ СЕГОДНЯ</Text>}
-                  {taskStatus === 'future' && <Text style={[styles.statusText, { color: colors.textMuted }]}>📅 В ПЛАНЕ</Text>}
-                </View>
-              )}
-              <View style={styles.taskMeta}>
-                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
-                  <Text style={styles.priorityText}>{item.priority === 'high' ? 'Высокий' : item.priority === 'medium' ? 'Средний' : 'Низкий'}</Text>
-                </View>
-                <Text style={[styles.taskDate, { color: colors.textMuted }]}>{formatTaskDate(item)}</Text>
-                {((item.subtasks_count > 0) || taskSubtasks.length > 0) && (
-                  <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>📋 {taskSubtasks.length > 0 ? taskSubtasks.length : item.subtasks_count}</Text>
-                )}
-                {folder && (
-                  <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>{folder.icon} {folder.name}</Text>
-                )}
-              </View>
-            </View>
-            <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); if (!dragTask) handleEditTask(item); }}>
-              <Text style={{ fontSize: 16 }}>✏️</Text>
-            </TouchableOpacity>
-            <View style={{ paddingLeft: 8, justifyContent: 'flex-end', paddingBottom: 5 }}>
-              <Text style={{ fontSize: 12, color: colors.textMuted }}>{isExpanded ? '▲' : '▼'}</Text>
-            </View>
-          </TouchableOpacity>
-        </Swipeable>
-
-        {isExpanded && (
-          <View style={[styles.subtasksContainer, { backgroundColor: colors.surface }]}>
-            {isLoadingSubtasks ? <ActivityIndicator size="small" color={colors.accent1} /> : (
-              <>
-                {taskSubtasks.length === 0 && <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 8 }}>Нет подзадач</Text>}
-                {taskSubtasks.map(st => <SubtaskItem key={st.id} subtask={st} parentId={item.id} colors={colors} onToggle={toggleSubtask} onDelete={deleteSubtask} />)}
-                <TouchableOpacity style={styles.addSubtaskBtn} onPress={() => { setCurrentTaskForSubtask(item.id); setShowAddSubtaskModal(true); }}>
-                  <Text style={[styles.addSubtaskBtnText, { color: colors.accent1 }]}>+ Добавить подзадачу</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        )}
-      </View>
-    );
-  };
+  const renderTask = useCallback(({ item }) => (
+    <DraggableTaskItem
+      item={item}
+      colors={colors}
+      dragTask={dragTask}
+      expandedTasks={expandedTasks}
+      subtasks={subtasks}
+      loadingSubtasks={loadingSubtasks}
+      swipeableRefs={swipeableRefs}
+      onLongPressStart={onLongPressStart}
+      onPanGestureEvent={onPanGestureEvent}
+      onPanStateChange={onPanStateChange}
+      toggleTask={toggleTask}
+      toggleExpand={toggleExpand}
+      handleEditTask={handleEditTask}
+      toggleSubtask={toggleSubtask}
+      deleteSubtask={deleteSubtask}
+      setCurrentTaskForSubtask={setCurrentTaskForSubtask}
+      setShowAddSubtaskModal={setShowAddSubtaskModal}
+      setFocusTask={setFocusTask}
+      setFocusVisible={setFocusVisible}
+      getFolderById={getFolderById}
+      getTaskStatus={getTaskStatus}
+      formatTaskDate={formatTaskDate}
+    />
+  ), [colors, dragTask, expandedTasks, subtasks, loadingSubtasks, onLongPressStart, onPanGestureEvent, onPanStateChange, getFolderById, getTaskStatus, formatTaskDate]);
 
   if (loading) return <Background><View style={styles.centerContainer}><ActivityIndicator size="large" color={colors.accent1} /></View></Background>;
 
@@ -703,13 +815,7 @@ const TasksScreen = ({ navigation }) => {
   return (
     <Background>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View
-          style={styles.container}
-          onMoveShouldSetResponder={() => !!dragTask}
-          onResponderMove={handleDragMove}
-          onResponderRelease={handleDragEnd}
-          onResponderTerminate={handleDragEnd}
-        >
+        <View style={styles.container}>
 
           {/* HEADER */}
           <View style={[styles.header, { backgroundColor: colors.surface }]}>
@@ -1180,6 +1286,21 @@ const TasksScreen = ({ navigation }) => {
           onClose={() => { setShowFolderActionModal(false); setSelectedFolderForAction(null); }}
           title={`${selectedFolderForAction.icon} ${selectedFolderForAction.name}`}
         >
+          {/* Кнопки сортировки */}
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+            <TouchableOpacity
+              style={[styles.folderActionBtn, { flex: 1, borderColor: colors.borderSubtle, backgroundColor: colors.surface }]}
+              onPress={() => handleMoveFolderUp(selectedFolderForAction)}
+            >
+              <Text style={{ color: colors.textMain, fontSize: 15, fontWeight: '600', textAlign: 'center' }}>← Влево</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.folderActionBtn, { flex: 1, borderColor: colors.borderSubtle, backgroundColor: colors.surface }]}
+              onPress={() => handleMoveFolderDown(selectedFolderForAction)}
+            >
+              <Text style={{ color: colors.textMain, fontSize: 15, fontWeight: '600', textAlign: 'center' }}>Вправо →</Text>
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
             style={[styles.folderActionBtn, { borderColor: colors.accent1, backgroundColor: colors.accent1 + '18' }]}
             onPress={() => {
