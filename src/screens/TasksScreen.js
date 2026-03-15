@@ -11,9 +11,7 @@ import {
   RefreshControl,
   Alert,
   Animated,
-  ScrollView,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import Background from '../components/Background';
 import Button from '../components/Button';
@@ -38,8 +36,6 @@ const tasksAPI = {
   addFocusSession: async (id) => (await api.post(`/tasks/${id}/focus`)).data,
 };
 
-
-// === ПОДЗАДАЧА ===
 const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete }) => {
   const isCompleted = !!subtask.completed;
   return (
@@ -64,7 +60,6 @@ const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete 
   );
 });
 
-
 const TasksScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const [tasks, setTasks] = useState([]);
@@ -78,13 +73,13 @@ const TasksScreen = ({ navigation }) => {
   const [editingTask, setEditingTask] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [sortBy, setSortBy] = useState('date');
+  // Доп. настройки скрыты по умолчанию
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   const [focusTask, setFocusTask] = useState(null);
   const [focusVisible, setFocusVisible] = useState(false);
   const swipeableRefs = useRef({});
 
-  // deadline=null означает «не задан» — НЕ копируем date в deadline
   const emptyTask = () => ({
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -97,19 +92,15 @@ const TasksScreen = ({ navigation }) => {
   });
 
   const [newTask, setNewTask] = useState(emptyTask());
-
   const [stats, setStats] = useState({ today: 0, todayPlan: 0, week: 0, month: 0, total: 0 });
-
   const [expandedTasks, setExpandedTasks] = useState({});
   const [subtasks, setSubtasks] = useState({});
   const [loadingSubtasks, setLoadingSubtasks] = useState({});
   const [showAddSubtaskModal, setShowAddSubtaskModal] = useState(false);
   const [currentTaskForSubtask, setCurrentTaskForSubtask] = useState(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
-
   const [showOverdueCleanupModal, setShowOverdueCleanupModal] = useState(false);
   const [overdueTasksList, setOverdueTasksList] = useState([]);
-
 
   useEffect(() => { loadTasks(); }, []);
 
@@ -141,11 +132,9 @@ const TasksScreen = ({ navigation }) => {
       setError('');
       const token = await getToken();
       if (!token) return;
-
       const now = new Date();
       const isCurrentMonth = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
       const params = isCurrentMonth ? {} : { month: date.getMonth(), year: date.getFullYear() };
-
       let tasksData;
       if (isCurrentMonth) {
         const [res] = await Promise.all([tasksAPI.getTasks(params), loadStats()]);
@@ -153,7 +142,6 @@ const TasksScreen = ({ navigation }) => {
       } else {
         tasksData = await tasksAPI.getTasks(params);
       }
-
       const formatted = tasksData.map(task => ({
         ...task,
         priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
@@ -164,7 +152,6 @@ const TasksScreen = ({ navigation }) => {
         recurrenceType: task.recurrenceType ?? task.recurrence_type ?? task.recurrencetype ?? null,
         focusSessions: task.focusSessions || 0,
       }));
-
       setTasks(formatted);
       if (loading) checkOverdueTasks(formatted);
       setLoading(false);
@@ -298,9 +285,7 @@ const TasksScreen = ({ navigation }) => {
   const handleEditTask = (task) => {
     const dateStr = task.date ? task.date.split('T')[0] : null;
     const deadlineRaw = task.deadline ? task.deadline.split('T')[0] : null;
-    // Если deadline совпадает с date или отсутствует — считаем «не задан» (null)
     const effectiveDeadline = (deadlineRaw && deadlineRaw !== dateStr) ? deadlineRaw : null;
-
     setNewTask({
       title: task.title,
       date: dateStr || new Date().toISOString().split('T')[0],
@@ -312,6 +297,7 @@ const TasksScreen = ({ navigation }) => {
       recurrenceType: task.recurrenceType ?? null,
     });
     setEditingTask(task);
+    // Раскрываем доп. настройки автоматически только если есть что показывать
     setShowAdvancedSettings(!!(task.time || task.isRecurring || task.recurrenceType || effectiveDeadline));
     setShowAddModal(true);
   };
@@ -368,13 +354,10 @@ const TasksScreen = ({ navigation }) => {
     return 0;
   });
 
-
-  // === РЕНДЕР ЗАДАЧИ ===
   const renderTask = ({ item }) => {
     const isExpanded = expandedTasks[item.id];
     const taskSubtasks = subtasks[item.id] || [];
     const isLoadingSubtasks = loadingSubtasks[item.id];
-
     const getPriorityColor = () => ({ high: colors.danger1, medium: colors.accent1, low: colors.ok1 }[item.priority] || colors.textMuted);
     const taskStatus = getTaskStatus(item);
     const getStatusColor = () => {
@@ -431,7 +414,6 @@ const TasksScreen = ({ navigation }) => {
                 {item.completed && <Text style={styles.checkmark}>✓</Text>}
               </View>
             </TouchableOpacity>
-
             <View style={styles.taskContent}>
               <Text style={[styles.taskTitle, { color: item.completed ? colors.textMuted : colors.textMain, paddingRight: 30 }]} numberOfLines={isExpanded ? 0 : 2}>
                 {item.title}
@@ -453,7 +435,6 @@ const TasksScreen = ({ navigation }) => {
                 )}
               </View>
             </View>
-
             <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); handleEditTask(item); }}>
               <Text style={{ fontSize: 16 }}>✏️</Text>
             </TouchableOpacity>
@@ -480,14 +461,12 @@ const TasksScreen = ({ navigation }) => {
     );
   };
 
-
   if (loading) return <Background><View style={styles.centerContainer}><ActivityIndicator size="large" color={colors.accent1} /></View></Background>;
 
   return (
     <Background>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.container}>
-
           <View style={[styles.header, { backgroundColor: colors.surface }]}>
             <Text style={[styles.headerTitle, { color: colors.accentText }]}>МОИ ЗАДАЧИ</Text>
             <TouchableOpacity onPress={() => setShowMonthPicker(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -543,15 +522,18 @@ const TasksScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={[styles.fab, { backgroundColor: colors.accent1 }]}
-            onPress={() => { setNewTask(emptyTask()); setEditingTask(null); setShowAdvancedSettings(false); setShowAddModal(true); }}
+            onPress={() => {
+              setNewTask(emptyTask());
+              setEditingTask(null);
+              // Доп. настройки скрыты по умолчанию
+              setShowAdvancedSettings(false);
+              setShowAddModal(true);
+            }}
           >
             <Text style={[styles.fabIcon, { color: colors.background }]}>+</Text>
           </TouchableOpacity>
         </View>
       </GestureHandlerRootView>
-
-
-      {/* ========== МОДАЛКИ ========== */}
 
       {focusTask && (
         <FocusSessionModal
@@ -585,10 +567,8 @@ const TasksScreen = ({ navigation }) => {
         </Modal>
       )}
 
-      {/* ===== МОДАЛКА ДОБАВЛЕНИЯ/РЕДАКТИРОВАНИЯ ===== */}
       {showAddModal && (
         <Modal visible onClose={() => setShowAddModal(false)} title={editingTask ? 'Редактировать' : 'Новая задача'}>
-
           <Input
             label="Название"
             placeholder="Например: Купить продукты"
@@ -602,7 +582,6 @@ const TasksScreen = ({ navigation }) => {
             onChangeDate={(d) => setNewTask(p => ({ ...p, date: d }))}
           />
 
-          {/* Приоритет */}
           <View style={styles.formGroup}>
             <Text style={[styles.formLabel, { color: colors.textMain }]}>Приоритет</Text>
             <View style={styles.priorityRow}>
@@ -617,7 +596,6 @@ const TasksScreen = ({ navigation }) => {
             </View>
           </View>
 
-          {/* Доп. настройки */}
           <TouchableOpacity
             style={[styles.advancedToggle, { borderColor: colors.borderSubtle }]}
             onPress={() => setShowAdvancedSettings(p => !p)}
@@ -635,13 +613,11 @@ const TasksScreen = ({ navigation }) => {
                 onChangeDate={(d) => setNewTask(p => ({ ...p, deadline: d }))}
                 allowClear
               />
-
               <TimePicker
                 label="Точное время (необязательно)"
                 value={newTask.time}
                 onChangeTime={(t) => setNewTask(p => ({ ...p, time: t }))}
               />
-
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.textMain }]}>Повторение</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -664,7 +640,6 @@ const TasksScreen = ({ navigation }) => {
             </View>
           )}
 
-          {/* Кнопка «Стоп повторений» — вне доп. настроек, видна если задача recurring */}
           {editingTask && !!(editingTask.isRecurring || editingTask.recurrenceType) && (
             <TouchableOpacity
               style={[styles.stopRecurringBtn, { borderColor: colors.accent1, marginTop: 12 }]}
@@ -681,12 +656,10 @@ const TasksScreen = ({ navigation }) => {
                 if (!newTask.title.trim()) { Alert.alert('Ошибка', 'Название не может быть пустым'); return; }
                 try {
                   setLoading(true);
-                  // deadline: если пользователь явно не задал — отправляем null
-                  // Сервер сам знает что делать (для цикличных задач deadline не нужен)
                   const payload = {
                     title: newTask.title,
                     date: newTask.date,
-                    deadline: newTask.deadline || null,  // null если не выбран
+                    deadline: newTask.deadline || null,
                     time: newTask.time,
                     priority: newTask.priority,
                     comment: newTask.comment || '',
@@ -717,7 +690,6 @@ const TasksScreen = ({ navigation }) => {
               <Text style={{ color: colors.danger1, textAlign: 'center' }}>🗑️ Удалить задачу</Text>
             </TouchableOpacity>
           )}
-
           <View style={{ height: 20 }} />
         </Modal>
       )}
@@ -773,11 +745,9 @@ const TasksScreen = ({ navigation }) => {
           </View>
         </Modal>
       )}
-
     </Background>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

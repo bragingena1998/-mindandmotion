@@ -2,7 +2,7 @@
 import React from 'react';
 import {
   View, Text, Modal as RNModal, StyleSheet,
-  TouchableOpacity, ScrollView, TouchableWithoutFeedback,
+  TouchableOpacity, ScrollView, Pressable,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -16,42 +16,38 @@ const Modal = ({ visible, onClose, title, children }) => {
       animationType="fade"
       onRequestClose={onClose}
     >
-      {/* Тап по фону — закрывает */}
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.backdrop}>
-          {/* Тап внутри — не проваливает, но не поглощает gesture-события */}
-          <TouchableWithoutFeedback onPress={() => {}}>
-            <View style={styles.modalWrapper}>
-              <View style={[
-                styles.modal,
-                { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333', borderRadius: 20 },
-              ]}>
-                {title && (
-                  <View style={styles.header}>
-                    <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
-                    <TouchableOpacity
-                      style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
-                      onPress={onClose}
-                    >
-                      <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                <ScrollView
-                  style={styles.content}
-                  contentContainerStyle={styles.contentContainer}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  nestedScrollEnabled
+      {/* Фон: тап по пустому месту — закрывает */}
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        {/* Контент: stopPropagation без перехвата gesture */}
+        <Pressable style={styles.modalWrapper}>
+          <View style={[
+            styles.modal,
+            { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333', borderRadius: 20 },
+          ]}>
+            {title && (
+              <View style={styles.header}>
+                <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
+                <TouchableOpacity
+                  style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
+                  onPress={onClose}
                 >
-                  {children}
-                </ScrollView>
+                  <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
+                </TouchableOpacity>
               </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+            )}
+
+            <ScrollView
+              style={styles.content}
+              contentContainerStyle={styles.contentContainer}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+            >
+              {children}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Pressable>
     </RNModal>
   );
 };
@@ -87,11 +83,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    maxWidth: '80%',
+    fontSize: 18, fontWeight: '700', textTransform: 'uppercase',
+    letterSpacing: 1, maxWidth: '80%',
   },
   closeButton: {
     width: 32, height: 32, borderRadius: 16, borderWidth: 1,
