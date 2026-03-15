@@ -235,11 +235,7 @@ async function initializeDB() {
       const [columns] = await pool.query("SHOW COLUMNS FROM tasks LIKE 'folder_id'");
       if (columns.length === 0) {
         console.log('🔄 Adding folder_id column to tasks table...');
-        await pool.query(`
-          ALTER TABLE tasks 
-          ADD COLUMN folder_id INT DEFAULT NULL,
-          ADD FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL
-        `);
+        await pool.query(`ALTER TABLE tasks ADD COLUMN folder_id INT DEFAULT NULL`);
         console.log('✅ Column folder_id added successfully');
       }
     } catch (err) {
@@ -805,7 +801,7 @@ app.put('/api/habits/:id/monthly-config', authenticateToken, async (req, res) =>
 app.get('/api/folders', authenticateToken, async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT * FROM folders WHERE user_id = ? ORDER BY order_index ASC, id ASC',
+      'SELECT id, user_id, name, icon, order_index, created_at FROM folders WHERE user_id = ? ORDER BY order_index ASC, id ASC',
       [req.userId]
     );
     res.json(rows);
@@ -827,11 +823,12 @@ app.post('/api/folders', authenticateToken, async (req, res) => {
     );
     const nextOrder = (maxRows[0]?.maxOrder || 0) + 1;
     
+    const folderIcon = icon || '📁';
     const [result] = await pool.query(
       'INSERT INTO folders (user_id, name, icon, order_index) VALUES (?, ?, ?, ?)',
-      [req.userId, name.trim(), icon || '📁', nextOrder]
+      [req.userId, name.trim(), folderIcon, nextOrder]
     );
-    res.json({ id: result.insertId, user_id: req.userId, name: name.trim(), icon: icon || '📁', order_index: nextOrder });
+    res.json({ id: result.insertId, user_id: req.userId, name: name.trim(), icon: folderIcon, order_index: nextOrder });
   } catch (err) {
     console.error('Create folder error:', err);
     res.status(500).json({ error: err.message });
@@ -870,7 +867,7 @@ app.put('/api/folders/reorder', authenticateToken, async (req, res) => {
   }
 });
 
-// Редактировать папку
+// Редактировать папку (название и/или иконка)
 app.put('/api/folders/:id', authenticateToken, async (req, res) => {
   try {
     const folderId = req.params.id;
@@ -896,7 +893,7 @@ app.put('/api/folders/:id', authenticateToken, async (req, res) => {
     );
 
     const [updated] = await pool.query(
-      'SELECT * FROM folders WHERE id = ? AND user_id = ?',
+      'SELECT id, user_id, name, icon, order_index, created_at FROM folders WHERE id = ? AND user_id = ?',
       [folderId, req.userId]
     );
 
@@ -910,7 +907,6 @@ app.put('/api/folders/:id', authenticateToken, async (req, res) => {
 // Удалить папку
 app.delete('/api/folders/:id', authenticateToken, async (req, res) => {
   try {
-    // Безопасно отвязываем задачи перед удалением
     await pool.query('UPDATE tasks SET folder_id = NULL WHERE folder_id = ? AND user_id = ?', [req.params.id, req.userId]);
     await pool.query('DELETE FROM folders WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
     res.json({ success: true, message: 'Папка удалена' });
@@ -968,7 +964,8 @@ app.get('/api/tasks', authenticateToken, async (req, res) => {
       recurrenceType: row.recurrence_type,
       recurrenceValue: row.recurrence_value,
       templateId: row.template_id,
-      folderId: row.folder_id
+      folderId: row.folder_id,
+      time: row.time || null
     }));
 
     res.json(formatted);
@@ -1008,15 +1005,15 @@ app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
 app.post('/api/tasks', authenticateToken, async (req, res) => {
   try {
     const {
-      date, deadline, title, priority, comment, done, doneDate,
+      date, time, deadline, title, priority, comment, done, doneDate,
       focusSessions, isRecurring, recurrenceType, recurrenceValue,
       isGenerated, templateId, folderId
     } = req.body;
 
     const [result] = await pool.query(
-      `INSERT INTO tasks (user_id, date, deadline, title, priority, comment, done, done_date, focus_sessions, is_recurring, recurrence_type, recurrence_value, is_generated, template_id, folder_id) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.userId, date, deadline || null, title, priority || 2, comment || '', done ? 1 : 0,
+      `INSERT INTO tasks (user_id, date, time, deadline, title, priority, comment, done, done_date, focus_sessions, is_recurring, recurrence_type, recurrence_value, is_generated, template_id, folder_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.userId, date, time || null, deadline || null, title, priority || 2, comment || '', done ? 1 : 0,
        doneDate || null, focusSessions || 0, isRecurring ? 1 : 0,
        recurrenceType || null, recurrenceValue || null, isGenerated ? 1 : 0, templateId || null, folderId || null]
     );
@@ -1037,7 +1034,8 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
       recurrenceType: row.recurrence_type,
       recurrenceValue: row.recurrence_value,
       templateId: row.template_id,
-      folderId: row.folder_id
+      folderId: row.folder_id,
+      time: row.time || null
     };
 
     console.log('✅ Task created:', { id: newTask.id, title: newTask.title });
@@ -1052,7 +1050,7 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
 app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
   const taskId = req.params.id;
   const {
-    date, deadline, title, priority, comment, done, doneDate,
+    date, time, deadline, title, priority, comment, done, doneDate,
     focusSessions, isRecurring, recurrenceType, recurrenceValue,
     isGenerated, templateId, folderId
   } = req.body;
@@ -1063,11 +1061,11 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
     const oldTask = rows[0];
 
     await pool.query(
-      `UPDATE tasks SET date=?, deadline=?, title=?, priority=?, comment=?, done=?, done_date=?, 
+      `UPDATE tasks SET date=?, time=?, deadline=?, title=?, priority=?, comment=?, done=?, done_date=?, 
        focus_sessions=?, is_recurring=?, recurrence_type=?, recurrence_value=?, is_generated=?, template_id=?, folder_id=?
        WHERE id=? AND user_id=?`,
       [
-        date, deadline || null, title, priority || 2, comment || '', done ? 1 : 0,
+        date, time || null, deadline || null, title, priority || 2, comment || '', done ? 1 : 0,
         doneDate || null, focusSessions || 0, isRecurring ? 1 : 0,
         recurrenceType || null, recurrenceValue || null,
         isGenerated ? 1 : 0, templateId || null, folderId || null,
@@ -1075,7 +1073,7 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
       ]
     );
 
-    // Логика цикличности: создаём следующую копию если задача только что выполнена
+    // Логика цикличности
     if (isRecurring && done && !oldTask.done) {
       let nextDate = new Date(date);
 
@@ -1109,9 +1107,9 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
       const nextDateStr = nextDate.toISOString().split('T')[0];
 
       await pool.query(
-        `INSERT INTO tasks (user_id, date, deadline, title, priority, comment, done, focus_sessions, is_recurring, recurrence_type, recurrence_value, is_generated, template_id, folder_id)
-         VALUES (?, ?, ?, ?, ?, ?, 0, 0, 1, ?, ?, 1, ?, ?)`,
-        [req.userId, nextDateStr, deadline || null, title, priority || 2, comment || '', recurrenceType, recurrenceValue || null, taskId, folderId || null]
+        `INSERT INTO tasks (user_id, date, time, deadline, title, priority, comment, done, focus_sessions, is_recurring, recurrence_type, recurrence_value, is_generated, template_id, folder_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 1, ?, ?, 1, ?, ?)`,
+        [req.userId, nextDateStr, time || null, deadline || null, title, priority || 2, comment || '', recurrenceType, recurrenceValue || null, taskId, folderId || null]
       );
 
       console.log(`♻️ Цикличная задача создана на ${nextDateStr}`);
@@ -1124,7 +1122,7 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// PUT /api/tasks/:id/stop-recurring — остановить повторения
+// PUT /api/tasks/:id/stop-recurring
 app.put('/api/tasks/:id/stop-recurring', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -1143,7 +1141,7 @@ app.put('/api/tasks/:id/stop-recurring', authenticateToken, async (req, res) => 
   }
 });
 
-// POST /api/tasks/:id/focus — добавить фокус-сессию
+// POST /api/tasks/:id/focus
 app.post('/api/tasks/:id/focus', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -1185,7 +1183,7 @@ app.delete('/api/tasks/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/tasks/sync — массовое обновление задач
+// POST /api/tasks/sync
 app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
   try {
     const { tasks } = req.body;
@@ -1206,12 +1204,12 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
       if (existing.length > 0) {
         await pool.query(
           `UPDATE tasks SET
-            date = ?, deadline = ?, title = ?, priority = ?, comment = ?,
+            date = ?, time = ?, deadline = ?, title = ?, priority = ?, comment = ?,
             done = ?, done_date = ?, focus_sessions = ?,
             is_recurring = ?, recurrence_type = ?, recurrence_value = ?, folder_id = ?
           WHERE id = ? AND user_id = ?`,
           [
-            task.date, task.deadline || null, task.title, task.priority || 2,
+            task.date, task.time || null, task.deadline || null, task.title, task.priority || 2,
             task.comment || '', task.done ? 1 : 0, task.doneDate || null,
             task.focusSessions || 0, task.isRecurring ? 1 : 0,
             task.recurrenceType || null, task.recurrenceValue || null,
@@ -1221,13 +1219,13 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
       } else {
         await pool.query(
           `INSERT INTO tasks (
-            id, user_id, date, deadline, title, priority, comment,
+            id, user_id, date, time, deadline, title, priority, comment,
             done, done_date, focus_sessions,
             is_recurring, recurrence_type, recurrence_value,
             is_generated, template_id, folder_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            task.id, userId, task.date, task.deadline || null, task.title,
+            task.id, userId, task.date, task.time || null, task.deadline || null, task.title,
             task.priority || 2, task.comment || '', task.done ? 1 : 0,
             task.doneDate || null, task.focusSessions || 0,
             task.isRecurring ? 1 : 0, task.recurrenceType || null,
@@ -1249,7 +1247,7 @@ app.post('/api/tasks/sync', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/tasks/delete — альтернативный endpoint удаления
+// POST /api/tasks/delete
 app.post('/api/tasks/delete', authenticateToken, async (req, res) => {
   try {
     const { id } = req.body;
@@ -1334,7 +1332,6 @@ app.delete('/api/subtasks/:id', authenticateToken, async (req, res) => {
 
 // ==================== EMAIL VERIFICATION API ====================
 
-// Отправить код подтверждения на email
 app.post('/api/send-verification-code', async (req, res) => {
   const { name, email, birthdate, password } = req.body;
 
@@ -1563,7 +1560,6 @@ app.post('/api/verify-code', async (req, res) => {
 
 // ==================== PASSWORD RESET API ====================
 
-// Отправить код для сброса пароля
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body;
 
@@ -1637,7 +1633,6 @@ app.post('/api/forgot-password', async (req, res) => {
   }
 });
 
-// Сбросить пароль
 app.post('/api/reset-password', async (req, res) => {
   const { email, code, new_password } = req.body;
   const newPassword = new_password;
