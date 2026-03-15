@@ -117,6 +117,8 @@ const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete 
 });
 
 // ==================== DRAGGABLE TASK ITEM ====================
+// ВАЖНО: PanGestureHandler снаружи, LongPressGestureHandler внутри.
+// Pan всегда enabled, но двигаем призрак только если dragTaskRef.current установлен.
 
 const DraggableTaskItem = React.memo(({
   item,
@@ -185,94 +187,97 @@ const DraggableTaskItem = React.memo(({
   };
 
   return (
-    <LongPressGestureHandler
-      ref={longPressRef}
-      simultaneousHandlers={panRef}
-      minDurationMs={400}
-      onHandlerStateChange={({ nativeEvent }) => {
-        if (nativeEvent.state === State.ACTIVE) {
-          onLongPressStart(item, nativeEvent.absoluteX, nativeEvent.absoluteY);
-        }
-      }}
+    // PanGestureHandler СНАРУЖИ — всегда слушает движение
+    <PanGestureHandler
+      ref={panRef}
+      simultaneousHandlers={longPressRef}
+      onGestureEvent={onPanGestureEvent}
+      onHandlerStateChange={onPanStateChange}
     >
-      <PanGestureHandler
-        ref={panRef}
-        simultaneousHandlers={longPressRef}
-        enabled={isDraggingThis}
-        onGestureEvent={onPanGestureEvent}
-        onHandlerStateChange={onPanStateChange}
-      >
-        <Animated.View style={{ marginBottom: 12, opacity: isDraggingThis ? 0.4 : 1 }}>
-          <Swipeable
-            ref={(ref) => { swipeableRefs.current[item.id] = ref; }}
-            renderLeftActions={renderLeftActions}
-            renderRightActions={renderRightActions}
-            onSwipeableOpen={onSwipeableOpen}
-            containerStyle={{ borderRadius: 12, overflow: 'hidden' }}
-            friction={1.5}
-            leftThreshold={60}
-            rightThreshold={60}
-            enabled={!dragTask}
-          >
-            <TouchableOpacity
-              style={[styles.taskItem, { backgroundColor: colors.surface, borderColor: getStatusColor(), borderWidth: 2, opacity: item.completed ? 0.6 : 1, marginBottom: 0, borderRadius: 12 }]}
-              activeOpacity={0.7}
-              onPress={() => !dragTask && toggleExpand(item.id)}
+      <Animated.View style={{ marginBottom: 12, opacity: isDraggingThis ? 0.4 : 1 }}>
+        {/* LongPressGestureHandler ВНУТРИ — активирует drag */}
+        <LongPressGestureHandler
+          ref={longPressRef}
+          simultaneousHandlers={panRef}
+          minDurationMs={400}
+          onHandlerStateChange={({ nativeEvent }) => {
+            if (nativeEvent.state === State.ACTIVE) {
+              onLongPressStart(item, nativeEvent.absoluteX, nativeEvent.absoluteY);
+            }
+          }}
+        >
+          <Animated.View>
+            <Swipeable
+              ref={(ref) => { swipeableRefs.current[item.id] = ref; }}
+              renderLeftActions={renderLeftActions}
+              renderRightActions={renderRightActions}
+              onSwipeableOpen={onSwipeableOpen}
+              containerStyle={{ borderRadius: 12, overflow: 'hidden' }}
+              friction={1.5}
+              leftThreshold={60}
+              rightThreshold={60}
+              enabled={!dragTask}
             >
-              <TouchableOpacity style={styles.checkboxArea} onPress={(e) => { e.stopPropagation(); if (!dragTask) toggleTask(item.id); }}>
-                <View style={[styles.checkbox, { borderColor: getStatusColor(), backgroundColor: item.completed ? getStatusColor() : 'transparent' }]}>
-                  {item.completed && <Text style={styles.checkmark}>✓</Text>}
+              <TouchableOpacity
+                style={[styles.taskItem, { backgroundColor: colors.surface, borderColor: getStatusColor(), borderWidth: 2, opacity: item.completed ? 0.6 : 1, marginBottom: 0, borderRadius: 12 }]}
+                activeOpacity={0.7}
+                onPress={() => !dragTask && toggleExpand(item.id)}
+              >
+                <TouchableOpacity style={styles.checkboxArea} onPress={(e) => { e.stopPropagation(); if (!dragTask) toggleTask(item.id); }}>
+                  <View style={[styles.checkbox, { borderColor: getStatusColor(), backgroundColor: item.completed ? getStatusColor() : 'transparent' }]}>
+                    {item.completed && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                </TouchableOpacity>
+                <View style={styles.taskContent}>
+                  <Text style={[styles.taskTitle, { color: item.completed ? colors.textMuted : colors.textMain, paddingRight: 30 }]} numberOfLines={isExpanded ? 0 : 2}>
+                    {item.title}
+                  </Text>
+                  {!item.completed && (
+                    <View style={styles.statusBadge}>
+                      {taskStatus === 'overdue' && <Text style={[styles.statusText, { color: colors.danger1 }]}>🔥 ПРОСРОЧЕНО</Text>}
+                      {taskStatus === 'today' && <Text style={[styles.statusText, { color: colors.ok1 }]}>⚡ СЕГОДНЯ</Text>}
+                      {taskStatus === 'future' && <Text style={[styles.statusText, { color: colors.textMuted }]}>📅 В ПЛАНЕ</Text>}
+                    </View>
+                  )}
+                  <View style={styles.taskMeta}>
+                    <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
+                      <Text style={styles.priorityText}>{item.priority === 'high' ? 'Высокий' : item.priority === 'medium' ? 'Средний' : 'Низкий'}</Text>
+                    </View>
+                    <Text style={[styles.taskDate, { color: colors.textMuted }]}>{formatTaskDate(item)}</Text>
+                    {((item.subtasks_count > 0) || taskSubtasks.length > 0) && (
+                      <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>📋 {taskSubtasks.length > 0 ? taskSubtasks.length : item.subtasks_count}</Text>
+                    )}
+                    {folder && (
+                      <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>{folder.icon} {folder.name}</Text>
+                    )}
+                  </View>
+                </View>
+                <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); if (!dragTask) handleEditTask(item); }}>
+                  <Text style={{ fontSize: 16 }}>✏️</Text>
+                </TouchableOpacity>
+                <View style={{ paddingLeft: 8, justifyContent: 'flex-end', paddingBottom: 5 }}>
+                  <Text style={{ fontSize: 12, color: colors.textMuted }}>{isExpanded ? '▲' : '▼'}</Text>
                 </View>
               </TouchableOpacity>
-              <View style={styles.taskContent}>
-                <Text style={[styles.taskTitle, { color: item.completed ? colors.textMuted : colors.textMain, paddingRight: 30 }]} numberOfLines={isExpanded ? 0 : 2}>
-                  {item.title}
-                </Text>
-                {!item.completed && (
-                  <View style={styles.statusBadge}>
-                    {taskStatus === 'overdue' && <Text style={[styles.statusText, { color: colors.danger1 }]}>🔥 ПРОСРОЧЕНО</Text>}
-                    {taskStatus === 'today' && <Text style={[styles.statusText, { color: colors.ok1 }]}>⚡ СЕГОДНЯ</Text>}
-                    {taskStatus === 'future' && <Text style={[styles.statusText, { color: colors.textMuted }]}>📅 В ПЛАНЕ</Text>}
-                  </View>
-                )}
-                <View style={styles.taskMeta}>
-                  <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
-                    <Text style={styles.priorityText}>{item.priority === 'high' ? 'Высокий' : item.priority === 'medium' ? 'Средний' : 'Низкий'}</Text>
-                  </View>
-                  <Text style={[styles.taskDate, { color: colors.textMuted }]}>{formatTaskDate(item)}</Text>
-                  {((item.subtasks_count > 0) || taskSubtasks.length > 0) && (
-                    <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>📋 {taskSubtasks.length > 0 ? taskSubtasks.length : item.subtasks_count}</Text>
-                  )}
-                  {folder && (
-                    <Text style={{ fontSize: 10, color: colors.textMuted, marginLeft: 4 }}>{folder.icon} {folder.name}</Text>
-                  )}
-                </View>
-              </View>
-              <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); if (!dragTask) handleEditTask(item); }}>
-                <Text style={{ fontSize: 16 }}>✏️</Text>
-              </TouchableOpacity>
-              <View style={{ paddingLeft: 8, justifyContent: 'flex-end', paddingBottom: 5 }}>
-                <Text style={{ fontSize: 12, color: colors.textMuted }}>{isExpanded ? '▲' : '▼'}</Text>
-              </View>
-            </TouchableOpacity>
-          </Swipeable>
+            </Swipeable>
 
-          {isExpanded && (
-            <View style={[styles.subtasksContainer, { backgroundColor: colors.surface }]}>
-              {isLoadingSubtasks ? <ActivityIndicator size="small" color={colors.accent1} /> : (
-                <>
-                  {taskSubtasks.length === 0 && <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 8 }}>Нет подзадач</Text>}
-                  {taskSubtasks.map(st => <SubtaskItem key={st.id} subtask={st} parentId={item.id} colors={colors} onToggle={toggleSubtask} onDelete={deleteSubtask} />)}
-                  <TouchableOpacity style={styles.addSubtaskBtn} onPress={() => { setCurrentTaskForSubtask(item.id); setShowAddSubtaskModal(true); }}>
-                    <Text style={[styles.addSubtaskBtnText, { color: colors.accent1 }]}>+ Добавить подзадачу</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          )}
-        </Animated.View>
-      </PanGestureHandler>
-    </LongPressGestureHandler>
+            {isExpanded && (
+              <View style={[styles.subtasksContainer, { backgroundColor: colors.surface }]}>
+                {isLoadingSubtasks ? <ActivityIndicator size="small" color={colors.accent1} /> : (
+                  <>
+                    {taskSubtasks.length === 0 && <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 8 }}>Нет подзадач</Text>}
+                    {taskSubtasks.map(st => <SubtaskItem key={st.id} subtask={st} parentId={item.id} colors={colors} onToggle={toggleSubtask} onDelete={deleteSubtask} />)}
+                    <TouchableOpacity style={styles.addSubtaskBtn} onPress={() => { setCurrentTaskForSubtask(item.id); setShowAddSubtaskModal(true); }}>
+                      <Text style={[styles.addSubtaskBtnText, { color: colors.accent1 }]}>+ Добавить подзадачу</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            )}
+          </Animated.View>
+        </LongPressGestureHandler>
+      </Animated.View>
+    </PanGestureHandler>
   );
 });
 
@@ -422,7 +427,6 @@ const TasksScreen = ({ navigation }) => {
     }
   };
 
-  // Сортировка папки вверх/вниз
   const handleMoveFolderUp = async (folder) => {
     const idx = folders.findIndex(f => f.id === folder.id);
     if (idx <= 0) return;
@@ -462,7 +466,7 @@ const TasksScreen = ({ navigation }) => {
     setShowFolderActionModal(true);
   };
 
-  // ==================== DRAG & DROP (via GestureHandler) ====================
+  // ==================== DRAG & DROP ====================
 
   const onLongPressStart = useCallback((task, absX, absY) => {
     dragTaskRef.current = task;
@@ -471,6 +475,7 @@ const TasksScreen = ({ navigation }) => {
   }, [dragAnim]);
 
   const onPanGestureEvent = useCallback(({ nativeEvent }) => {
+    // Двигаем призрак только если drag активен
     if (!dragTaskRef.current) return;
     const { absoluteX: pageX, absoluteY: pageY } = nativeEvent;
     dragAnim.setValue({ x: pageX - 160, y: pageY - 30 });
@@ -495,6 +500,8 @@ const TasksScreen = ({ navigation }) => {
   const onPanStateChange = useCallback(async ({ nativeEvent }) => {
     if (nativeEvent.state === State.END || nativeEvent.state === State.CANCELLED || nativeEvent.state === State.FAILED) {
       const task = dragTaskRef.current;
+      if (!task) return; // не было drag — игнорируем
+
       const targetFolderId = hoveredFolderRef.current;
 
       dragTaskRef.current = null;
@@ -502,7 +509,7 @@ const TasksScreen = ({ navigation }) => {
       setHoveredFolder('none');
       hoveredFolderRef.current = 'none';
 
-      if (!task || targetFolderId === 'none') return;
+      if (targetFolderId === 'none') return;
       if (targetFolderId === task.folderId) return;
 
       try {
@@ -1286,7 +1293,6 @@ const TasksScreen = ({ navigation }) => {
           onClose={() => { setShowFolderActionModal(false); setSelectedFolderForAction(null); }}
           title={`${selectedFolderForAction.icon} ${selectedFolderForAction.name}`}
         >
-          {/* Кнопки сортировки */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
             <TouchableOpacity
               style={[styles.folderActionBtn, { flex: 1, borderColor: colors.borderSubtle, backgroundColor: colors.surface }]}
