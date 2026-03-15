@@ -151,7 +151,8 @@ const TasksScreen = ({ navigation }) => {
       setNewFolderEmoji('📁');
       setShowCreateFolderModal(false);
     } catch (err) {
-      Alert.alert('Ошибка', 'Не удалось создать папку');
+      console.error('createFolder error:', err?.response?.data || err.message);
+      Alert.alert('Ошибка', 'Не удалось создать папку: ' + (err?.response?.data?.error || err.message));
     }
   };
 
@@ -583,7 +584,7 @@ const TasksScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* ПАПКИ — горизонтальный список (под фильтрами) */}
+          {/* ПАПКИ — горизонтальный список (всегда, кнопка + Папка есть всегда) */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -960,18 +961,16 @@ const styles = StyleSheet.create({
   taskDate: { fontSize: 11 },
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
   emptyText: { fontSize: 16 },
-  // Статистика — убираем лишний padding снизу
   statsContainer: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 8 },
   statCard: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1, alignItems: 'center', elevation: 4 },
   statNumber: { fontSize: 28, fontWeight: '700', marginBottom: 4 },
   statLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.08 },
-  // Чипы фильтра
   chipsContainer: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   chipText: { fontSize: 12, fontWeight: '600' },
-  // Папки — под чипами
-  foldersScrollWrapper: { flexShrink: 0 },
-  foldersScroll: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  // Папки: убираем лишние отступы — flexShrink:0 и минимальный paddingVertical
+  foldersScrollWrapper: { flexShrink: 0, flexGrow: 0 },
+  foldersScroll: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 6, gap: 8, flexDirection: 'row', alignItems: 'center' },
   folderChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, flexShrink: 0 },
   folderChipText: { fontSize: 13, fontWeight: '600' },
   formGroup: { marginBottom: 16 },
