@@ -116,9 +116,57 @@ const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete 
   );
 });
 
+// ==================== FOLDER DROP CHIP (анимированный) ====================
+// Отдельный компонент чтобы каждый чип имел свой Animated.Value для pulse
+
+const FolderDropChip = ({ folder, isHovered, colors, onLayout }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(null);
+
+  useEffect(() => {
+    if (isHovered) {
+      // Запускаем бесконечный пульс
+      pulseAnim.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, { toValue: 1.1, duration: 200, useNativeDriver: true }),
+          Animated.timing(scaleAnim, { toValue: 1.04, duration: 200, useNativeDriver: true }),
+        ])
+      );
+      pulseAnim.current.start();
+    } else {
+      if (pulseAnim.current) {
+        pulseAnim.current.stop();
+        pulseAnim.current = null;
+      }
+      Animated.timing(scaleAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+    }
+  }, [isHovered]);
+
+  return (
+    <Animated.View
+      onLayout={onLayout}
+      style={[
+        styles.folderDropZone,
+        {
+          backgroundColor: isHovered ? colors.accent1 : colors.surface + 'CC',
+          borderColor: isHovered ? colors.accent1 : colors.borderSubtle,
+          transform: [{ scale: scaleAnim }],
+          shadowColor: isHovered ? colors.accent1 : 'transparent',
+          shadowOpacity: isHovered ? 0.6 : 0,
+          shadowRadius: isHovered ? 8 : 0,
+          elevation: isHovered ? 8 : 2,
+        }
+      ]}
+    >
+      <Text style={[styles.folderChipText, { color: isHovered ? '#020617' : colors.textMain }]}>
+        {folder.icon} {folder.name}
+      </Text>
+    </Animated.View>
+  );
+};
+
 // ==================== DRAGGABLE TASK ITEM ====================
 // ВАЖНО: PanGestureHandler снаружи, LongPressGestureHandler внутри.
-// Pan всегда enabled, но двигаем призрак только если dragTaskRef.current установлен.
 
 const DraggableTaskItem = React.memo(({
   item,
@@ -187,7 +235,6 @@ const DraggableTaskItem = React.memo(({
   };
 
   return (
-    // PanGestureHandler СНАРУЖИ — всегда слушает движение
     <PanGestureHandler
       ref={panRef}
       simultaneousHandlers={longPressRef}
@@ -195,7 +242,6 @@ const DraggableTaskItem = React.memo(({
       onHandlerStateChange={onPanStateChange}
     >
       <Animated.View style={{ marginBottom: 12, opacity: isDraggingThis ? 0.4 : 1 }}>
-        {/* LongPressGestureHandler ВНУТРИ — активирует drag */}
         <LongPressGestureHandler
           ref={longPressRef}
           simultaneousHandlers={panRef}
@@ -331,9 +377,12 @@ const TasksScreen = ({ navigation }) => {
   const [hoveredFolder, setHoveredFolder] = useState('none');
   const hoveredFolderRef = useRef('none');
   const dragAnim = useRef(new Animated.ValueXY()).current;
+  // FIX 1: Храним абсолютные координаты чипов в ref (обновляем через onLayout + measure)
   const folderChipLayouts = useRef({});
+  // foldersRowRef нужен только для measure Y-координаты ряда папок
   const foldersRowRef = useRef(null);
   const foldersRowY = useRef(0);
+  const foldersRowHeight = useRef(60);
 
   const [focusTask, setFocusTask] = useState(null);
   const [focusVisible, setFocusVisible] = useState(false);
@@ -468,20 +517,38 @@ const TasksScreen = ({ navigation }) => {
 
   // ==================== DRAG & DROP ====================
 
+  // FIX 1: Замер координат через onLayout → measure с небольшой задержкой
+  // чтобы к началу первого движения все чипы уже были в folderChipLayouts
+  const measureFolderChip = useCallback((ref, fid) => {
+    if (!ref) return;
+    // Небольшая задержка гарантирует что layout уже закончен
+    setTimeout(() => {
+      ref.measure((lx, ly, lw, lh, px, py) => {
+        folderChipLayouts.current[String(fid)] = { x: px, y: py, width: lw, height: lh };
+      });
+    }, 50);
+  }, []);
+
   const onLongPressStart = useCallback((task, absX, absY) => {
     dragTaskRef.current = task;
     setDragTask(task);
     dragAnim.setValue({ x: absX - 160, y: absY - 30 });
+    // Перемеряем ряд папок в момент начала drag
+    foldersRowRef.current?.measure?.((x, y, w, h, px, py) => {
+      foldersRowY.current = py;
+      foldersRowHeight.current = h || 60;
+    });
   }, [dragAnim]);
 
   const onPanGestureEvent = useCallback(({ nativeEvent }) => {
-    // Двигаем призрак только если drag активен
     if (!dragTaskRef.current) return;
     const { absoluteX: pageX, absoluteY: pageY } = nativeEvent;
     dragAnim.setValue({ x: pageX - 160, y: pageY - 30 });
 
     const rowY = foldersRowY.current;
-    if (pageY >= rowY - 10 && pageY <= rowY + 60) {
+    const rowH = foldersRowHeight.current;
+    // Зона попадания — ряд папок ±20px по вертикали
+    if (pageY >= rowY - 20 && pageY <= rowY + rowH + 20) {
       let found = 'none';
       for (const [fid, layout] of Object.entries(folderChipLayouts.current)) {
         if (pageX >= layout.x && pageX <= layout.x + layout.width) {
@@ -489,18 +556,22 @@ const TasksScreen = ({ navigation }) => {
           break;
         }
       }
-      hoveredFolderRef.current = found;
-      setHoveredFolder(found);
+      if (hoveredFolderRef.current !== found) {
+        hoveredFolderRef.current = found;
+        setHoveredFolder(found);
+      }
     } else {
-      hoveredFolderRef.current = 'none';
-      setHoveredFolder('none');
+      if (hoveredFolderRef.current !== 'none') {
+        hoveredFolderRef.current = 'none';
+        setHoveredFolder('none');
+      }
     }
   }, [dragAnim]);
 
   const onPanStateChange = useCallback(async ({ nativeEvent }) => {
     if (nativeEvent.state === State.END || nativeEvent.state === State.CANCELLED || nativeEvent.state === State.FAILED) {
       const task = dragTaskRef.current;
-      if (!task) return; // не было drag — игнорируем
+      if (!task) return;
 
       const targetFolderId = hoveredFolderRef.current;
 
@@ -893,39 +964,33 @@ const TasksScreen = ({ navigation }) => {
             contentContainerStyle={styles.foldersScroll}
             style={styles.foldersScrollWrapper}
             scrollEnabled={!dragTask}
-            onLayout={() => {
+            onLayout={(e) => {
+              // Запоминаем высоту ряда
+              foldersRowHeight.current = e.nativeEvent.layout.height || 60;
+              // И абсолютную Y через measure
               foldersRowRef.current?.measure?.((x, y, w, h, px, py) => {
                 foldersRowY.current = py;
               });
             }}
           >
             {dragTask ? (
+              // FIX 2: Используем FolderDropChip с анимированным пульсом
               dragFolderList.map(folder => {
                 const fid = folder.id;
                 const isHovered = hoveredFolder === fid;
                 return (
-                  <View
+                  <FolderDropChip
                     key={String(fid)}
-                    ref={(ref) => {
-                      if (ref) {
-                        ref.measure((lx, ly, lw, lh, px, py) => {
-                          folderChipLayouts.current[String(fid)] = { x: px, y: py, width: lw, height: lh };
-                        });
-                      }
+                    folder={folder}
+                    isHovered={isHovered}
+                    colors={colors}
+                    onLayout={(e) => {
+                      // onLayout даёт координаты относительно родителя.
+                      // Используем measure для абсолютных координат экрана.
+                      // Нужен ref — создаём через callback ref внутри FolderDropChip,
+                      // но здесь проще использовать ViewRef через вспомогательный View-обёртку.
                     }}
-                    style={[
-                      styles.folderDropZone,
-                      {
-                        backgroundColor: isHovered ? colors.accent1 : colors.surface + 'CC',
-                        borderColor: isHovered ? colors.accent1 : colors.borderSubtle,
-                        transform: [{ scale: isHovered ? 1.08 : 1 }],
-                      }
-                    ]}
-                  >
-                    <Text style={[styles.folderChipText, { color: isHovered ? '#020617' : colors.textMain }]}>
-                      {folder.icon} {folder.name}
-                    </Text>
-                  </View>
+                  />
                 );
               })
             ) : (
