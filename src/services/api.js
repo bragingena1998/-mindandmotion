@@ -3,7 +3,7 @@ import axios from 'axios';
 import { getToken, removeToken } from './storage';
 import { Platform } from 'react-native';
 
-const BASE_URL = 'http://85.198.96.149:3000/api';
+const BASE_URL = 'http://85.198.96.149:5000/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
