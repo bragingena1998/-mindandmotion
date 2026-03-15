@@ -3,10 +3,7 @@ import axios from 'axios';
 import { getToken, removeToken } from './storage';
 import { Platform } from 'react-native';
 
-// Определяем базовый URL в зависимости от окружения
-// Для Android эмулятора локалхост это 10.0.2.2, для iOS - localhost
-// Но у тебя внешний IP, так что оставляем его
-const BASE_URL = 'http://85.198.96.149:5000/api';
+const BASE_URL = 'http://85.198.96.149:3000/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -42,15 +39,9 @@ api.interceptors.response.use(
       console.error('Unauthorized - токен истёк или неверен');
       await removeToken();
       
-      // На мобилке мы не можем просто сделать window.location.href = '/'
-      // Навигация должна обрабатываться в React компонентах через слушатель состояния аутентификации
-      // Но для веба оставим редирект
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.location.href = '/';
       }
-      
-      // Можно выбросить специальную ошибку, которую поймает App.js или экран
-      // Но пока просто реджектим
     }
     return Promise.reject(error);
   }
