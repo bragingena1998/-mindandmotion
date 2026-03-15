@@ -116,27 +116,42 @@ const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete 
   );
 });
 
-// ==================== FOLDER DROP CHIP (анимированный) ====================
-// Отдельный компонент чтобы каждый чип имел свой Animated.Value для pulse
+// ==================== FOLDER DROP CHIP ====================
+// Каждый чип имеет свой ref для measure абсолютных координат
+// и свой Animated.Value для pulse-анимации при наведении.
 
-const FolderDropChip = ({ folder, isHovered, colors, onLayout }) => {
+const FolderDropChip = React.memo(({ folder, isHovered, colors, onMeasure }) => {
+  const viewRef = useRef(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const pulseAnim = useRef(null);
+  const pulseLoop = useRef(null);
 
+  // При маунте и когда dragTask появляется — замеряем координаты
+  useEffect(() => {
+    if (onMeasure) {
+      // Задержка 80ms гарантирует что layout завершён
+      const timer = setTimeout(() => {
+        viewRef.current?.measure?.((lx, ly, lw, lh, px, py) => {
+          onMeasure(folder.id, { x: px, y: py, width: lw, height: lh });
+        });
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [onMeasure, folder.id]);
+
+  // Pulse-анимация при наведении
   useEffect(() => {
     if (isHovered) {
-      // Запускаем бесконечный пульс
-      pulseAnim.current = Animated.loop(
+      pulseLoop.current = Animated.loop(
         Animated.sequence([
           Animated.timing(scaleAnim, { toValue: 1.1, duration: 200, useNativeDriver: true }),
           Animated.timing(scaleAnim, { toValue: 1.04, duration: 200, useNativeDriver: true }),
         ])
       );
-      pulseAnim.current.start();
+      pulseLoop.current.start();
     } else {
-      if (pulseAnim.current) {
-        pulseAnim.current.stop();
-        pulseAnim.current = null;
+      if (pulseLoop.current) {
+        pulseLoop.current.stop();
+        pulseLoop.current = null;
       }
       Animated.timing(scaleAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
     }
@@ -144,7 +159,7 @@ const FolderDropChip = ({ folder, isHovered, colors, onLayout }) => {
 
   return (
     <Animated.View
-      onLayout={onLayout}
+      ref={viewRef}
       style={[
         styles.folderDropZone,
         {
@@ -152,9 +167,9 @@ const FolderDropChip = ({ folder, isHovered, colors, onLayout }) => {
           borderColor: isHovered ? colors.accent1 : colors.borderSubtle,
           transform: [{ scale: scaleAnim }],
           shadowColor: isHovered ? colors.accent1 : 'transparent',
-          shadowOpacity: isHovered ? 0.6 : 0,
-          shadowRadius: isHovered ? 8 : 0,
-          elevation: isHovered ? 8 : 2,
+          shadowOpacity: isHovered ? 0.7 : 0,
+          shadowRadius: isHovered ? 10 : 0,
+          elevation: isHovered ? 10 : 2,
         }
       ]}
     >
@@ -163,7 +178,7 @@ const FolderDropChip = ({ folder, isHovered, colors, onLayout }) => {
       </Text>
     </Animated.View>
   );
-};
+});
 
 // ==================== DRAGGABLE TASK ITEM ====================
 // ВАЖНО: PanGestureHandler снаружи, LongPressGestureHandler внутри.
@@ -377,12 +392,8 @@ const TasksScreen = ({ navigation }) => {
   const [hoveredFolder, setHoveredFolder] = useState('none');
   const hoveredFolderRef = useRef('none');
   const dragAnim = useRef(new Animated.ValueXY()).current;
-  // FIX 1: Храним абсолютные координаты чипов в ref (обновляем через onLayout + measure)
+  // Абсолютные координаты чипов: { [String(folderId)]: { x, y, width, height } }
   const folderChipLayouts = useRef({});
-  // foldersRowRef нужен только для measure Y-координаты ряда папок
-  const foldersRowRef = useRef(null);
-  const foldersRowY = useRef(0);
-  const foldersRowHeight = useRef(60);
 
   const [focusTask, setFocusTask] = useState(null);
   const [focusVisible, setFocusVisible] = useState(false);
@@ -517,27 +528,18 @@ const TasksScreen = ({ navigation }) => {
 
   // ==================== DRAG & DROP ====================
 
-  // FIX 1: Замер координат через onLayout → measure с небольшой задержкой
-  // чтобы к началу первого движения все чипы уже были в folderChipLayouts
-  const measureFolderChip = useCallback((ref, fid) => {
-    if (!ref) return;
-    // Небольшая задержка гарантирует что layout уже закончен
-    setTimeout(() => {
-      ref.measure((lx, ly, lw, lh, px, py) => {
-        folderChipLayouts.current[String(fid)] = { x: px, y: py, width: lw, height: lh };
-      });
-    }, 50);
+  // Callback для FolderDropChip — сохраняет абсолютные координаты чипа
+  // fid === null → ключ 'null' (папка "Без папки")
+  const onChipMeasure = useCallback((fid, layout) => {
+    folderChipLayouts.current[String(fid)] = layout;
   }, []);
 
   const onLongPressStart = useCallback((task, absX, absY) => {
+    // Сбрасываем координаты чипов — они перемерятся при маунте FolderDropChip
+    folderChipLayouts.current = {};
     dragTaskRef.current = task;
     setDragTask(task);
     dragAnim.setValue({ x: absX - 160, y: absY - 30 });
-    // Перемеряем ряд папок в момент начала drag
-    foldersRowRef.current?.measure?.((x, y, w, h, px, py) => {
-      foldersRowY.current = py;
-      foldersRowHeight.current = h || 60;
-    });
   }, [dragAnim]);
 
   const onPanGestureEvent = useCallback(({ nativeEvent }) => {
@@ -545,26 +547,24 @@ const TasksScreen = ({ navigation }) => {
     const { absoluteX: pageX, absoluteY: pageY } = nativeEvent;
     dragAnim.setValue({ x: pageX - 160, y: pageY - 30 });
 
-    const rowY = foldersRowY.current;
-    const rowH = foldersRowHeight.current;
-    // Зона попадания — ряд папок ±20px по вертикали
-    if (pageY >= rowY - 20 && pageY <= rowY + rowH + 20) {
-      let found = 'none';
-      for (const [fid, layout] of Object.entries(folderChipLayouts.current)) {
-        if (pageX >= layout.x && pageX <= layout.x + layout.width) {
-          found = fid === 'null' ? null : parseInt(fid);
-          break;
-        }
+    // Ищем чип по абсолютным координатам — без привязки к строке,
+    // только X и Y попадают в bounding box чипа
+    let found = 'none';
+    for (const [fid, layout] of Object.entries(folderChipLayouts.current)) {
+      if (
+        pageX >= layout.x &&
+        pageX <= layout.x + layout.width &&
+        pageY >= layout.y - 16 &&
+        pageY <= layout.y + layout.height + 16
+      ) {
+        found = fid === 'null' ? null : parseInt(fid);
+        break;
       }
-      if (hoveredFolderRef.current !== found) {
-        hoveredFolderRef.current = found;
-        setHoveredFolder(found);
-      }
-    } else {
-      if (hoveredFolderRef.current !== 'none') {
-        hoveredFolderRef.current = 'none';
-        setHoveredFolder('none');
-      }
+    }
+
+    if (hoveredFolderRef.current !== found) {
+      hoveredFolderRef.current = found;
+      setHoveredFolder(found);
     }
   }, [dragAnim]);
 
@@ -579,6 +579,7 @@ const TasksScreen = ({ navigation }) => {
       setDragTask(null);
       setHoveredFolder('none');
       hoveredFolderRef.current = 'none';
+      folderChipLayouts.current = {};
 
       if (targetFolderId === 'none') return;
       if (targetFolderId === task.folderId) return;
@@ -958,23 +959,14 @@ const TasksScreen = ({ navigation }) => {
 
           {/* ПАПКИ */}
           <ScrollView
-            ref={foldersRowRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.foldersScroll}
             style={styles.foldersScrollWrapper}
             scrollEnabled={!dragTask}
-            onLayout={(e) => {
-              // Запоминаем высоту ряда
-              foldersRowHeight.current = e.nativeEvent.layout.height || 60;
-              // И абсолютную Y через measure
-              foldersRowRef.current?.measure?.((x, y, w, h, px, py) => {
-                foldersRowY.current = py;
-              });
-            }}
           >
             {dragTask ? (
-              // FIX 2: Используем FolderDropChip с анимированным пульсом
+              // Режим дропа: рендерим FolderDropChip, каждый сам замеряет свои координаты
               dragFolderList.map(folder => {
                 const fid = folder.id;
                 const isHovered = hoveredFolder === fid;
@@ -984,12 +976,7 @@ const TasksScreen = ({ navigation }) => {
                     folder={folder}
                     isHovered={isHovered}
                     colors={colors}
-                    onLayout={(e) => {
-                      // onLayout даёт координаты относительно родителя.
-                      // Используем measure для абсолютных координат экрана.
-                      // Нужен ref — создаём через callback ref внутри FolderDropChip,
-                      // но здесь проще использовать ViewRef через вспомогательный View-обёртку.
-                    }}
+                    onMeasure={onChipMeasure}
                   />
                 );
               })
