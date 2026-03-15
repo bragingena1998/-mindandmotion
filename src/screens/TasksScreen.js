@@ -86,7 +86,7 @@ const TasksScreen = ({ navigation }) => {
 
   // --- Папки ---
   const [folders, setFolders] = useState([]);
-  const [activeFolderId, setActiveFolderId] = useState(null); // null = «Все задачи»
+  const [activeFolderId, setActiveFolderId] = useState(null);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderEmoji, setNewFolderEmoji] = useState('📁');
@@ -160,7 +160,6 @@ const TasksScreen = ({ navigation }) => {
       await foldersAPI.deleteFolder(folder.id);
       setFolders(prev => prev.filter(f => f.id !== folder.id));
       if (activeFolderId === folder.id) setActiveFolderId(null);
-      // Задачи этой папки уже отвязаны на сервере (folder_id = NULL)
       setTasks(prev => prev.map(t => t.folderId === folder.id ? { ...t, folderId: null } : t));
       setFolderToDelete(null);
     } catch (err) {
@@ -387,7 +386,6 @@ const TasksScreen = ({ navigation }) => {
     return result;
   };
 
-  // Фильтр по папке + по статусу выполнения
   const filteredTasks = tasks
     .filter(t => !hideCompleted || !t.completed)
     .filter(t => activeFolderId === null || t.folderId === activeFolderId);
@@ -536,6 +534,7 @@ const TasksScreen = ({ navigation }) => {
     <Background>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.container}>
+
           {/* HEADER */}
           <View style={[styles.header, { backgroundColor: colors.surface }]}>
             <Text style={[styles.headerTitle, { color: colors.accentText }]}>МОИ ЗАДАЧИ</Text>
@@ -564,44 +563,6 @@ const TasksScreen = ({ navigation }) => {
             ))}
           </View>
 
-          {/* ПАПКИ — горизонтальный список */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.foldersScroll}
-            style={{ flexShrink: 0 }}
-          >
-            {/* Кнопка «Все» */}
-            <TouchableOpacity
-              style={[styles.folderChip, { backgroundColor: activeFolderId === null ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
-              onPress={() => setActiveFolderId(null)}
-            >
-              <Text style={[styles.folderChipText, { color: activeFolderId === null ? '#020617' : colors.textMain }]}>📋 Все</Text>
-            </TouchableOpacity>
-
-            {/* Существующие папки */}
-            {folders.map(folder => (
-              <TouchableOpacity
-                key={folder.id}
-                style={[styles.folderChip, { backgroundColor: activeFolderId === folder.id ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
-                onPress={() => setActiveFolderId(activeFolderId === folder.id ? null : folder.id)}
-                onLongPress={() => setFolderToDelete(folder)}
-              >
-                <Text style={[styles.folderChipText, { color: activeFolderId === folder.id ? '#020617' : colors.textMain }]}>
-                  {folder.icon} {folder.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-
-            {/* Кнопка создать папку */}
-            <TouchableOpacity
-              style={[styles.folderChip, { backgroundColor: colors.surface, borderColor: colors.borderSubtle, borderStyle: 'dashed' }]}
-              onPress={() => setShowCreateFolderModal(true)}
-            >
-              <Text style={[styles.folderChipText, { color: colors.textMuted }]}>＋ Папка</Text>
-            </TouchableOpacity>
-          </ScrollView>
-
           {/* ЧИПЫ ФИЛЬТРА */}
           <View style={styles.chipsContainer}>
             <TouchableOpacity
@@ -621,6 +582,41 @@ const TasksScreen = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* ПАПКИ — горизонтальный список (под фильтрами) */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.foldersScroll}
+            style={styles.foldersScrollWrapper}
+          >
+            <TouchableOpacity
+              style={[styles.folderChip, { backgroundColor: activeFolderId === null ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
+              onPress={() => setActiveFolderId(null)}
+            >
+              <Text style={[styles.folderChipText, { color: activeFolderId === null ? '#020617' : colors.textMain }]}>📋 Все</Text>
+            </TouchableOpacity>
+
+            {folders.map(folder => (
+              <TouchableOpacity
+                key={folder.id}
+                style={[styles.folderChip, { backgroundColor: activeFolderId === folder.id ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
+                onPress={() => setActiveFolderId(activeFolderId === folder.id ? null : folder.id)}
+                onLongPress={() => setFolderToDelete(folder)}
+              >
+                <Text style={[styles.folderChipText, { color: activeFolderId === folder.id ? '#020617' : colors.textMain }]}>
+                  {folder.icon} {folder.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity
+              style={[styles.folderChip, { backgroundColor: colors.surface, borderColor: colors.borderSubtle, borderStyle: 'dashed' }]}
+              onPress={() => setShowCreateFolderModal(true)}
+            >
+              <Text style={[styles.folderChipText, { color: colors.textMuted }]}>＋ Папка</Text>
+            </TouchableOpacity>
+          </ScrollView>
 
           {/* СПИСОК ЗАДАЧ */}
           <FlatList
@@ -717,7 +713,6 @@ const TasksScreen = ({ navigation }) => {
             </View>
           </View>
 
-          {/* КНОПКА ДОП. НАСТРОЕК */}
           <TouchableOpacity
             style={[styles.advancedToggle, { borderColor: colors.borderSubtle }]}
             onPress={() => setShowAdvancedSettings(p => !p)}
@@ -741,7 +736,6 @@ const TasksScreen = ({ navigation }) => {
                 onChangeTime={(t) => setNewTask(p => ({ ...p, time: t }))}
               />
 
-              {/* ВЫБОР ПАПКИ */}
               {folders.length > 0 && (
                 <View style={styles.formGroup}>
                   <Text style={[styles.formLabel, { color: colors.textMain }]}>Папка</Text>
@@ -765,7 +759,6 @@ const TasksScreen = ({ navigation }) => {
                 </View>
               )}
 
-              {/* ПОВТОРЕНИЕ */}
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.textMain }]}>Повторение</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -967,12 +960,18 @@ const styles = StyleSheet.create({
   taskDate: { fontSize: 11 },
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
   emptyText: { fontSize: 16 },
-  statsContainer: { flexDirection: 'row', padding: 16, gap: 8 },
+  // Статистика — убираем лишний padding снизу
+  statsContainer: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 8 },
   statCard: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1, alignItems: 'center', elevation: 4 },
   statNumber: { fontSize: 28, fontWeight: '700', marginBottom: 4 },
   statLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.08 },
-  // Папки
-  foldersScroll: { paddingHorizontal: 16, paddingBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  // Чипы фильтра
+  chipsContainer: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  chipText: { fontSize: 12, fontWeight: '600' },
+  // Папки — под чипами
+  foldersScrollWrapper: { flexShrink: 0 },
+  foldersScroll: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10, gap: 8, flexDirection: 'row', alignItems: 'center' },
   folderChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, flexShrink: 0 },
   folderChipText: { fontSize: 13, fontWeight: '600' },
   formGroup: { marginBottom: 16 },
@@ -1000,9 +999,6 @@ const styles = StyleSheet.create({
   swipeActionLeft: { backgroundColor: '#4CAF50', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, borderRadius: 12, flex: 1 },
   swipeActionRight: { backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: 20, borderRadius: 12, flex: 1 },
   swipeActionText: { fontSize: 24, color: 'white' },
-  chipsContainer: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  chipText: { fontSize: 12, fontWeight: '600' },
   editButton: { position: 'absolute', top: 12, right: 12, padding: 4, zIndex: 10 },
   advancedToggle: { padding: 12, borderWidth: 1, borderRadius: 8, marginVertical: 8, alignItems: 'center' },
   advancedSettings: { padding: 12, borderWidth: 1, borderColor: 'rgba(148,163,184,0.2)', borderRadius: 8, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.05)' },
