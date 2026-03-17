@@ -2,74 +2,53 @@
 // Универсальная кнопка с градиентом и свечением
 
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 
-const Button = ({ 
-  title, 
-  onPress, 
+const Button = ({
+  title,
+  onPress,
   variant = 'primary', // 'primary' | 'secondary' | 'outline' | 'danger'
   loading = false,
   disabled = false,
+  noBorder = false,   // передай true чтобы убрать рамку
   style,
-  textStyle 
+  textStyle,
 }) => {
-  const { colors, spacing } = useTheme();
+  const { colors } = useTheme();
 
-  // Градиенты для разных вариантов кнопки
   const getGradientColors = () => {
-    if (disabled) {
-      return [colors.surface, colors.surface];
-    }
-    
+    if (disabled) return [colors.surface, colors.surface];
     switch (variant) {
-      case 'danger':
-        return [colors.danger1, colors.danger2];
+      case 'danger':   return [colors.danger1, colors.danger2];
       case 'secondary':
-      case 'outline':
-        return [colors.surface, colors.surface];
-      default: // primary
-        return colors.gradientPrimary; // ['#f97316', '#ec4899'] из темы
+      case 'outline':  return [colors.surface, colors.surface];
+      default:         return colors.gradientPrimary;
     }
   };
 
-  // Цвет текста
   const getTextColor = () => {
-    if (disabled) {
-      return colors.textMuted;
-    }
-    
+    if (disabled) return colors.textMuted;
     switch (variant) {
-      case 'outline':
-        return colors.accentBorder;
-      case 'secondary':
-        return colors.textMain;
-      default:
-        return '#020617'; // Тёмный текст на ярких кнопках
+      case 'outline':   return colors.accentBorder;
+      case 'secondary': return colors.textMain;
+      default:          return '#020617';
     }
   };
 
-  // Стили обводки и свечения
   const getBorderStyle = () => {
+    // noBorder — полностью без рамки (напр. кнопка «Удалить» с кастомным фоном)
+    if (noBorder) return { borderWidth: 0 };
     if (variant === 'outline') {
-      return {
-        borderWidth: 1,
-        borderColor: colors.accentBorder,
-      };
+      return { borderWidth: 1, borderColor: colors.accentBorder };
     }
-    return {
-      borderWidth: 1,
-      borderColor: colors.accentBorder,
-    };
+    // primary / danger / secondary — тонкая акцентная рамка
+    return { borderWidth: 1, borderColor: colors.accentBorder };
   };
 
-  // Свечение (shadow с цветом акцента)
   const getShadowStyle = () => {
-    if (disabled || variant === 'secondary') {
-      return {};
-    }
-    
+    if (disabled || variant === 'secondary') return {};
     return {
       shadowColor: variant === 'danger' ? colors.danger1 : colors.accent1,
       shadowOffset: { width: 0, height: 0 },
@@ -97,8 +76,8 @@ const Button = ({
         ]}
       >
         {loading ? (
-          <ActivityIndicator 
-            color={variant === 'outline' ? colors.accentBorder : '#020617'} 
+          <ActivityIndicator
+            color={variant === 'outline' ? colors.accentBorder : '#020617'}
           />
         ) : (
           <Text style={[styles.buttonText, { color: getTextColor() }, textStyle]}>
@@ -117,7 +96,7 @@ const styles = StyleSheet.create({
   gradient: {
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 999, // Полностью скруглённая
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
@@ -131,4 +110,3 @@ const styles = StyleSheet.create({
 });
 
 export default Button;
-

@@ -5,12 +5,12 @@ import React from 'react';
 import { TextInput, View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
-const Input = ({ 
-  label, 
-  error, 
-  style, 
-  containerStyle,
-  ...props 
+const Input = ({
+  label,
+  error,
+  style,
+  containerStyle, // позволяет переопределить marginBottom и др. снаружи
+  ...props
 }) => {
   const { colors } = useTheme();
 
@@ -29,7 +29,6 @@ const Input = ({
             borderColor: error ? colors.danger1 : colors.borderSubtle,
             color: colors.textMain,
           },
-          // Лёгкое свечение при ошибке
           error && {
             shadowColor: colors.danger1,
             shadowOffset: { width: 0, height: 0 },
@@ -75,4 +74,3 @@ const styles = StyleSheet.create({
 });
 
 export default Input;
-
