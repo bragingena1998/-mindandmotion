@@ -1,5 +1,5 @@
 // src/screens/HabitsScreen.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,12 @@ import {
   Alert,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import { useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
 import HabitTable from '../components/HabitTable';
 import Modal from '../components/Modal';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import DatePicker from '../components/DatePicker'; 
+import DatePicker from '../components/DatePicker';
 import ReorderHabitsModal from '../components/ReorderHabitsModal';
 import MonthPickerModal from '../components/MonthPickerModal';
 
@@ -26,6 +25,8 @@ const formatDateISO = (date) => {
   if (isNaN(d.getTime())) return null;
   return d.toISOString().split('T')[0];
 };
+
+// ==================== DAYS SELECTOR ====================
 
 const DaysSelector = ({ selectedDays, onSelect }) => {
   const { colors } = useTheme();
@@ -38,15 +39,10 @@ const DaysSelector = ({ selectedDays, onSelect }) => {
     { label: 'Сб', val: 6 },
     { label: 'Вс', val: 0 },
   ];
-
   const toggleDay = (dayVal) => {
-    if (selectedDays.includes(dayVal)) {
-      onSelect(selectedDays.filter(d => d !== dayVal));
-    } else {
-      onSelect([...selectedDays, dayVal]);
-    }
+    if (selectedDays.includes(dayVal)) onSelect(selectedDays.filter(d => d !== dayVal));
+    else onSelect([...selectedDays, dayVal]);
   };
-
   return (
     <View style={styles.daysSelectorContainer}>
       {daysMap.map((day) => {
@@ -54,27 +50,18 @@ const DaysSelector = ({ selectedDays, onSelect }) => {
         return (
           <TouchableOpacity
             key={day.label}
-            style={[
-              styles.dayCircle,
-              { 
-                backgroundColor: isSelected ? colors.accent1 : colors.surface,
-                borderColor: isSelected ? colors.accent1 : colors.borderSubtle
-              }
-            ]}
+            style={[styles.dayCircle, { backgroundColor: isSelected ? colors.accent1 : colors.surface, borderColor: isSelected ? colors.accent1 : colors.borderSubtle }]}
             onPress={() => toggleDay(day.val)}
           >
-            <Text style={[
-              styles.dayCircleText, 
-              { color: isSelected ? '#020617' : colors.textMain }
-            ]}>
-              {day.label}
-            </Text>
+            <Text style={[styles.dayCircleText, { color: isSelected ? '#020617' : colors.textMain }]}>{day.label}</Text>
           </TouchableOpacity>
         );
       })}
     </View>
   );
 };
+
+// ==================== LIFE PROGRESS BAR ====================
 
 const LifeProgressBar = ({ label, value, color }) => {
   const percent = Math.min(Math.max(value, 0), 100);
@@ -90,7 +77,9 @@ const LifeProgressBar = ({ label, value, color }) => {
   );
 };
 
-const HabitsScreen = ({ route }) => { // ADDED route
+// ==================== MAIN SCREEN ====================
+
+const HabitsScreen = ({ route }) => {
   const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [habits, setHabits] = useState([]);
@@ -100,54 +89,42 @@ const HabitsScreen = ({ route }) => { // ADDED route
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [records, setRecords] = useState([]);
-  
+
   const [showDateModal, setShowDateModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
-  
+
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabitId, setEditingHabitId] = useState(null);
   const [habitForm, setHabitForm] = useState({
     name: '',
     unit: 'Дни',
     plan: '',
-    targetType: 'monthly',
-    startDate: null, 
-    endDate: null,   
+    targetType: 'daily',  // 'daily' | 'period'
+    startDate: null,
+    endDate: null,
     daysOfWeek: [],
   });
   const [showCustomUnit, setShowCustomUnit] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [habitToDelete, setHabitToDelete] = useState(null);
 
-  // NEW: Listen to route params
   useEffect(() => {
     if (route?.params?.year && route?.params?.month) {
-        setYear(route.params.year);
-        setMonth(route.params.month);
+      setYear(route.params.year);
+      setMonth(route.params.month);
     }
   }, [route?.params]);
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  useEffect(() => {
-    loadHabits();
-  }, [year, month]);
-
-  useEffect(() => {
-    if (habits.length > 0) {
-      loadRecords();
-    }
-  }, [habits, year, month]);
+  useEffect(() => { loadProfile(); }, []);
+  useEffect(() => { loadHabits(); }, [year, month]);
+  useEffect(() => { if (habits.length > 0) loadRecords(); }, [habits, year, month]);
 
   const loadProfile = async () => {
     try {
       const response = await api.get('/user/profile');
       setProfile(response.data);
       calculateLifeProgress(response.data.birthdate, response.data.gender);
-    } catch (error) {
-      console.error('Ошибка загрузки профиля:', error);
-    }
+    } catch (error) { console.error('Ошибка загрузки профиля:', error); }
   };
 
   const calculateLifeProgress = (birthdate, gender = 'male') => {
@@ -159,7 +136,6 @@ const HabitsScreen = ({ route }) => { // ADDED route
     const ageYears = ageMs / (1000 * 60 * 60 * 24 * 365.25);
     const lifePercent = Math.min(100, Math.round((ageYears / lifeExpectancy) * 100));
     setLifeProgress({ percent: lifePercent, yearsLived: Math.floor(ageYears), yearsLeft: Math.max(0, Math.round(lifeExpectancy - ageYears)) });
-
     const birthMonth = birth.getMonth();
     const birthDay = birth.getDate();
     let yearStart = new Date(today.getFullYear(), birthMonth, birthDay);
@@ -171,11 +147,10 @@ const HabitsScreen = ({ route }) => { // ADDED route
   };
 
   const parseHabitData = (h) => {
-    // Безопасный парсинг JSON из базы
     let days = [];
     try {
-        if (Array.isArray(h.days_of_week)) days = h.days_of_week;
-        else if (typeof h.days_of_week === 'string') days = JSON.parse(h.days_of_week);
+      if (Array.isArray(h.days_of_week)) days = h.days_of_week;
+      else if (typeof h.days_of_week === 'string') days = JSON.parse(h.days_of_week);
     } catch (e) { days = []; }
     return { ...h, days_of_week: days };
   };
@@ -186,20 +161,15 @@ const HabitsScreen = ({ route }) => { // ADDED route
       const response = await api.get(`/habits?year=${year}&month=${month}`);
       const parsedHabits = response.data.map(parseHabitData).filter(h => h.shouldShow !== false);
       setHabits(parsedHabits);
-    } catch (error) {
-      console.error('Ошибка загрузки привычек:', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { console.error('Ошибка загрузки привычек:', error); }
+    finally { setLoading(false); }
   };
 
   const loadRecords = async () => {
     try {
       const response = await api.get(`/habits/records/${year}/${month}`);
       setRecords(response.data);
-    } catch (error) {
-      console.error('Ошибка загрузки записей:', error);
-    }
+    } catch (error) { console.error('Ошибка загрузки записей:', error); }
   };
 
   const handleCellChange = async (habitId, year, month, day, value) => {
@@ -208,17 +178,13 @@ const HabitsScreen = ({ route }) => { // ADDED route
       if (value && value > 0) return [...filtered, { habitid: habitId, year, month, day, value }];
       return filtered;
     });
-
     try {
       if (value && value > 0) {
         await api.post('/habits/records', { habit_id: habitId, year, month, day, value });
       } else {
         await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
       }
-    } catch (error) {
-      console.error('Ошибка сохранения записи:', error);
-      loadRecords();
-    }
+    } catch (error) { console.error('Ошибка сохранения записи:', error); loadRecords(); }
   };
 
   const executeDelete = async () => {
@@ -235,79 +201,77 @@ const HabitsScreen = ({ route }) => { // ADDED route
     }
   };
 
-  const confirmDeleteHabit = (habit) => {
-    setHabitToDelete(habit);
-  };
+  const confirmDeleteHabit = (habit) => setHabitToDelete(habit);
 
   const openHabitModal = (habit = null) => {
     if (habit) {
       setEditingHabitId(habit.id);
+      // Обратная совместимость: 'monthly' из старых данных = 'period'
+      const tt = habit.target_type === 'monthly' || habit.target_type === 'period' ? 'period' : 'daily';
       setHabitForm({
         name: habit.name,
         unit: habit.unit,
-        plan: habit.plan,
-        targetType: habit.target_type || 'monthly',
+        plan: String(habit.plan ?? ''),
+        targetType: tt,
         startDate: formatDateISO(habit.start_date),
         endDate: formatDateISO(habit.end_date),
-        daysOfWeek: habit.days_of_week || []
+        daysOfWeek: habit.days_of_week || [],
       });
+      const hasAdvanced = !!(habit.start_date || habit.end_date || (habit.days_of_week && habit.days_of_week.length > 0));
+      setShowAdvanced(hasAdvanced);
+      setShowCustomUnit(!['\u0414\u043d\u0438', '\u0427\u0430\u0441\u044b', '\u041a\u043e\u043b-\u0432\u043e'].includes(habit.unit));
     } else {
       setEditingHabitId(null);
-      setHabitForm({
-        name: '', unit: 'Дни', plan: '', targetType: 'monthly', startDate: null, endDate: null, daysOfWeek: []
-      });
+      setHabitForm({ name: '', unit: 'Дни', plan: '', targetType: 'daily', startDate: null, endDate: null, daysOfWeek: [] });
+      setShowAdvanced(false);
+      setShowCustomUnit(false);
     }
     setShowHabitModal(true);
   };
 
   const saveHabit = async () => {
-     if (!habitForm.name.trim()) return alert('Введите название');
-     if (!habitForm.unit) return alert('Укажите единицу измерения');
-     
-     const planValue = habitForm.plan === '' ? 1 : parseInt(habitForm.plan) || 1;
-     
-     const payload = {
-       name: habitForm.name,
-       unit: habitForm.unit,
-       plan: planValue,
-       year, month,
-       target_type: habitForm.targetType,
-       start_date: habitForm.startDate || null, 
-       end_date: habitForm.endDate || null,     
-       days_of_week: habitForm.daysOfWeek || []
-     };
+    if (!habitForm.name.trim()) return alert('Введите название');
+    if (!habitForm.unit) return alert('Укажите единицу измерения');
+    const planValue = habitForm.plan === '' ? 1 : parseInt(habitForm.plan) || 1;
+    const payload = {
+      name: habitForm.name,
+      unit: habitForm.unit,
+      plan: planValue,
+      year, month,
+      target_type: habitForm.targetType, // 'daily' | 'period'
+      start_date: habitForm.startDate || null,
+      end_date: habitForm.endDate || null,
+      days_of_week: habitForm.daysOfWeek || [],
+    };
+    try {
+      if (editingHabitId) {
+        await api.put(`/habits/${editingHabitId}`, payload);
+      } else {
+        await api.post('/habits', payload);
+      }
+      await loadHabits();
+      setShowHabitModal(false);
+      setShowCustomUnit(false);
+      setShowAdvanced(false);
+    } catch (e) {
+      console.error(e);
+      if (e.response && e.response.status === 500) {
+        const serverMsg = e.response.data?.message || e.response.data?.sqlMessage || 'Ошибка сервера';
+        alert(`Ошибка: ${serverMsg}`);
+      } else {
+        alert('Ошибка: ' + (e.message || 'Unknown'));
+      }
+    }
+  };
 
-     try {
-       if (editingHabitId) {
-         await api.put(`/habits/${editingHabitId}`, payload);
-       } else {
-         await api.post('/habits', payload);
-       }
-       // ПОЛНАЯ ПЕРЕЗАГРУЗКА ДАННЫХ ДЛЯ ГАРАНТИИ КОРРЕКТНОСТИ
-       await loadHabits(); 
-       
-       setShowHabitModal(false);
-       setShowCustomUnit(false);
-     } catch (e) {
-       console.error(e);
-       if (e.response && e.response.status === 500) {
-           const serverMsg = e.response.data?.message || e.response.data?.sqlMessage || 'Ошибка сервера';
-           alert(`Ошибка: ${serverMsg}`);
-       } else {
-           alert('Ошибка: ' + (e.message || 'Unknown'));
-       }
-     }
-  };
-  
   const handleReorderSave = async (newOrderHabits) => {
-      setHabits(newOrderHabits);
-      setShowReorderModal(false);
-      try {
-        await api.put('/habits/reorder', { habits: newOrderHabits.map((h, i) => ({ id: h.id, order_index: i })) });
-      } catch (e) { loadHabits(); }
+    setHabits(newOrderHabits);
+    setShowReorderModal(false);
+    try {
+      await api.put('/habits/reorder', { habits: newOrderHabits.map((h, i) => ({ id: h.id, order_index: i })) });
+    } catch (e) { loadHabits(); }
   };
-  
-  // MOTIVATION LOGIC
+
   const getMotivation = (percent) => {
     if (percent >= 100) return "🔥 ТЫ МОНСТР! 🔥";
     if (percent >= 80) return "💪 МОЩНЫЙ ТЕМП!";
@@ -316,90 +280,101 @@ const HabitsScreen = ({ route }) => { // ADDED route
     return "💤 ПОРА ПРОСЫПАТЬСЯ";
   };
 
-  if (loading) return <View style={[styles.container, { backgroundColor: colors.background }]}><ActivityIndicator size="large" color={colors.accent1}/></View>;
+  if (loading) return <View style={[styles.container, { backgroundColor: colors.background }]}><ActivityIndicator size="large" color={colors.accent1} /></View>;
 
   const todayDate = new Date();
   const currentDay = todayDate.getDate();
   const currentMonthIdx = todayDate.getMonth() + 1;
   const currentYearVal = todayDate.getFullYear();
-  
+
   const activeHabitsToday = habits.filter(h => {
-     const dateObj = new Date(year, month - 1, currentDay);
-     if (h.start_date) {
-         const s = new Date(h.start_date); s.setHours(0,0,0,0);
-         if (dateObj < s) return false;
-     }
-     if (h.end_date) {
-         const e = new Date(h.end_date); e.setHours(23,59,59,999);
-         if (dateObj > e) return false;
-     }
-     if (h.days_of_week && h.days_of_week.length > 0) {
-         if (!h.days_of_week.includes(dateObj.getDay())) return false;
-     }
-     return true;
+    const dateObj = new Date(year, month - 1, currentDay);
+    if (h.start_date) { const s = new Date(h.start_date); s.setHours(0, 0, 0, 0); if (dateObj < s) return false; }
+    if (h.end_date) { const e = new Date(h.end_date); e.setHours(23, 59, 59, 999); if (dateObj > e) return false; }
+    if (h.days_of_week && h.days_of_week.length > 0) { if (!h.days_of_week.includes(dateObj.getDay())) return false; }
+    return true;
   });
 
   const totalHabitsToday = activeHabitsToday.length;
   const completedToday = records.filter(r => r.day === currentDay && r.value > 0 && activeHabitsToday.some(h => h.id === r.habitid)).length;
-  
   const dailyPercent = totalHabitsToday > 0 ? Math.round((completedToday / totalHabitsToday) * 100) : (totalHabitsToday === 0 ? 100 : 0);
   const quotes = ["Действуй.", "Просто делай.", "Шаг за шагом.", "Не сдавайся.", "Ты сможешь."];
   const motivationText = getMotivation(dailyPercent);
 
+  // Подсказка под тогглом: если задан период - показываем даты,
+  // иначе показываем попросту справочную подпись
+  const getPeriodLabel = () => {
+    if (habitForm.targetType === 'period') {
+      if (habitForm.startDate && habitForm.endDate) {
+        const fmt = (iso) => {
+          const d = new Date(iso);
+          return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+        };
+        return `за ${fmt(habitForm.startDate)}–${fmt(habitForm.endDate)}`;
+      }
+      return 'за период';
+    }
+    return 'в день';
+  };
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
+
+      {/* ===== ЦИТАТА + СТАТИСТИКА ===== */}
       <View style={styles.section}>
-         <Text style={{ textAlign: 'center', color: colors.textMuted, fontStyle: 'italic', marginBottom: 16 }}>
-           "{quotes[Math.floor(yearProgress.daysPassed % quotes.length)]}"
-         </Text>
+        <Text style={{ textAlign: 'center', color: colors.textMuted, fontStyle: 'italic', marginBottom: 16 }}>
+          "{quotes[Math.floor(yearProgress.daysPassed % quotes.length)]}"
+        </Text>
 
-         {year === currentYearVal && month === currentMonthIdx && (
-           <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
-             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-               <View>
-                 <Text style={[styles.statsTitle, { color: colors.textMain }]}>СЕГОДНЯ</Text>
-                 <Text style={[styles.statsValue, { color: colors.textMain }]}>{completedToday} <Text style={{ fontSize: 16, color: colors.textMuted }}>/ {totalHabitsToday}</Text></Text>
-                 <Text style={{ color: colors.accent1, fontSize: 12, fontWeight: '700', marginTop: 4 }}>{motivationText}</Text>
-               </View>
-               <Text style={{ fontSize: 32, fontWeight: 'bold', color: colors.accent1 }}>{dailyPercent}%</Text>
-             </View>
-           </View>
-         )}
+        {year === currentYearVal && month === currentMonthIdx && (
+          <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View>
+                <Text style={[styles.statsTitle, { color: colors.textMain }]}>СЕГОДНЯ</Text>
+                <Text style={[styles.statsValue, { color: colors.textMain }]}>{completedToday} <Text style={{ fontSize: 16, color: colors.textMuted }}>/ {totalHabitsToday}</Text></Text>
+                <Text style={{ color: colors.accent1, fontSize: 12, fontWeight: '700', marginTop: 4 }}>{motivationText}</Text>
+              </View>
+              <Text style={{ fontSize: 32, fontWeight: 'bold', color: colors.accent1 }}>{dailyPercent}%</Text>
+            </View>
+          </View>
+        )}
 
-         <View style={[styles.lifeCard, { backgroundColor: 'rgba(148, 163, 184, 0.05)', borderColor: colors.borderSubtle }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-               <Text style={[styles.cardTitle, { color: colors.textMain }]}>ВРЕМЯ</Text>
-               <Text style={{ fontSize: 10, color: colors.textMuted }}>MEMENTO MORI</Text>
-            </View>
-            <View style={{ gap: 12 }}>
-               <LifeProgressBar label={`ПРОЖИТО: ${profile?.gender === 'female' ? 'Ж' : 'М'} / ${lifeProgress.yearsLived} ЛЕТ`} value={lifeProgress.percent} color={colors.danger1} />
-               <LifeProgressBar label={`ГОД: ОСТАЛОСЬ ${yearProgress.daysLeft} ДН.`} value={yearProgress.percent} color={colors.accent1} />
-            </View>
-         </View>
+        <View style={[styles.lifeCard, { backgroundColor: 'rgba(148, 163, 184, 0.05)', borderColor: colors.borderSubtle }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={[styles.cardTitle, { color: colors.textMain }]}>ВРЕМЯ</Text>
+            <Text style={{ fontSize: 10, color: colors.textMuted }}>MEMENTO MORI</Text>
+          </View>
+          <View style={{ gap: 12 }}>
+            <LifeProgressBar label={`ПРОЖИТО: ${profile?.gender === 'female' ? 'Ж' : 'М'} / ${lifeProgress.yearsLived} ЛЕТ`} value={lifeProgress.percent} color={colors.danger1} />
+            <LifeProgressBar label={`ГОД: ОСТАЛОСЬ ${yearProgress.daysLeft} ДН.`} value={yearProgress.percent} color={colors.accent1} />
+          </View>
+        </View>
       </View>
 
+      {/* ===== ТАБЛИЦА ПРИВЫЧЕК ===== */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-           <TouchableOpacity onPress={() => setShowDateModal(true)}>
-             <Text style={[styles.sectionTitle, { color: colors.accent1, textDecorationLine: 'underline' }]}>
-               {new Date(year, month - 1).toLocaleString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase()} ▼
-             </Text>
-           </TouchableOpacity>
-           
-           <View style={{ flexDirection: 'row', gap: 8 }}>
-             {habits.length > 1 && (
-               <TouchableOpacity style={[styles.iconBtn, { borderColor: colors.borderSubtle }]} onPress={() => setShowReorderModal(true)}>
-                 <Text style={{ color: colors.textMuted, fontSize: 18 }}>⇅</Text>
-               </TouchableOpacity>
-             )}
-             <TouchableOpacity style={[styles.iconBtn, { borderColor: colors.borderSubtle }]} onPress={() => openHabitModal(null)}>
-               <Text style={{ color: colors.textMain, fontSize: 22, fontWeight: 'bold' }}>+</Text>
-             </TouchableOpacity>
-           </View>
+          <TouchableOpacity onPress={() => setShowDateModal(true)}>
+            <Text style={[styles.sectionTitle, { color: colors.accent1, textDecorationLine: 'underline' }]}>
+              {new Date(year, month - 1).toLocaleString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase()} ▼
+            </Text>
+          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {habits.length > 1 && (
+              <TouchableOpacity style={[styles.iconBtn, { borderColor: colors.borderSubtle }]} onPress={() => setShowReorderModal(true)}>
+                <Text style={{ color: colors.textMuted, fontSize: 18 }}>⇅</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[styles.iconBtn, { borderColor: colors.borderSubtle }]} onPress={() => openHabitModal(null)}>
+              <Text style={{ color: colors.textMain, fontSize: 22, fontWeight: 'bold' }}>+</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {habits.length === 0 ? (
-          <View style={[styles.placeholder, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}><Text style={{ color: colors.textMuted }}>Нет привычек</Text></View>
+          <View style={[styles.placeholder, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
+            <Text style={{ color: colors.textMuted }}>Нет привычек</Text>
+          </View>
         ) : (
           <HabitTable
             habits={habits}
@@ -407,8 +382,8 @@ const HabitsScreen = ({ route }) => { // ADDED route
             month={month}
             records={records}
             onCellChange={handleCellChange}
-            onHabitDelete={confirmDeleteHabit} 
-            onHabitEdit={openHabitModal}       
+            onHabitDelete={confirmDeleteHabit}
+            onHabitEdit={openHabitModal}
           />
         )}
       </View>
@@ -416,52 +391,144 @@ const HabitsScreen = ({ route }) => { // ADDED route
       <ReorderHabitsModal visible={showReorderModal} habits={habits} onClose={() => setShowReorderModal(false)} onSave={handleReorderSave} />
       <MonthPickerModal visible={showDateModal} selectedYear={year} selectedMonth={month} onClose={() => setShowDateModal(false)} onSelect={(y, m) => { setYear(y); setMonth(m); }} />
 
-      <Modal visible={showHabitModal} onClose={() => { setShowHabitModal(false); setShowCustomUnit(false); }} title={editingHabitId ? "Редактировать" : "Новая привычка"}>
-        <Input label="Название" placeholder="Например: Чтение" value={habitForm.name} onChangeText={t => setHabitForm({...habitForm, name: t})} />
+      {/* ===== МОДАЛ СОЗДАНИЯ / РЕДАКТИРОВАНИЯ ===== */}
+      <Modal
+        visible={showHabitModal}
+        onClose={() => { setShowHabitModal(false); setShowCustomUnit(false); setShowAdvanced(false); }}
+        title={editingHabitId ? 'Редактировать' : 'Новая привычка'}
+      >
+        {/* НАЗВАНИЕ */}
+        <Input
+          label="Название"
+          placeholder="Например: Чтение"
+          value={habitForm.name}
+          onChangeText={t => setHabitForm({ ...habitForm, name: t })}
+        />
+
+        {/* ЕДИНИЦА + ПЛАН + ТОГГЛ */}
         <View style={{ marginBottom: 16 }}>
-           <Text style={[styles.formLabel, { color: colors.textMain }]}>Тип цели</Text>
-           <View style={{ flexDirection: 'row', gap: 8 }}>
-              {['daily', 'monthly'].map(type => (
-                <TouchableOpacity key={type} onPress={() => setHabitForm({...habitForm, targetType: type})} style={[styles.unitButtonSmall, { flex: 1, backgroundColor: habitForm.targetType === type ? colors.accent1 : colors.surface }]}>
-                   <Text style={{ color: habitForm.targetType === type ? '#020617' : colors.textMain, fontWeight: '600' }}>{type === 'daily' ? 'В день' : 'В месяц'}</Text>
-                </TouchableOpacity>
-              ))}
-           </View>
-        </View>
-        <View style={{ marginBottom: 16, flexDirection: 'row', gap: 12 }}>
-           <View style={{ flex: 1 }}><DatePicker label="Начало" value={habitForm.startDate} onChangeDate={d => setHabitForm({...habitForm, startDate: d})} /></View>
-           <View style={{ flex: 1 }}><DatePicker label="Конец" value={habitForm.endDate} onChangeDate={d => setHabitForm({...habitForm, endDate: d})} /></View>
-        </View>
-        <View style={{ marginBottom: 16 }}>
-           <Text style={[styles.formLabel, { color: colors.textMain }]}>Дни недели (если пусто = все)</Text>
-           <DaysSelector selectedDays={habitForm.daysOfWeek} onSelect={d => setHabitForm({...habitForm, daysOfWeek: d})} />
-        </View>
-        <View style={{ marginBottom: 16 }}>
-           <Text style={[styles.formLabel, { color: colors.textMain }]}>Единица и План</Text>
-           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-              {['Дни', 'Часы', 'Кол-во'].map(u => (
-                 <TouchableOpacity key={u} style={[styles.unitButtonSmall, { backgroundColor: habitForm.unit === u && !showCustomUnit ? colors.accent1 : colors.surface }]} onPress={() => { setHabitForm({...habitForm, unit: u}); setShowCustomUnit(false); }}>
-                    <Text style={{ color: habitForm.unit === u && !showCustomUnit ? '#020617' : colors.textMain }}>{u}</Text>
-                 </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={[styles.unitButtonSmall, { backgroundColor: showCustomUnit ? colors.accent1 : colors.surface }]} onPress={() => { setShowCustomUnit(true); setHabitForm({...habitForm, unit: ''}); }}>
-                 <Text style={{ color: showCustomUnit ? '#020617' : colors.textMain }}>Другое...</Text>
+          <Text style={[styles.formLabel, { color: colors.textMain }]}>Единица и План</Text>
+
+          {/* Строка единиц */}
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            {['Дни', 'Часы', 'Кол-во'].map(u => (
+              <TouchableOpacity
+                key={u}
+                style={[styles.unitButtonSmall, { backgroundColor: habitForm.unit === u && !showCustomUnit ? colors.accent1 : colors.surface }]}
+                onPress={() => { setHabitForm({ ...habitForm, unit: u }); setShowCustomUnit(false); }}
+              >
+                <Text style={{ color: habitForm.unit === u && !showCustomUnit ? '#020617' : colors.textMain }}>{u}</Text>
               </TouchableOpacity>
-           </View>
-           {showCustomUnit && <Input placeholder="Своя единица" value={habitForm.unit} onChangeText={t => setHabitForm({...habitForm, unit: t})} />}
-           <Input placeholder="Число (План)" value={String(habitForm.plan)} onChangeText={t => setHabitForm({...habitForm, plan: t.replace(/[^0-9]/g, '')})} keyboardType="numeric" />
+            ))}
+            <TouchableOpacity
+              style={[styles.unitButtonSmall, { backgroundColor: showCustomUnit ? colors.accent1 : colors.surface }]}
+              onPress={() => { setShowCustomUnit(true); setHabitForm({ ...habitForm, unit: '' }); }}
+            >
+              <Text style={{ color: showCustomUnit ? '#020617' : colors.textMain }}>Другое...</Text>
+            </TouchableOpacity>
+          </View>
+          {showCustomUnit && (
+            <Input
+              placeholder="Своя единица"
+              value={habitForm.unit}
+              onChangeText={t => setHabitForm({ ...habitForm, unit: t })}
+            />
+          )}
+
+          {/* ПОЛЕ ПЛАН + ТОГГЛ в одной строке */}
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Input
+                placeholder="План"
+                value={String(habitForm.plan)}
+                onChangeText={t => setHabitForm({ ...habitForm, plan: t.replace(/[^0-9]/g, '') })}
+                keyboardType="numeric"
+              />
+            </View>
+            {/* Кнопка-тоггл в день / за период */}
+            <TouchableOpacity
+              onPress={() => setHabitForm(prev => ({ ...prev, targetType: prev.targetType === 'daily' ? 'period' : 'daily' }))}
+              style={[
+                styles.targetToggleBtn,
+                {
+                  backgroundColor: habitForm.targetType === 'period' ? colors.accent1 : colors.surface,
+                  borderColor: habitForm.targetType === 'period' ? colors.accent1 : colors.borderSubtle,
+                }
+              ]}
+            >
+              <Text style={[
+                styles.targetToggleText,
+                { color: habitForm.targetType === 'period' ? '#020617' : colors.textMuted }
+              ]}>
+                {getPeriodLabel()}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {/* Справочная подпись */}
+          <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 4, marginLeft: 2 }}>
+            {habitForm.targetType === 'daily'
+              ? 'Счёт ведётся покаждодневно'
+              : 'Счёт ведётся за весь период (сумма)'}
+          </Text>
         </View>
-        <Button title="Сохранить" onPress={saveHabit} />
+
+        {/* ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ (ADVANCED) */}
+        <TouchableOpacity
+          style={[styles.advancedToggle, { borderColor: colors.borderSubtle }]}
+          onPress={() => setShowAdvanced(p => !p)}
+        >
+          <Text style={{ color: colors.textMain, fontWeight: '600' }}>
+            {showAdvanced ? '▼ Скрыть доп. настройки' : '▶ Дополнительные настройки'}
+          </Text>
+        </TouchableOpacity>
+
+        {showAdvanced && (
+          <View style={styles.advancedBlock}>
+            {/* ДИАПАЗОН ДАТ */}
+            <View style={{ marginBottom: 16, flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <DatePicker
+                  label="Начало"
+                  value={habitForm.startDate}
+                  onChangeDate={d => setHabitForm({ ...habitForm, startDate: d })}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <DatePicker
+                  label="Конец"
+                  value={habitForm.endDate}
+                  onChangeDate={d => setHabitForm({ ...habitForm, endDate: d })}
+                />
+              </View>
+            </View>
+
+            {/* ДНИ НЕДЕЛИ */}
+            <View style={{ marginBottom: 8 }}>
+              <Text style={[styles.formLabel, { color: colors.textMain }]}>Дни недели (если пусто = все)</Text>
+              <DaysSelector
+                selectedDays={habitForm.daysOfWeek}
+                onSelect={d => setHabitForm({ ...habitForm, daysOfWeek: d })}
+              />
+            </View>
+          </View>
+        )}
+
+        <View style={{ marginTop: 8 }}>
+          <Button title="Сохранить" onPress={saveHabit} />
+        </View>
       </Modal>
 
+      {/* ===== МОДАЛ УДАЛЕНИЯ ===== */}
       <Modal visible={!!habitToDelete} onClose={() => setHabitToDelete(null)} title="Удалить привычку?">
-         <View style={{ padding: 10 }}>
-            <Text style={{ color: colors.textMain, marginBottom: 20, textAlign: 'center' }}>Вы уверены, что хотите удалить "{habitToDelete?.name}"?{'\n'}Все данные будут потеряны.</Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-               <Button title="Отмена" variant="outline" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
-               <Button title="Удалить" onPress={executeDelete} style={{ flex: 1, backgroundColor: colors.danger1 }} />
-            </View>
-         </View>
+        <View style={{ padding: 10 }}>
+          <Text style={{ color: colors.textMain, marginBottom: 20, textAlign: 'center' }}>
+            Вы уверены, что хотите удалить "{habitToDelete?.name}"?{'\n'}Все данные будут потеряны.
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <Button title="Отмена" variant="outline" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
+            <Button title="Удалить" onPress={executeDelete} style={{ flex: 1, backgroundColor: colors.danger1 }} />
+          </View>
+        </View>
       </Modal>
     </ScrollView>
   );
@@ -489,7 +556,38 @@ const styles = StyleSheet.create({
   unitButtonSmall: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', minWidth: 60, borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.1)' },
   daysSelectorContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   dayCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  dayCircleText: { fontSize: 12, fontWeight: '600' }
+  dayCircleText: { fontSize: 12, fontWeight: '600' },
+  // Новые стили
+  targetToggleBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
+  },
+  targetToggleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'lowercase',
+    letterSpacing: 0.2,
+  },
+  advancedToggle: {
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  advancedBlock: {
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.2)',
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
 });
 
 export default HabitsScreen;
