@@ -171,25 +171,23 @@ const DateDrumPicker = ({ visible, value, onChange, onClose }) => {
 const CalendarScreen = ({ navigation }) => {
   const { colors } = useTheme();
 
-  const [viewMode, setViewMode]   = useState('month'); // 'month' | 'week'
+  const [viewMode, setViewMode]   = useState('month');
   const [loading,  setLoading]    = useState(true);
   const [year,     setYear]       = useState(new Date().getFullYear());
   const [month,    setMonth]      = useState(new Date().getMonth());
-  // week mode: index of week start (Monday)
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
 
   const [tasks,        setTasks]        = useState([]);
   const [habitRecords, setHabitRecords] = useState([]);
   const [habitsCount,  setHabitsCount]  = useState(0);
-  const [events,       setEvents]       = useState([]); // replaces birthdays
+  const [events,       setEvents]       = useState([]);
 
-  const [selectedDay, setSelectedDay]   = useState(null); // { d, m, y }
+  const [selectedDay, setSelectedDay]   = useState(null);
   const dayPanelAnim                    = useRef(new Animated.Value(0)).current;
 
-  // ── Event form state ──
   const EMPTY_FORM = { name: '', type: 'birthday', day: '01', month: '01', year: null, notify_before: '1' };
   const [showEventModal, setShowEventModal] = useState(false);
-  const [editEvent,      setEditEvent]      = useState(null); // null = new
+  const [editEvent,      setEditEvent]      = useState(null);
   const [eventForm,      setEventForm]      = useState(EMPTY_FORM);
   const [showDrumPicker, setShowDrumPicker] = useState(false);
 
@@ -210,7 +208,7 @@ const CalendarScreen = ({ navigation }) => {
   }
 
   function dateStr(y, m, d) {
-    return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   }
 
   // ── load data ──
@@ -221,9 +219,10 @@ const CalendarScreen = ({ navigation }) => {
   const loadData = async () => {
     try {
       setLoading(true);
+      // FIX: передаём month+1 (сервер ожидает 1-based)
       const mApi = month + 1;
       const [tasksRes, recordsRes, habitsRes, eventsRes] = await Promise.all([
-        api.get(`/tasks?year=${year}&month=${month}`),
+        api.get(`/tasks?year=${year}&month=${mApi}`),
         api.get(`/habits/records/${year}/${mApi}`),
         api.get(`/habits?year=${year}&month=${mApi}`),
         api.get('/birthdays'),
@@ -242,17 +241,20 @@ const CalendarScreen = ({ navigation }) => {
   // ── day data ──
   const getDayData = (d, m = month, y = year) => {
     const ds = dateStr(y, m, d);
+    // задачи: невыполненные по date, выполненные по done_date
     const dayTasks = tasks.filter(t => {
       if (t.done) return t.done_date && t.done_date.startsWith(ds);
       return t.date === ds;
     });
-    const doneTasks   = dayTasks.filter(t => t.done).length;
-    const totalTasks  = dayTasks.length;
-    const dayRecords  = habitRecords.filter(r => r.day === d && (r.value === '✓' || r.value > 0));
-    const doneHabits  = dayRecords.length;
-    const dayEvents   = events.filter(e => e.day === d && e.month === (m + 1));
-    const allDone     = totalTasks > 0 && doneTasks === totalTasks;
-    const goodHabits  = habitsCount > 0 && doneHabits >= habitsCount * 0.8;
+    const doneTasks  = dayTasks.filter(t => t.done).length;
+    const totalTasks = dayTasks.length;
+    // привычки: записи за этот день
+    const dayRecords = habitRecords.filter(r => r.day === d && (r.value === '✓' || r.value > 0));
+    const doneHabits = dayRecords.length;
+    const dayEvents  = events.filter(e => e.day === d && e.month === (m + 1));
+    const allDone    = totalTasks > 0 && doneTasks === totalTasks;
+    // FIX: привычки хорошо выполнены если >= 80% от habitsCount
+    const goodHabits = habitsCount > 0 && doneHabits >= habitsCount * 0.8;
     return { dayTasks, doneTasks, totalTasks, doneHabits, dayEvents, allDone, goodHabits };
   };
 
@@ -285,8 +287,8 @@ const CalendarScreen = ({ navigation }) => {
   const selectDay = (d, m_ = month, y_ = year) => {
     const same = selectedDay?.d === d && selectedDay?.m === m_ && selectedDay?.y === y_;
     if (same) {
-      // collapse
-      Animated.timing(dayPanelAnim, { toValue: 0, duration: 220, useNativeDriver: false }).start(() => setSelectedDay(null));
+      Animated.timing(dayPanelAnim, { toValue: 0, duration: 220, useNativeDriver: false })
+        .start(() => setSelectedDay(null));
     } else {
       setSelectedDay({ d, m: m_, y: y_ });
       Animated.timing(dayPanelAnim, { toValue: 1, duration: 260, useNativeDriver: false }).start();
@@ -295,8 +297,8 @@ const CalendarScreen = ({ navigation }) => {
 
   // ── event CRUD ──
   const openNewEvent = (prefillDay = null, prefillMonth = null) => {
-    const d = prefillDay   ? String(prefillDay).padStart(2,'0')   : String(new Date().getDate()).padStart(2,'0');
-    const m = prefillMonth ? String(prefillMonth).padStart(2,'0') : String(new Date().getMonth()+1).padStart(2,'0');
+    const d = prefillDay   ? String(prefillDay).padStart(2, '0')   : String(new Date().getDate()).padStart(2, '0');
+    const m = prefillMonth ? String(prefillMonth).padStart(2, '0') : String(new Date().getMonth() + 1).padStart(2, '0');
     setEditEvent(null);
     setEventForm({ ...EMPTY_FORM, day: d, month: m });
     setShowEventModal(true);
@@ -305,11 +307,11 @@ const CalendarScreen = ({ navigation }) => {
   const openEditEvent = ev => {
     setEditEvent(ev);
     setEventForm({
-      name:         ev.name,
-      type:         ev.type || 'birthday',
-      day:          String(ev.day).padStart(2,'0'),
-      month:        String(ev.month).padStart(2,'0'),
-      year:         ev.year ? String(ev.year) : null,
+      name:          ev.name,
+      type:          ev.type || 'birthday',
+      day:           String(ev.day).padStart(2, '0'),
+      month:         String(ev.month).padStart(2, '0'),
+      year:          ev.year ? String(ev.year) : null,
       notify_before: String(ev.notify_before ?? 1),
     });
     setShowEventModal(true);
@@ -318,11 +320,11 @@ const CalendarScreen = ({ navigation }) => {
   const saveEvent = async () => {
     if (!eventForm.name.trim()) return;
     const payload = {
-      name:         eventForm.name.trim(),
-      type:         eventForm.type,
-      day:          parseInt(eventForm.day),
-      month:        parseInt(eventForm.month),
-      year:         eventForm.year ? parseInt(eventForm.year) : null,
+      name:          eventForm.name.trim(),
+      type:          eventForm.type,
+      day:           parseInt(eventForm.day),
+      month:         parseInt(eventForm.month),
+      year:          eventForm.year ? parseInt(eventForm.year) : null,
       notify_before: parseInt(eventForm.notify_before) || 1,
     };
     try {
@@ -341,7 +343,8 @@ const CalendarScreen = ({ navigation }) => {
       await api.delete(`/birthdays/${id}`);
       loadData();
       if (selectedDay) {
-        Animated.timing(dayPanelAnim, { toValue: 0, duration: 180, useNativeDriver: false }).start(() => setSelectedDay(null));
+        Animated.timing(dayPanelAnim, { toValue: 0, duration: 180, useNativeDriver: false })
+          .start(() => setSelectedDay(null));
       }
     } catch (e) { console.error(e); }
   };
@@ -377,13 +380,15 @@ const CalendarScreen = ({ navigation }) => {
             {totalTasks > 0 && (
               <View style={styles.indicatorRow}>
                 <Feather name="check-square" size={9} color={allDone ? colors.accent1 : colors.textMuted} />
+                {/* FIX: показываем вып./всего задач */}
                 <Text style={[styles.indicatorText, { color: allDone ? colors.accent1 : colors.textMain }]}>{doneTasks}/{totalTasks}</Text>
               </View>
             )}
-            {doneHabits > 0 && (
+            {/* FIX: показываем вып./habitsCount (всего запланировано) вместо только вып. */}
+            {habitsCount > 0 && (
               <View style={styles.indicatorRow}>
                 <Feather name="zap" size={9} color={goodHabits ? '#fbbf24' : colors.textMuted} />
-                <Text style={[styles.indicatorText, { color: goodHabits ? '#fbbf24' : colors.textMain }]}>{doneHabits}</Text>
+                <Text style={[styles.indicatorText, { color: goodHabits ? '#fbbf24' : colors.textMain }]}>{doneHabits}/{habitsCount}</Text>
               </View>
             )}
           </View>
@@ -421,7 +426,7 @@ const CalendarScreen = ({ navigation }) => {
           const d   = date.getDate();
           const m_  = date.getMonth();
           const y_  = date.getFullYear();
-          const { totalTasks, doneTasks, doneHabits, dayEvents, allDone, goodHabits } = getDayData(d, m_, y_);
+          const { totalTasks, doneHabits, dayEvents, allDone, goodHabits } = getDayData(d, m_, y_);
           const today   = new Date();
           const isToday = d === today.getDate() && m_ === today.getMonth() && y_ === today.getFullYear();
           const isSel   = selectedDay?.d === d && selectedDay?.m === m_ && selectedDay?.y === y_;
@@ -450,12 +455,11 @@ const CalendarScreen = ({ navigation }) => {
               <Text style={[styles.weekChipDay, { color: isSel ? '#020617' : isWE ? colors.danger1 : colors.textMain }]}>
                 {d}
               </Text>
-              {/* dot indicators */}
               <View style={styles.weekDots}>
                 {totalTasks > 0 && (
                   <View style={[styles.dot, { backgroundColor: allDone ? colors.accent1 : colors.textMuted }]} />
                 )}
-                {doneHabits > 0 && (
+                {habitsCount > 0 && doneHabits > 0 && (
                   <View style={[styles.dot, { backgroundColor: goodHabits ? '#fbbf24' : colors.textMuted }]} />
                 )}
                 {dayEvents.length > 0 && (
@@ -470,6 +474,7 @@ const CalendarScreen = ({ navigation }) => {
   };
 
   // ─── RENDER: Day Panel ────────────────────────────────────────────────────────
+  // FIX: renderDayPanel теперь используется и в месячном виде, и в недельном
   const renderDayPanel = () => {
     if (!selectedDay) return null;
     const { d, m: m_, y: y_ } = selectedDay;
@@ -533,7 +538,7 @@ const CalendarScreen = ({ navigation }) => {
           <View style={styles.panelSection}>
             <View style={styles.panelSectionRow}>
               <Text style={[styles.panelSectionTitle, { color: colors.accent1 }]}>
-                Задачи {dayTasks.length > 0 ? `(${dayTasks.filter(t=>t.done).length}/${dayTasks.length})` : ''}
+                Задачи {dayTasks.length > 0 ? `(${dayTasks.filter(t => t.done).length}/${dayTasks.length})` : ''}
               </Text>
               <TouchableOpacity onPress={() => {
                 setSelectedDay(null);
@@ -546,8 +551,11 @@ const CalendarScreen = ({ navigation }) => {
               ? <Text style={{ color: colors.textMuted, fontSize: 13 }}>Нет задач</Text>
               : dayTasks.map(t => (
                   <View key={t.id} style={[styles.panelItem, { backgroundColor: colors.background }]}>
-                    <Feather name={t.done ? 'check-square' : 'square'} size={15}
-                      color={t.done ? colors.accent1 : colors.textMuted} />
+                    <Feather
+                      name={t.done ? 'check-square' : 'square'}
+                      size={15}
+                      color={t.done ? colors.accent1 : colors.textMuted}
+                    />
                     <Text style={[
                       { color: colors.textMain, marginLeft: 8, flex: 1, fontSize: 13 },
                       t.done && { textDecorationLine: 'line-through', color: colors.textMuted },
@@ -561,12 +569,13 @@ const CalendarScreen = ({ navigation }) => {
           {/* Habits */}
           <View style={styles.panelSection}>
             <View style={styles.panelSectionRow}>
+              {/* FIX: показываем вып./habitsCount */}
               <Text style={[styles.panelSectionTitle, { color: '#fbbf24' }]}>
-                Привычки {habitsCount > 0 ? `(${getDayData(d,m_,y_).doneHabits}/${habitsCount})` : ''}
+                Привычки {habitsCount > 0 ? `(${doneHabits}/${habitsCount})` : ''}
               </Text>
               <TouchableOpacity onPress={() => {
                 setSelectedDay(null);
-                navigation.navigate('Habits', { year: y_, month: m_+1 });
+                navigation.navigate('Habits', { year: y_, month: m_ + 1 });
               }}>
                 <Text style={{ color: colors.accent1, fontSize: 11, fontWeight: '700' }}>ПЕРЕЙТИ →</Text>
               </TouchableOpacity>
@@ -574,7 +583,7 @@ const CalendarScreen = ({ navigation }) => {
             {habitsCount === 0
               ? <Text style={{ color: colors.textMuted, fontSize: 13 }}>Нет привычек</Text>
               : <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-                  {getDayData(d,m_,y_).doneHabits} из {habitsCount} выполнено
+                  {doneHabits} из {habitsCount} выполнено
                 </Text>
             }
           </View>
@@ -591,7 +600,6 @@ const CalendarScreen = ({ navigation }) => {
       title={editEvent ? 'Редактировать событие' : 'Новое событие'}
     >
       <View style={{ padding: 16 }}>
-        {/* Type selector */}
         <Text style={[styles.formLabel, { color: colors.textMuted }]}>ТИП</Text>
         <View style={styles.typeRow}>
           {EVENT_TYPES.map(t => (
@@ -615,7 +623,6 @@ const CalendarScreen = ({ navigation }) => {
           ))}
         </View>
 
-        {/* Name */}
         <Input
           label="Название"
           value={eventForm.name}
@@ -623,7 +630,6 @@ const CalendarScreen = ({ navigation }) => {
           placeholder="Введите название..."
         />
 
-        {/* Date picker */}
         <Text style={[styles.formLabel, { color: colors.textMuted }]}>ДАТА</Text>
         <TouchableOpacity
           onPress={() => setShowDrumPicker(true)}
@@ -643,7 +649,6 @@ const CalendarScreen = ({ navigation }) => {
           onClose={() => setShowDrumPicker(false)}
         />
 
-        {/* Notify */}
         <Input
           label="Уведомить за (дней)"
           value={eventForm.notify_before}
@@ -667,7 +672,6 @@ const CalendarScreen = ({ navigation }) => {
   );
 
   // ─── MAIN RENDER ──────────────────────────────────────────────────────────────
-  const todayDate = new Date();
   const weekLabel = (() => {
     const end = addDays(weekStart, 6);
     return `${weekStart.getDate()} ${MONTHS_GEN[weekStart.getMonth()]} — ${end.getDate()} ${MONTHS_GEN[end.getMonth()]}`;
@@ -684,8 +688,14 @@ const CalendarScreen = ({ navigation }) => {
               <Feather name="chevron-left" size={28} color={colors.accent1} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => {
-              if (viewMode === 'month') { setWeekStart(getWeekStart(new Date())); setMonth(new Date().getMonth()); setYear(new Date().getFullYear()); }
-              else { setMonth(new Date().getMonth()); setYear(new Date().getFullYear()); }
+              if (viewMode === 'month') {
+                setWeekStart(getWeekStart(new Date()));
+                setMonth(new Date().getMonth());
+                setYear(new Date().getFullYear());
+              } else {
+                setMonth(new Date().getMonth());
+                setYear(new Date().getFullYear());
+              }
             }}>
               <View style={{ alignItems: 'center' }}>
                 <Text style={[styles.monthTitle, { color: colors.textMain }]}>
@@ -740,9 +750,13 @@ const CalendarScreen = ({ navigation }) => {
             ? <ActivityIndicator size="large" color={colors.accent1} style={{ marginTop: 50 }} />
             : viewMode === 'month'
               ? (
-                <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-                  {renderMonthGrid()}
-                </ScrollView>
+                // FIX: добавляем renderDayPanel в месячный вид
+                <View style={{ flex: 1 }}>
+                  <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+                    {renderMonthGrid()}
+                  </ScrollView>
+                  {renderDayPanel()}
+                </View>
               ) : (
                 <View style={{ flex: 1 }}>
                   {renderWeekStrip()}
@@ -787,17 +801,16 @@ const styles = StyleSheet.create({
   indicatorRow:    { flexDirection: 'row', alignItems: 'center', gap: 2 },
   indicatorText:   { fontSize: 9, fontWeight: '700' },
   stickersContainer: { position: 'absolute', bottom: 3, right: 3, flexDirection: 'row', gap: 1 },
-  // week strip
   weekStrip:       { flexDirection: 'row', justifyContent: 'space-around',
                      paddingHorizontal: PADDING_H, paddingVertical: 12,
                      borderBottomWidth: 1 },
-  weekChip:        { alignItems: 'center', justifyContent: 'center', width: (SCREEN_WIDTH - PADDING_H*2) / 7 - 4,
+  weekChip:        { alignItems: 'center', justifyContent: 'center',
+                     width: (SCREEN_WIDTH - PADDING_H * 2) / 7 - 4,
                      paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
   weekChipLabel:   { fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginBottom: 2 },
   weekChipDay:     { fontSize: 18, fontWeight: '800' },
   weekDots:        { flexDirection: 'row', gap: 3, marginTop: 4, height: 6, alignItems: 'center' },
   dot:             { width: 5, height: 5, borderRadius: 3 },
-  // day panel
   dayPanel:        { overflow: 'hidden', borderTopWidth: 1, marginTop: 4 },
   dayPanelHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   dayPanelTitle:   { fontSize: 16, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -806,13 +819,11 @@ const styles = StyleSheet.create({
   panelSectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   panelSectionTitle: { fontSize: 13, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
   panelItem:       { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 10, marginBottom: 6 },
-  // event form
   formLabel:       { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8, textTransform: 'uppercase' },
   typeRow:         { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
   typeChip:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
   typeChipLabel:   { fontSize: 12, fontWeight: '700' },
   dateTrigger:     { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
-  // drum picker
   drumSaveBtn:     { width: '100%', paddingVertical: 14, borderRadius: 999, alignItems: 'center', marginBottom: 10 },
   drumCancelBtn:   { width: '100%', paddingVertical: 12, borderRadius: 999, borderWidth: 1, alignItems: 'center' },
 });
