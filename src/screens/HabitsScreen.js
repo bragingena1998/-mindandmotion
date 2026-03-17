@@ -99,7 +99,7 @@ const HabitsScreen = ({ route }) => {
     name: '',
     unit: 'Дни',
     plan: '',
-    targetType: 'daily',  // 'daily' | 'period'
+    targetType: 'daily',
     startDate: null,
     endDate: null,
     daysOfWeek: [],
@@ -206,7 +206,6 @@ const HabitsScreen = ({ route }) => {
   const openHabitModal = (habit = null) => {
     if (habit) {
       setEditingHabitId(habit.id);
-      // Обратная совместимость: 'monthly' из старых данных = 'period'
       const tt = habit.target_type === 'monthly' || habit.target_type === 'period' ? 'period' : 'daily';
       setHabitForm({
         name: habit.name,
@@ -219,7 +218,7 @@ const HabitsScreen = ({ route }) => {
       });
       const hasAdvanced = !!(habit.start_date || habit.end_date || (habit.days_of_week && habit.days_of_week.length > 0));
       setShowAdvanced(hasAdvanced);
-      setShowCustomUnit(!['\u0414\u043d\u0438', '\u0427\u0430\u0441\u044b', '\u041a\u043e\u043b-\u0432\u043e'].includes(habit.unit));
+      setShowCustomUnit(!['Дни', 'Часы', 'Кол-во'].includes(habit.unit));
     } else {
       setEditingHabitId(null);
       setHabitForm({ name: '', unit: 'Дни', plan: '', targetType: 'daily', startDate: null, endDate: null, daysOfWeek: [] });
@@ -238,7 +237,7 @@ const HabitsScreen = ({ route }) => {
       unit: habitForm.unit,
       plan: planValue,
       year, month,
-      target_type: habitForm.targetType, // 'daily' | 'period'
+      target_type: habitForm.targetType,
       start_date: habitForm.startDate || null,
       end_date: habitForm.endDate || null,
       days_of_week: habitForm.daysOfWeek || [],
@@ -301,14 +300,12 @@ const HabitsScreen = ({ route }) => {
   const quotes = ["Действуй.", "Просто делай.", "Шаг за шагом.", "Не сдавайся.", "Ты сможешь."];
   const motivationText = getMotivation(dailyPercent);
 
-  // Подсказка под тогглом: если задан период - показываем даты,
-  // иначе показываем попросту справочную подпись
   const getPeriodLabel = () => {
     if (habitForm.targetType === 'period') {
       if (habitForm.startDate && habitForm.endDate) {
         const fmt = (iso) => {
           const d = new Date(iso);
-          return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+          return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
         };
         return `за ${fmt(habitForm.startDate)}–${fmt(habitForm.endDate)}`;
       }
@@ -325,7 +322,6 @@ const HabitsScreen = ({ route }) => {
         <Text style={{ textAlign: 'center', color: colors.textMuted, fontStyle: 'italic', marginBottom: 16 }}>
           "{quotes[Math.floor(yearProgress.daysPassed % quotes.length)]}"
         </Text>
-
         {year === currentYearVal && month === currentMonthIdx && (
           <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -338,7 +334,6 @@ const HabitsScreen = ({ route }) => {
             </View>
           </View>
         )}
-
         <View style={[styles.lifeCard, { backgroundColor: 'rgba(148, 163, 184, 0.05)', borderColor: colors.borderSubtle }]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
             <Text style={[styles.cardTitle, { color: colors.textMain }]}>ВРЕМЯ</Text>
@@ -370,7 +365,6 @@ const HabitsScreen = ({ route }) => {
             </TouchableOpacity>
           </View>
         </View>
-
         {habits.length === 0 ? (
           <View style={[styles.placeholder, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
             <Text style={{ color: colors.textMuted }}>Нет привычек</Text>
@@ -436,16 +430,21 @@ const HabitsScreen = ({ route }) => {
           )}
 
           {/* ПОЛЕ ПЛАН + ТОГГЛ в одной строке */}
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <View style={{ flex: 1 }}>
+          {/*
+            FIX: Компонент Input имеет внутренний marginBottom.
+            Чтобы кнопка-тоггл выровнялась по центру,
+            обрачиваемся через alignSelf + обёртываем внутренний отступ.
+          */}
+          <View style={styles.planRow}>
+            <View style={styles.planInputWrap}>
               <Input
                 placeholder="План"
                 value={String(habitForm.plan)}
                 onChangeText={t => setHabitForm({ ...habitForm, plan: t.replace(/[^0-9]/g, '') })}
                 keyboardType="numeric"
+                style={{ marginBottom: 0 }}
               />
             </View>
-            {/* Кнопка-тоггл в день / за период */}
             <TouchableOpacity
               onPress={() => setHabitForm(prev => ({ ...prev, targetType: prev.targetType === 'daily' ? 'period' : 'daily' }))}
               style={[
@@ -453,26 +452,24 @@ const HabitsScreen = ({ route }) => {
                 {
                   backgroundColor: habitForm.targetType === 'period' ? colors.accent1 : colors.surface,
                   borderColor: habitForm.targetType === 'period' ? colors.accent1 : colors.borderSubtle,
-                }
+                },
               ]}
             >
-              <Text style={[
-                styles.targetToggleText,
-                { color: habitForm.targetType === 'period' ? '#020617' : colors.textMuted }
-              ]}>
+              <Text style={[styles.targetToggleText, { color: habitForm.targetType === 'period' ? '#020617' : colors.textMuted }]}>
                 {getPeriodLabel()}
               </Text>
             </TouchableOpacity>
           </View>
-          {/* Справочная подпись */}
-          <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 4, marginLeft: 2 }}>
+
+          {/* Пояснение */}
+          <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6, marginLeft: 2 }}>
             {habitForm.targetType === 'daily'
-              ? 'Счёт ведётся покаждодневно'
-              : 'Счёт ведётся за весь период (сумма)'}
+              ? 'Засчитывается отдельно за каждый день'
+              : 'Суммарно за весь период'}
           </Text>
         </View>
 
-        {/* ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ (ADVANCED) */}
+        {/* ДОП. НАСТРОЙКИ */}
         <TouchableOpacity
           style={[styles.advancedToggle, { borderColor: colors.borderSubtle }]}
           onPress={() => setShowAdvanced(p => !p)}
@@ -484,31 +481,17 @@ const HabitsScreen = ({ route }) => {
 
         {showAdvanced && (
           <View style={styles.advancedBlock}>
-            {/* ДИАПАЗОН ДАТ */}
             <View style={{ marginBottom: 16, flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <DatePicker
-                  label="Начало"
-                  value={habitForm.startDate}
-                  onChangeDate={d => setHabitForm({ ...habitForm, startDate: d })}
-                />
+                <DatePicker label="Начало" value={habitForm.startDate} onChangeDate={d => setHabitForm({ ...habitForm, startDate: d })} />
               </View>
               <View style={{ flex: 1 }}>
-                <DatePicker
-                  label="Конец"
-                  value={habitForm.endDate}
-                  onChangeDate={d => setHabitForm({ ...habitForm, endDate: d })}
-                />
+                <DatePicker label="Конец" value={habitForm.endDate} onChangeDate={d => setHabitForm({ ...habitForm, endDate: d })} />
               </View>
             </View>
-
-            {/* ДНИ НЕДЕЛИ */}
             <View style={{ marginBottom: 8 }}>
               <Text style={[styles.formLabel, { color: colors.textMain }]}>Дни недели (если пусто = все)</Text>
-              <DaysSelector
-                selectedDays={habitForm.daysOfWeek}
-                onSelect={d => setHabitForm({ ...habitForm, daysOfWeek: d })}
-              />
+              <DaysSelector selectedDays={habitForm.daysOfWeek} onSelect={d => setHabitForm({ ...habitForm, daysOfWeek: d })} />
             </View>
           </View>
         )}
@@ -526,7 +509,8 @@ const HabitsScreen = ({ route }) => {
           </Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <Button title="Отмена" variant="outline" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
-            <Button title="Удалить" onPress={executeDelete} style={{ flex: 1, backgroundColor: colors.danger1 }} />
+            {/* FIX: borderWidth: 0 убирает двойную рамку */}
+            <Button title="Удалить" onPress={executeDelete} style={{ flex: 1, backgroundColor: colors.danger1, borderWidth: 0 }} />
           </View>
         </View>
       </Modal>
@@ -557,9 +541,19 @@ const styles = StyleSheet.create({
   daysSelectorContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   dayCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   dayCircleText: { fontSize: 12, fontWeight: '600' },
-  // Новые стили
+  // Поле план + тоггл
+  planRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  planInputWrap: {
+    flex: 1,
+    // Гасим внутренний marginBottom компонента Input
+    marginBottom: 0,
+  },
   targetToggleBtn: {
-    paddingVertical: 10,
+    height: 48,
     paddingHorizontal: 14,
     borderRadius: 10,
     borderWidth: 1.5,
@@ -570,7 +564,6 @@ const styles = StyleSheet.create({
   targetToggleText: {
     fontSize: 13,
     fontWeight: '700',
-    textTransform: 'lowercase',
     letterSpacing: 0.2,
   },
   advancedToggle: {
