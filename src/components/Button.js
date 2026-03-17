@@ -1,6 +1,4 @@
 // src/components/Button.js
-// Универсальная кнопка с градиентом и свечением
-
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,7 +7,7 @@ import { useTheme } from '../contexts/ThemeContext';
 const Button = ({
   title,
   onPress,
-  variant = 'primary', // 'primary' | 'secondary' | 'outline' | 'danger'
+  variant = 'primary',
   loading = false,
   disabled = false,
   noBorder = false,
@@ -21,7 +19,8 @@ const Button = ({
   const getGradientColors = () => {
     if (disabled) return [colors.surface, colors.surface];
     switch (variant) {
-      case 'danger': return [colors.danger1, colors.danger2];
+      // FIX: danger2 может отсутствовать в теме — используем danger1 как запасной
+      case 'danger': return [colors.danger1, colors.danger2 ?? colors.danger1];
       case 'secondary':
       case 'outline': return [colors.surface, colors.surface];
       default: return colors.gradientPrimary;
@@ -81,9 +80,7 @@ const Button = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 0,
-  },
+  container: { marginBottom: 0 },
   gradient: {
     paddingVertical: 14,
     paddingHorizontal: 24,
