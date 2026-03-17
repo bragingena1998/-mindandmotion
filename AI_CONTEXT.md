@@ -1,7 +1,7 @@
 # 🤖 AI_CONTEXT — Контекст проекта Mind&Motion для новых чатов
 
 > **Читай этот файл первым делом.** Здесь вся информация для немедленной продуктивной работы.
-> Последнее обновление: 15.03.2026
+> Последнее обновление: 17.03.2026
 
 ---
 
@@ -18,7 +18,7 @@
 > Это не рекомендации. Это жёсткие правила. Нарушение = поломка проекта.
 
 ### Код
-1. **НЕЛЬЗЯ хардкодить цвета** (`'#fff'`, `'black'` и т.д.). Только `colors.X` из `useTheme()`.
+1. **НЕЛЬЗЯ хардкодить цвета** (`'#fff'`, `'black'` и т.д.). Только `colors.X` из `useTheme()`. Исключение: `'#FFFFFF'` и `'#020617'` для текста поверх акцентных/danger градиентов — допустимо.
 2. **НЕЛЬЗЯ использовать `ScrollView` для списков** с динамическим или большим количеством элементов. Только `FlatList` с `getItemLayout`.
 3. **НЕЛЬЗЯ оборачивать модалки в `TouchableOpacity` или `TouchableWithoutFeedback`** — перехватывают жесты у вложенных скроллов. Только `Pressable`.
 4. **НЕЛЬЗЯ делать `initialScrollIndex` у FlatList** без `getItemLayout` — вызывает зависание.
@@ -84,8 +84,8 @@
 | Файл | Назначение |
 |------|------------|
 | `Background.js` | Обёртка-фон для всех экранов (градиент/цвет по теме) |
-| `Button.js` | Основная кнопка (акцентный цвет из темы) |
-| `Input.js` | Текстовое поле (стилизованное) |
+| `Button.js` | Основная кнопка. Пропы: `variant` (primary/secondary/outline/danger), `noBorder`, `loading`, `disabled` |
+| `Input.js` | Текстовое поле. Проп `containerStyle` для переопределения внешнего контейнера (напр. `marginBottom: 0`) |
 | `Modal.js` | Модальное окно (скролл-шит снизу, Pressable-backdrop) |
 | `Card.js` | Карточка |
 | `AlertModal.js` | Модалка подтверждения (да/нет) |
@@ -93,7 +93,7 @@
 | `DatePickerModal.js` | Старая версия (не используется активно) |
 | `TimePicker.js` | Барабан HH:MM. FlatList + getItemLayout + disableIntervalMomentum |
 | `FocusSessionModal.js` | Модалка концентрат-сессии: выбор времени → таймер. Экспортирует `hasFocusSession`, `getFocusSession` |
-| `HabitTable.js` | Таблица-сетка привычек (дни × привычки) |
+| `HabitTable.js` | Таблица-сетка привычек (дни × привычки). Пропы: `onHabitDelete`, `onHabitEdit` |
 | `MonthPickerModal.js` | Пикер месяца/года |
 | `ReorderHabitsModal.js` | Drag-переупорядочивание привычек |
 | `TabBar.js` / `SimpleTabBar.js` | Кастомный таббар |
@@ -105,7 +105,7 @@
 | `RegisterScreen.js` | Регистрация |
 | `ForgotPasswordScreen.js` | Восстановление пароля |
 | `TasksScreen.js` | **Главный экран задач** (~1700 строк). Содержит: список задач, папки, drag&drop, подзадачи, фокус-сессии |
-| `HabitsScreen.js` | Экран привычек (таблица + создание/редактирование) |
+| `HabitsScreen.js` | Экран привычек (таблица + создание/редактирование/удаление с подтверждением) |
 | `CalendarScreen.js` | Календарь (месячная сетка + события) |
 | `ProfileScreen.js` | Профиль: имя, пароль, тема, уведомления, статистика |
 | `SecretChatScreen.js` | Скрытый чат (личная фича) |
@@ -135,6 +135,7 @@ colors.textMain        // основной текст
 colors.textMuted       // второстепенный текст
 colors.borderSubtle    // тонкая граница
 colors.danger1         // красный (ошибки, удаление, просрочено)
+colors.danger2         // тёмно-красный (второй цвет градиента danger) — ⚠️ может отсутствовать в теме, Button использует danger1 как fallback
 colors.ok1             // зелёный (выполнено, сегодня)
 ```
 
@@ -172,30 +173,30 @@ users (
 -- Задачи
 tasks (
   id               INT AUTO_INCREMENT PRIMARY KEY,
-  user_id          INT NOT NULL,            -- FK → users.id
+  user_id          INT NOT NULL,
   title            VARCHAR(500) NOT NULL,
-  date             DATE,                    -- дата задачи (для отображения)
-  deadline         DATE,                    -- дедлайн (NULL если не задан)
-  time             VARCHAR(5),              -- формат 'HH:MM', NULL если не задано
-  priority         INT DEFAULT 0,           -- 0=нет, 1=низкий, 2=средний, 3=высокий
+  date             DATE,
+  deadline         DATE,
+  time             VARCHAR(5),
+  priority         INT DEFAULT 0,
   done             TINYINT(1) DEFAULT 0,
-  done_date        DATE,                    -- когда выполнена
+  done_date        DATE,
   comment          TEXT,
   isrecurring      TINYINT(1) DEFAULT 0,
-  recurrencetype   VARCHAR(50),             -- 'day' | 'week' | 'month'
-  recurrencevalue  VARCHAR(50),             -- доп. параметры повторения
-  isgenerated      TINYINT(1) DEFAULT 0,    -- создана автоматически сервером
-  templateid       INT,                     -- ID исходной задачи-шаблона
-  folderid         INT,                     -- FK → folders.id, NULL если без папки
-  focussessions    INT DEFAULT 0,           -- кол-во концентрат-сессий
-  subtasks_count   INT DEFAULT 0,           -- кэш кол-ва подзадач
+  recurrencetype   VARCHAR(50),
+  recurrencevalue  VARCHAR(50),
+  isgenerated      TINYINT(1) DEFAULT 0,
+  templateid       INT,
+  folderid         INT,
+  focussessions    INT DEFAULT 0,
+  subtasks_count   INT DEFAULT 0,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 )
 
 -- Подзадачи
 subtasks (
   id          INT AUTO_INCREMENT PRIMARY KEY,
-  task_id     INT NOT NULL,                 -- FK → tasks.id
+  task_id     INT NOT NULL,
   title       VARCHAR(500) NOT NULL,
   completed   TINYINT(1) DEFAULT 0,
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -205,10 +206,10 @@ subtasks (
 -- Папки
 folders (
   id          INT AUTO_INCREMENT PRIMARY KEY,
-  user_id     INT NOT NULL,                 -- FK → users.id
+  user_id     INT NOT NULL,
   name        VARCHAR(100) NOT NULL,
-  emoji       VARCHAR(10) DEFAULT NULL,     -- эмодзи-иконка
-  order_index INT DEFAULT 0,               -- порядок отображения
+  emoji       VARCHAR(10) DEFAULT NULL,
+  order_index INT DEFAULT 0,
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 )
@@ -218,24 +219,27 @@ habits (
   id              INT AUTO_INCREMENT PRIMARY KEY,
   user_id         INT NOT NULL,
   name            VARCHAR(255) NOT NULL,
-  frequency_type  VARCHAR(50),             -- 'daily' | 'weekly' | 'custom'
-  frequency_days  VARCHAR(100),            -- JSON массив дней [0,1,2...] или NULL
+  unit            VARCHAR(50),
+  plan            INT DEFAULT 1,
+  target_type     VARCHAR(20) DEFAULT 'daily',
   start_date      DATE,
-  end_date        DATE,                    -- NULL = бессрочно
-  color           VARCHAR(20),
+  end_date        DATE,
+  days_of_week    JSON,
   order_index     INT DEFAULT 0,
   created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 )
 
--- Логи выполнения привычек
-habit_logs (
-  id          INT AUTO_INCREMENT PRIMARY KEY,
-  habit_id    INT NOT NULL,
-  user_id     INT NOT NULL,
-  date        DATE NOT NULL,
-  completed   TINYINT(1) DEFAULT 0,
-  UNIQUE KEY unique_habit_date (habit_id, date),
+-- Записи выполнения привычек
+habit_records (
+  id        INT AUTO_INCREMENT PRIMARY KEY,
+  habit_id  INT NOT NULL,
+  user_id   INT NOT NULL,
+  year      INT NOT NULL,
+  month     INT NOT NULL,
+  day       INT NOT NULL,
+  value     FLOAT DEFAULT 0,
+  UNIQUE KEY unique_record (habit_id, year, month, day),
   FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
 )
 
@@ -244,11 +248,11 @@ birthdays (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   user_id       INT NOT NULL,
   name          VARCHAR(255) NOT NULL,
-  day           INT NOT NULL,              -- 1-31
-  month         INT NOT NULL,              -- 1-12
-  year          INT,                       -- NULL = год неизвестен
-  type          VARCHAR(30) DEFAULT 'birthday', -- 'birthday' | 'anniversary' | 'event'
-  notify_before INT DEFAULT 1,             -- за сколько дней уведомить
+  day           INT NOT NULL,
+  month         INT NOT NULL,
+  year          INT,
+  type          VARCHAR(30) DEFAULT 'birthday',
+  notify_before INT DEFAULT 1,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 )
 ```
@@ -262,13 +266,6 @@ task.isRecurring ?? task.is_recurring ?? task.isrecurring ?? 0
 task.doneDate    ?? task.done_date    ?? null
 ```
 
-### Важные особенности БД
-- `subtasks_count` — это **кэш**, не рассчитывается на лету. Обновлять вручную при добавлении/удалении подзадач.
-- `templateid` — ссылка на исходную задачу при создании повторяющейся копии. Для остановки цикла — `PUT /tasks/:templateid/stop-recurring`.
-- `deadline = NULL` если не задан (не копировать `date` в `deadline`!).
-- `folderid = NULL` = задача без папки (показывается во «Все задачи»).
-- Все CASCADE ON DELETE — при удалении пользователя/задачи всё дочернее удаляется.
-
 ---
 
 ## 🔌 API (Backend)
@@ -281,13 +278,13 @@ POST   /auth/login
 POST   /auth/register
 POST   /auth/forgot-password
 
-GET    /tasks              ?month=&year= (пусто = текущий месяц)
+GET    /tasks              ?month=&year=
 POST   /tasks
 PUT    /tasks/:id
 DELETE /tasks/:id
 PUT    /tasks/:id/stop-recurring
 POST   /tasks/:id/focus
-GET    /tasks/stats        → {completed_today, total_today_plan, completed_week, ...}
+GET    /tasks/stats
 
 GET    /tasks/:id/subtasks
 POST   /tasks/:id/subtasks
@@ -298,29 +295,26 @@ GET    /folders
 POST   /folders
 PUT    /folders/:id
 DELETE /folders/:id
-PUT    /folders/reorder    body: {folders: [{id, order_index}]}
+PUT    /folders/reorder
 
-GET    /habits
+GET    /habits             ?year=&month=
 POST   /habits
 PUT    /habits/:id
-DELETE /habits/:id
-GET    /habits/logs        ?month=&year=
-POST   /habits/:id/toggle  body: {date}
+DELETE /habits/:id        ?year=&month=
+GET    /habits/records/:year/:month
+POST   /habits/records
+DELETE /habits/records/:habitId/:year/:month/:day
+PUT    /habits/reorder
 
 GET    /birthdays
 POST   /birthdays
 PUT    /birthdays/:id
 DELETE /birthdays/:id
 
-GET    /profile
+GET    /user/profile
 PUT    /profile
 PUT    /profile/password
 ```
-
-### Auth
-- JWT токен. Заголовок: `Authorization: Bearer <token>`
-- Токен хранится в `SecureStore`, подставляется автоматически через axios interceptor в `api.js`
-- Refresh токена нет — при истечении редирект на Login
 
 ---
 
@@ -343,95 +337,29 @@ AI (этот чат)                          Разработчик (локал
 
 ### Команды для разработчика (локально)
 
-**Подтянуть изменения от AI:**
 ```bash
+# Подтянуть изменения от AI:
 git pull origin mobile-dev3.0
-```
 
-**Если конфликт:**
-```bash
+# Если конфликт:
 git fetch origin
 git reset --hard origin/mobile-dev3.0
-# ВНИМАНИЕ: теряет локальные незакоммиченные изменения
-```
 
-**Запустить Dev Client:**
-```bash
+# Запустить Dev Client:
 npx expo start --dev-client
-```
 
-**Собрать APK (preview):**
-```bash
+# Собрать APK (preview):
 eas build --profile preview --platform android
 ```
 
 ### Деплой бэкенда на Beget
 
-Бэкенд находится в репо в папке `var/www/backend/`. После изменений в `server.js` нужно задеплоить на Beget.
-
-**Способ 1 — через SSH (рекомендуется):**
 ```bash
-# Подключиться к Beget по SSH
 ssh username@hostname
-
-# Перейти в папку бэкенда
 cd /var/www/backend/
-
-# Подтянуть изменения из GitHub
 git pull origin mobile-dev3.0
-
-# Перезапустить сервер (через PM2)
 pm2 restart server
-# или
-pm2 restart all
-
-# Проверить статус
-pm2 status
 pm2 logs server --lines 50
-```
-
-**Способ 2 — через FileManager Beget (только для мелких правок):**
-1. Открыть панель Beget → FileManager
-2. Перейти в `/var/www/backend/`
-3. Загрузить/отредактировать `server.js`
-4. Перезапустить процесс через раздел «Node.js» в панели
-
-**Структура на Beget:**
-```
-/var/www/backend/
-├── server.js          # Главный файл API
-├── package.json
-├── node_modules/
-└── .env               # Переменные окружения (DB_HOST, DB_USER, DB_PASS, DB_NAME, JWT_SECRET)
-                       # ⚠️ .env НЕ в репо! Хранится только на Beget
-```
-
-**Переменные окружения (`.env` на Beget):**
-```
-DB_HOST=localhost
-DB_USER=your_db_user
-DB_PASS=your_db_password
-DB_NAME=your_db_name
-JWT_SECRET=your_secret_key
-PORT=3000
-```
-
-**Проверить что сервер работает:**
-```bash
-curl https://ваш-домен.beget.tech/tasks  # должен вернуть 401 (значит работает)
-```
-
-### Миграции БД
-Все изменения схемы — **вручную через phpMyAdmin** на Beget:
-1. Открыть phpMyAdmin через панель Beget
-2. Выбрать нужную БД
-3. Вкладка SQL → выполнить ALTER TABLE
-4. **Записать изменение в ROADMAP_v3.md** в секции «БД» нужного этапа
-
-Пример миграции:
-```sql
-ALTER TABLE tasks ADD COLUMN subtasks_count INT DEFAULT 0;
-ALTER TABLE folders ADD COLUMN emoji VARCHAR(10) DEFAULT NULL;
 ```
 
 ---
@@ -439,7 +367,6 @@ ALTER TABLE folders ADD COLUMN emoji VARCHAR(10) DEFAULT NULL;
 ## 🔧 Ключевые паттерны кода
 
 ### Оптимистичный UI
-Всегда сначала обновляем state локально, потом делаем API-запрос. При ошибке — откатываем:
 ```js
 const oldId = task.folderId;
 setTasks(prev => prev.map(t => t.id === id ? {...t, folderId: newId} : t));
@@ -451,74 +378,56 @@ try {
 }
 ```
 
+### Button — важные пропы
+```jsx
+// Danger-кнопка без рамки (например, удаление в модале)
+<Button title="Удалить" variant="danger" noBorder onPress={handleDelete} />
+
+// Outline (отмена)
+<Button title="Отмена" variant="outline" onPress={onClose} />
+```
+
+### Input — убрать отступ снизу (в строке с другим элементом)
+```jsx
+<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+  <Input
+    placeholder="Значение"
+    containerStyle={{ flex: 1, marginBottom: 0 }}
+  />
+  <TouchableOpacity ...>
+    <Text>Тоггл</Text>
+  </TouchableOpacity>
+</View>
+```
+
 ### Gesture Handler (Drag & Drop)
-Правило порядка: **PanGestureHandler снаружи, LongPressGestureHandler внутри.**
 ```js
-<PanGestureHandler ref={panRef} simultaneousHandlers={longPressRef} onGestureEvent={onPan}>
+// PanGestureHandler снаружи, LongPressGestureHandler внутри
+<PanGestureHandler ref={panRef} simultaneousHandlers={longPressRef}>
   <Animated.View>
-    <LongPressGestureHandler ref={longPressRef} simultaneousHandlers={panRef} minDurationMs={400} onHandlerStateChange={onLongPress}>
-      <Animated.View>
-        {/* контент карточки */}
-      </Animated.View>
+    <LongPressGestureHandler ref={longPressRef} simultaneousHandlers={panRef} minDurationMs={400}>
+      <Animated.View>{/* контент */}</Animated.View>
     </LongPressGestureHandler>
   </Animated.View>
 </PanGestureHandler>
 ```
 
-### Координаты через measure
-`onLayout` даёт размеры относительно родителя. Для абсолютных координат нужен `ref.measure()`.
-При асинхронных measure — использовать `setTimeout(..., 50)` чтобы layout точно завершился:
-```js
-ref.current.measure((x, y, width, height, pageX, pageY) => {
-  // pageX, pageY — абсолютные координаты на экране
-});
-// При вызове после render:
-setTimeout(() => ref.current?.measure(...), 50);
-```
-
-### Анимации
-```js
-// Простые переходы
-Animated.timing(anim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-
-// Hover-пульс — ТОЛЬКО отдельный компонент с собственным Animated.Value
-// НЕ через state, НЕ общий value для всего списка
-const pulseAnim = useRef(new Animated.Value(1)).current;
-Animated.loop(
-  Animated.sequence([
-    Animated.timing(pulseAnim, { toValue: 1.1, duration: 300, useNativeDriver: true }),
-    Animated.timing(pulseAnim, { toValue: 1.0, duration: 300, useNativeDriver: true }),
-  ])
-).start();
-```
-
-### Toast вместо Alert
-```js
-// ✅ Правильно — для информации и успеха
-showToast('✅ Задача перемещена в папку!');
-showToast('❌ Не удалось сохранить.');
-
-// ✅ Правильно — для деструктивных действий
-Alert.alert('Удалить задачу?', 'Это действие нельзя отменить', [
-  { text: 'Отмена', style: 'cancel' },
-  { text: 'Удалить', style: 'destructive', onPress: handleDelete }
-]);
-```
-
 ---
 
-## 📋 Текущий статус (15.03.2026)
+## 📋 Текущий статус (17.03.2026)
 
 ### Завершённые этапы
 - ✅ **Этап 1** — Архитектура задач (TimePicker, DatePicker, цикличность, подзадачи, фокус-сессия, свайпы)
 - ✅ **Этап 2** — Папки (CRUD, drag&drop, фильтрация, анимация)
+- ✅ **Этап 3** — Привычки UX (удаление, форма, тоггл план/период, Button danger, нет рамки)
 
 ### Следующий шаг
-- **Этап 3** — Привычки: починить удаление, упростить форму, логика дат
+- **Этап 4** — Календарь: задачи + привычки в сетке, тап на день, ДР/события, переключатель вида
 
 ### Техдолг
 - TimePicker: шероховатости при быстром броске (не критично)
 - `src/screens/TasksScreen.js.save` — мусорный файл, удалить
+- `ThemeContext.js` — добавить `danger2` во все темы (сейчас Button fallback на `danger1`)
 
 ---
 
@@ -531,26 +440,11 @@ Alert.alert('Удалить задачу?', 'Это действие нельз�
 - Не переспрашивать по мелочам — если задача понятна, сразу делать
 - Коммиты делать сразу в ветку `mobile-dev3.0` через GitHub MCP
 
-### Инструменты AI (GitHub MCP)
-| Действие | Инструмент |
-|----------|------------|
-| Прочитать файл | `get_file_contents` |
-| Создать/обновить 1 файл | `create_or_update_file` (требует SHA!) |
-| Пушить несколько файлов | `push_files` (один коммит) |
-| Прочитать структуру папки | `get_file_contents` на директорию |
-| Получить SHA файла | `get_file_contents` → поле `sha` |
-| История коммитов | `list_commits` |
-
 ### Порядок работы с кодом
 1. Прочитать нужные файлы (`get_file_contents`) — получить SHA и понять структуру
 2. Написать изменения
 3. Один файл → `create_or_update_file` с SHA; несколько → `push_files`
 4. Обновить документы (DEVLOG, ROADMAP, QA, AI_CONTEXT)
-
-### Документация
-- После завершения этапа → обновить `DEVLOG_v3.md`, `ROADMAP_v3.md`, `QA_v3.md`
-- После сессии → обновить `AI_CONTEXT.md` (этот файл)
-- Формат записи в DEVLOG — строго по шаблону в конце файла
 
 ### Приоритеты
 1. Не сломать то что работает
