@@ -647,7 +647,7 @@ const CalendarScreen = ({ navigation }) => {
         <Input
           label="Уведомить за (дней)"
           value={eventForm.notify_before}
-          onChangeText={v => setEventForm(f => ({ ...f, notify_before: v })}
+          onChangeText={v => setEventForm(f => ({ ...f, notify_before: v }))}
           keyboardType="numeric"
           containerStyle={{ marginBottom: 8 }}
         />
