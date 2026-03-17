@@ -174,12 +174,14 @@ const CalendarScreen = ({ navigation }) => {
   const [viewMode, setViewMode]   = useState('month');
   const [loading,  setLoading]    = useState(true);
   const [year,     setYear]       = useState(new Date().getFullYear());
-  const [month,    setMonth]      = useState(new Date().getMonth());
+  const [month,    setMonth]      = useState(new Date().getMonth()); // 0-based
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
 
   const [tasks,        setTasks]        = useState([]);
+  // habitRecords: массив { habitid, day, value }
   const [habitRecords, setHabitRecords] = useState([]);
-  const [habitsCount,  setHabitsCount]  = useState(0);
+  // habits: все привычки с shouldShow, нужны для панели дня
+  const [habits,       setHabits]       = useState([]);
   const [events,       setEvents]       = useState([]);
 
   const [selectedDay, setSelectedDay]   = useState(null);
@@ -208,6 +210,7 @@ const CalendarScreen = ({ navigation }) => {
   }
 
   function dateStr(y, m, d) {
+    // m здесь 0-based
     return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   }
 
@@ -219,7 +222,7 @@ const CalendarScreen = ({ navigation }) => {
   const loadData = async () => {
     try {
       setLoading(true);
-      // FIX: передаём month+1 (сервер ожидает 1-based)
+      // month у нас 0-based, API ожидает 1-based
       const mApi = month + 1;
       const [tasksRes, recordsRes, habitsRes, eventsRes] = await Promise.all([
         api.get(`/tasks?year=${year}&month=${mApi}`),
@@ -227,35 +230,54 @@ const CalendarScreen = ({ navigation }) => {
         api.get(`/habits?year=${year}&month=${mApi}`),
         api.get('/birthdays'),
       ]);
-      setTasks(tasksRes.data);
-      setHabitRecords(recordsRes.data);
-      setHabitsCount(habitsRes.data.filter(h => h.shouldShow !== false).length);
-      setEvents(eventsRes.data);
+      setTasks(tasksRes.data || []);
+      // records: [{ habitid, day, value }]
+      setHabitRecords(recordsRes.data || []);
+      // сохраняем все привычки (для панели дня)
+      const allHabits = habitsRes.data || [];
+      setHabits(allHabits);
+      setEvents(eventsRes.data || []);
     } catch (e) {
-      console.error(e);
+      console.error('loadData error:', e);
     } finally {
       setLoading(false);
     }
   };
 
+  // habitsCount — сколько привычек активно в текущем месяце
+  const habitsCount = habits.filter(h => h.shouldShow !== false).length;
+
   // ── day data ──
+  // m здесь 0-based
   const getDayData = (d, m = month, y = year) => {
     const ds = dateStr(y, m, d);
-    // задачи: невыполненные по date, выполненные по done_date
+
+    // задачи этого дня
     const dayTasks = tasks.filter(t => {
-      if (t.done) return t.done_date && t.done_date.startsWith(ds);
-      return t.date === ds;
+      if (t.done) return t.doneDate && t.doneDate.startsWith(ds);
+      return t.date && t.date.startsWith(ds);
     });
     const doneTasks  = dayTasks.filter(t => t.done).length;
     const totalTasks = dayTasks.length;
-    // привычки: записи за этот день
-    const dayRecords = habitRecords.filter(r => r.day === d && (r.value === '✓' || r.value > 0));
-    const doneHabits = dayRecords.length;
-    const dayEvents  = events.filter(e => e.day === d && e.month === (m + 1));
-    const allDone    = totalTasks > 0 && doneTasks === totalTasks;
-    // FIX: привычки хорошо выполнены если >= 80% от habitsCount
-    const goodHabits = habitsCount > 0 && doneHabits >= habitsCount * 0.8;
-    return { dayTasks, doneTasks, totalTasks, doneHabits, dayEvents, allDone, goodHabits };
+
+    // привычки: записи за этот день (day — порядковый день месяца, число)
+    // habitRecords[].day — число (int); сравниваем строго
+    const dayDone = habitRecords.filter(r => {
+      const rDay = typeof r.day === 'string' ? parseInt(r.day) : r.day;
+      return rDay === d && (r.value === '✓' || Number(r.value) > 0);
+    }).length;
+
+    // события дня: events[].month — 1-based
+    const dayEvents = events.filter(e => {
+      const eDay   = typeof e.day   === 'string' ? parseInt(e.day)   : e.day;
+      const eMon   = typeof e.month === 'string' ? parseInt(e.month) : e.month;
+      return eDay === d && eMon === (m + 1);
+    });
+
+    const allDone   = totalTasks > 0 && doneTasks === totalTasks;
+    const goodHabits = habitsCount > 0 && dayDone >= Math.ceil(habitsCount * 0.8);
+
+    return { dayTasks, doneTasks, totalTasks, doneHabits: dayDone, dayEvents, allDone, goodHabits };
   };
 
   // ── navigation ──
@@ -380,11 +402,9 @@ const CalendarScreen = ({ navigation }) => {
             {totalTasks > 0 && (
               <View style={styles.indicatorRow}>
                 <Feather name="check-square" size={9} color={allDone ? colors.accent1 : colors.textMuted} />
-                {/* FIX: показываем вып./всего задач */}
                 <Text style={[styles.indicatorText, { color: allDone ? colors.accent1 : colors.textMain }]}>{doneTasks}/{totalTasks}</Text>
               </View>
             )}
-            {/* FIX: показываем вып./habitsCount (всего запланировано) вместо только вып. */}
             {habitsCount > 0 && (
               <View style={styles.indicatorRow}>
                 <Feather name="zap" size={9} color={goodHabits ? '#fbbf24' : colors.textMuted} />
@@ -393,8 +413,8 @@ const CalendarScreen = ({ navigation }) => {
             )}
           </View>
           <View style={styles.stickersContainer}>
-            {allDone     && <Text style={{ fontSize: 9 }}>⭐</Text>}
-            {goodHabits  && <Text style={{ fontSize: 9 }}>🔥</Text>}
+            {allDone    && <Text style={{ fontSize: 9 }}>⭐</Text>}
+            {goodHabits && <Text style={{ fontSize: 9 }}>🔥</Text>}
             {dayEvents.some(e => e.type === 'birthday')  && <Text style={{ fontSize: 9 }}>🎂</Text>}
             {dayEvents.some(e => e.type === 'important') && <Text style={{ fontSize: 9 }}>📌</Text>}
             {dayEvents.some(e => e.type === 'event')     && <Text style={{ fontSize: 9 }}>⭐</Text>}
@@ -474,7 +494,6 @@ const CalendarScreen = ({ navigation }) => {
   };
 
   // ─── RENDER: Day Panel ────────────────────────────────────────────────────────
-  // FIX: renderDayPanel теперь используется и в месячном виде, и в недельном
   const renderDayPanel = () => {
     if (!selectedDay) return null;
     const { d, m: m_, y: y_ } = selectedDay;
@@ -482,8 +501,16 @@ const CalendarScreen = ({ navigation }) => {
     const label = `${d} ${MONTHS_GEN[m_]} ${y_}`;
     const ds    = dateStr(y_, m_, d);
 
+    // активные привычки для этого месяца
+    const activeHabits = habits.filter(h => h.shouldShow !== false);
+    // записи за этот день
+    const dayHabitRecords = habitRecords.filter(r => {
+      const rDay = typeof r.day === 'string' ? parseInt(r.day) : r.day;
+      return rDay === d;
+    });
+
     const panelHeight = dayPanelAnim.interpolate({
-      inputRange: [0, 1], outputRange: [0, 340],
+      inputRange: [0, 1], outputRange: [0, 360],
     });
     const opacity = dayPanelAnim.interpolate({
       inputRange: [0, 0.3, 1], outputRange: [0, 0, 1],
@@ -569,9 +596,8 @@ const CalendarScreen = ({ navigation }) => {
           {/* Habits */}
           <View style={styles.panelSection}>
             <View style={styles.panelSectionRow}>
-              {/* FIX: показываем вып./habitsCount */}
               <Text style={[styles.panelSectionTitle, { color: '#fbbf24' }]}>
-                Привычки {habitsCount > 0 ? `(${doneHabits}/${habitsCount})` : ''}
+                Привычки {activeHabits.length > 0 ? `(${doneHabits}/${activeHabits.length})` : ''}
               </Text>
               <TouchableOpacity onPress={() => {
                 setSelectedDay(null);
@@ -580,11 +606,31 @@ const CalendarScreen = ({ navigation }) => {
                 <Text style={{ color: colors.accent1, fontSize: 11, fontWeight: '700' }}>ПЕРЕЙТИ →</Text>
               </TouchableOpacity>
             </View>
-            {habitsCount === 0
+            {activeHabits.length === 0
               ? <Text style={{ color: colors.textMuted, fontSize: 13 }}>Нет привычек</Text>
-              : <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-                  {doneHabits} из {habitsCount} выполнено
-                </Text>
+              : activeHabits.map(h => {
+                  const rec = dayHabitRecords.find(r => {
+                    const rid = typeof r.habitid === 'string' ? parseInt(r.habitid) : r.habitid;
+                    return rid === h.id;
+                  });
+                  const done = rec && (rec.value === '✓' || Number(rec.value) > 0);
+                  return (
+                    <View key={h.id} style={[styles.panelItem, { backgroundColor: colors.background }]}>
+                      <Feather
+                        name={done ? 'zap' : 'zap-off'}
+                        size={14}
+                        color={done ? '#fbbf24' : colors.textMuted}
+                      />
+                      <Text style={[
+                        { color: colors.textMain, marginLeft: 8, flex: 1, fontSize: 13 },
+                        !done && { color: colors.textMuted },
+                      ]} numberOfLines={1}>{h.name}</Text>
+                      {rec && Number(rec.value) > 0 && typeof rec.value !== 'string' && (
+                        <Text style={{ color: colors.textMuted, fontSize: 11 }}>{rec.value} {h.unit}</Text>
+                      )}
+                    </View>
+                  );
+                })
             }
           </View>
         </ScrollView>
@@ -750,7 +796,6 @@ const CalendarScreen = ({ navigation }) => {
             ? <ActivityIndicator size="large" color={colors.accent1} style={{ marginTop: 50 }} />
             : viewMode === 'month'
               ? (
-                // FIX: добавляем renderDayPanel в месячный вид
                 <View style={{ flex: 1 }}>
                   <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
                     {renderMonthGrid()}
