@@ -2,48 +2,46 @@
 // Универсальная кнопка с градиентом и свечением
 
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 
-const Button = ({
-  title,
-  onPress,
+const Button = ({ 
+  title, 
+  onPress, 
   variant = 'primary', // 'primary' | 'secondary' | 'outline' | 'danger'
   loading = false,
   disabled = false,
-  noBorder = false,   // передай true чтобы убрать рамку
+  noBorder = false,  // FIX: явное отключение рамки
   style,
-  textStyle,
+  textStyle 
 }) => {
-  const { colors } = useTheme();
+  const { colors, spacing } = useTheme();
 
   const getGradientColors = () => {
     if (disabled) return [colors.surface, colors.surface];
     switch (variant) {
-      case 'danger':   return [colors.danger1, colors.danger2];
+      case 'danger': return [colors.danger1, colors.danger2];
       case 'secondary':
-      case 'outline':  return [colors.surface, colors.surface];
-      default:         return colors.gradientPrimary;
+      case 'outline': return [colors.surface, colors.surface];
+      default: return colors.gradientPrimary;
     }
   };
 
   const getTextColor = () => {
     if (disabled) return colors.textMuted;
     switch (variant) {
-      case 'outline':   return colors.accentBorder;
+      case 'outline': return colors.accentBorder;
       case 'secondary': return colors.textMain;
-      default:          return '#020617';
+      default: return '#020617';
     }
   };
 
   const getBorderStyle = () => {
-    // noBorder — полностью без рамки (напр. кнопка «Удалить» с кастомным фоном)
+    // FIX: noBorder или кастомный backgroundColor в style — без рамки
     if (noBorder) return { borderWidth: 0 };
-    if (variant === 'outline') {
-      return { borderWidth: 1, borderColor: colors.accentBorder };
-    }
-    // primary / danger / secondary — тонкая акцентная рамка
+    if (variant === 'outline') return { borderWidth: 1, borderColor: colors.accentBorder };
+    // primary / danger / secondary — тонкая рамка акцента
     return { borderWidth: 1, borderColor: colors.accentBorder };
   };
 
@@ -76,8 +74,8 @@ const Button = ({
         ]}
       >
         {loading ? (
-          <ActivityIndicator
-            color={variant === 'outline' ? colors.accentBorder : '#020617'}
+          <ActivityIndicator 
+            color={variant === 'outline' ? colors.accentBorder : '#020617'} 
           />
         ) : (
           <Text style={[styles.buttonText, { color: getTextColor() }, textStyle]}>

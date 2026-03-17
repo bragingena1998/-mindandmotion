@@ -429,22 +429,15 @@ const HabitsScreen = ({ route }) => {
             />
           )}
 
-          {/* ПОЛЕ ПЛАН + ТОГГЛ в одной строке */}
-          {/*
-            FIX: Компонент Input имеет внутренний marginBottom.
-            Чтобы кнопка-тоггл выровнялась по центру,
-            обрачиваемся через alignSelf + обёртываем внутренний отступ.
-          */}
+          {/* ПЛАН + ТОГГЛ — используем containerStyle чтобы убрать marginBottom у Input */}
           <View style={styles.planRow}>
-            <View style={styles.planInputWrap}>
-              <Input
-                placeholder="План"
-                value={String(habitForm.plan)}
-                onChangeText={t => setHabitForm({ ...habitForm, plan: t.replace(/[^0-9]/g, '') })}
-                keyboardType="numeric"
-                style={{ marginBottom: 0 }}
-              />
-            </View>
+            <Input
+              placeholder="План"
+              value={String(habitForm.plan)}
+              onChangeText={t => setHabitForm({ ...habitForm, plan: t.replace(/[^0-9]/g, '') })}
+              keyboardType="numeric"
+              containerStyle={styles.planInputWrap}
+            />
             <TouchableOpacity
               onPress={() => setHabitForm(prev => ({ ...prev, targetType: prev.targetType === 'daily' ? 'period' : 'daily' }))}
               style={[
@@ -464,8 +457,8 @@ const HabitsScreen = ({ route }) => {
           {/* Пояснение */}
           <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6, marginLeft: 2 }}>
             {habitForm.targetType === 'daily'
-              ? 'Засчитывается отдельно за каждый день'
-              : 'Суммарно за весь период'}
+              ? 'Количество в день'
+              : 'Суммарное количество за весь выбранный период'}
           </Text>
         </View>
 
@@ -509,8 +502,8 @@ const HabitsScreen = ({ route }) => {
           </Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <Button title="Отмена" variant="outline" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
-            {/* FIX: borderWidth: 0 убирает двойную рамку */}
-            <Button title="Удалить" onPress={executeDelete} style={{ flex: 1, backgroundColor: colors.danger1, borderWidth: 0 }} />
+            {/* noBorder убирает зелёную рамку поверх danger-фона */}
+            <Button title="Удалить" variant="danger" noBorder onPress={executeDelete} style={{ flex: 1 }} />
           </View>
         </View>
       </Modal>
@@ -541,7 +534,6 @@ const styles = StyleSheet.create({
   daysSelectorContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   dayCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   dayCircleText: { fontSize: 12, fontWeight: '600' },
-  // Поле план + тоггл
   planRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -549,8 +541,7 @@ const styles = StyleSheet.create({
   },
   planInputWrap: {
     flex: 1,
-    // Гасим внутренний marginBottom компонента Input
-    marginBottom: 0,
+    marginBottom: 0,  // перебивает дефолтный marginBottom: 16 у Input
   },
   targetToggleBtn: {
     height: 48,
