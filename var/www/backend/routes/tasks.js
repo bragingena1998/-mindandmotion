@@ -18,12 +18,14 @@ router.get('/', authenticateToken, async (req, res) => {
     let params = [userId];
 
     if (month && year) {
+      // FIX: client sends month as 1-based (1..12), no +1 needed
+      const monthInt = parseInt(month);
       query += ` AND (
         (t.done = 1 AND MONTH(t.done_date) = ? AND YEAR(t.done_date) = ?)
         OR
         (t.done = 0 AND MONTH(t.date) = ? AND YEAR(t.date) = ?)
       )`;
-      params.push(parseInt(month) + 1, year, parseInt(month) + 1, year);
+      params.push(monthInt, year, monthInt, year);
     } else {
       query += ` AND (
         t.done = 0
