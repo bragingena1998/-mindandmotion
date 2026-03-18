@@ -46,7 +46,7 @@ const EVENT_TYPES = [
   { key: 'event',     label: 'Событие',        icon: '⭐' },
 ];
 
-// ─── InfiniteWheel (drum picker) ──────────────────────────────────────────────
+// ─── InfiniteWheel ──────────────────────────────────────────────────────────────────────
 const ITEM_H = 48;
 const VIS    = 5;
 const CTR    = Math.floor(VIS / 2);
@@ -167,6 +167,57 @@ const DateDrumPicker = ({ visible, value, onChange, onClose }) => {
   );
 };
 
+// ─── helpers ───────────────────────────────────────────────────────────────────────────
+function getWeekStart(date) {
+  const d = new Date(date);
+  const dow = d.getDay();
+  const diff = (dow === 0 ? -6 : 1 - dow);
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function dateStr(y, m, d) {
+  // m = 0-based
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/**
+ * Возвращает кол-во активных привычек для конкретного дня.
+ * Учитывает start_date, end_date, days_of_week — точно как в HabitsScreen.
+ * @param {Array} habits  - все привычки (shouldShow !== false)
+ * @param {number} day    - день месяца (1-31)
+ * @param {number} month0 - месяц 0-based
+ * @param {number} year
+ * @returns {{ active: Habit[], count: number }}
+ */
+function getActiveHabitsForDay(habits, day, month0, year) {
+  const dateObj = new Date(year, month0, day);
+  const active = habits.filter(h => {
+    if (h.start_date) {
+      const s = new Date(h.start_date);
+      s.setHours(0,0,0,0);
+      if (dateObj < s) return false;
+    }
+    if (h.end_date) {
+      const e = new Date(h.end_date);
+      e.setHours(23,59,59,999);
+      if (dateObj > e) return false;
+    }
+    if (h.days_of_week && h.days_of_week.length > 0) {
+      if (!h.days_of_week.includes(dateObj.getDay())) return false;
+    }
+    return true;
+  });
+  return { active, count: active.length };
+}
+
 // ─── Main Screen ───────────────────────────────────────────────────────────────
 const CalendarScreen = ({ navigation }) => {
   const { colors } = useTheme();
@@ -178,9 +229,8 @@ const CalendarScreen = ({ navigation }) => {
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
 
   const [tasks,        setTasks]        = useState([]);
-  // habitRecords: массив { habitid, day, value }
   const [habitRecords, setHabitRecords] = useState([]);
-  // habits: все привычки с shouldShow, нужны для панели дня
+  // habits: все shouldShow !== false
   const [habits,       setHabits]       = useState([]);
   const [events,       setEvents]       = useState([]);
 
@@ -193,27 +243,6 @@ const CalendarScreen = ({ navigation }) => {
   const [eventForm,      setEventForm]      = useState(EMPTY_FORM);
   const [showDrumPicker, setShowDrumPicker] = useState(false);
 
-  // ── helpers ──
-  function getWeekStart(date) {
-    const d = new Date(date);
-    const dow = d.getDay();
-    const diff = (dow === 0 ? -6 : 1 - dow);
-    d.setDate(d.getDate() + diff);
-    d.setHours(0,0,0,0);
-    return d;
-  }
-
-  function addDays(date, n) {
-    const d = new Date(date);
-    d.setDate(d.getDate() + n);
-    return d;
-  }
-
-  function dateStr(y, m, d) {
-    // m здесь 0-based
-    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  }
-
   // ── load data ──
   useFocusEffect(
     useCallback(() => { loadData(); }, [year, month])
@@ -222,8 +251,7 @@ const CalendarScreen = ({ navigation }) => {
   const loadData = async () => {
     try {
       setLoading(true);
-      // month у нас 0-based, API ожидает 1-based
-      const mApi = month + 1;
+      const mApi = month + 1; // 1-based for API
       const [tasksRes, recordsRes, habitsRes, eventsRes] = await Promise.all([
         api.get(`/tasks?year=${year}&month=${mApi}`),
         api.get(`/habits/records/${year}/${mApi}`),
@@ -231,11 +259,18 @@ const CalendarScreen = ({ navigation }) => {
         api.get('/birthdays'),
       ]);
       setTasks(tasksRes.data || []);
-      // records: [{ habitid, day, value }]
       setHabitRecords(recordsRes.data || []);
-      // сохраняем все привычки (для панели дня)
-      const allHabits = habitsRes.data || [];
-      setHabits(allHabits);
+      // Сохраняем все shouldShow привычки + парсим days_of_week
+      const rawHabits = (habitsRes.data || []).filter(h => h.shouldShow !== false);
+      const parsed = rawHabits.map(h => {
+        let dw = [];
+        try {
+          if (Array.isArray(h.days_of_week)) dw = h.days_of_week;
+          else if (typeof h.days_of_week === 'string') dw = JSON.parse(h.days_of_week);
+        } catch(e) { dw = []; }
+        return { ...h, days_of_week: dw };
+      });
+      setHabits(parsed);
       setEvents(eventsRes.data || []);
     } catch (e) {
       console.error('loadData error:', e);
@@ -244,15 +279,11 @@ const CalendarScreen = ({ navigation }) => {
     }
   };
 
-  // habitsCount — сколько привычек активно в текущем месяце
-  const habitsCount = habits.filter(h => h.shouldShow !== false).length;
-
-  // ── day data ──
-  // m здесь 0-based
+  // ── day data ── (m = 0-based)
   const getDayData = (d, m = month, y = year) => {
     const ds = dateStr(y, m, d);
 
-    // задачи этого дня
+    // задачи
     const dayTasks = tasks.filter(t => {
       if (t.done) return t.doneDate && t.doneDate.startsWith(ds);
       return t.date && t.date.startsWith(ds);
@@ -260,24 +291,30 @@ const CalendarScreen = ({ navigation }) => {
     const doneTasks  = dayTasks.filter(t => t.done).length;
     const totalTasks = dayTasks.length;
 
-    // привычки: записи за этот день (day — порядковый день месяца, число)
-    // habitRecords[].day — число (int); сравниваем строго
-    const dayDone = habitRecords.filter(r => {
-      const rDay = typeof r.day === 'string' ? parseInt(r.day) : r.day;
-      return rDay === d && (r.value === '✓' || Number(r.value) > 0);
-    }).length;
+    // активные привычки для этого дня (start_date/end_date/days_of_week)
+    const { active: activeHabits, count: habitsCount } = getActiveHabitsForDay(habits, d, m, y);
 
-    // события дня: events[].month — 1-based
+    // выполненные записи за этот день
+    const dayHabitRecords = habitRecords.filter(r => {
+      const rDay = typeof r.day === 'string' ? parseInt(r.day) : r.day;
+      return rDay === d;
+    });
+    const doneHabits = dayHabitRecords.filter(r =>
+      activeHabits.some(h => h.id === (typeof r.habitid === 'string' ? parseInt(r.habitid) : r.habitid)) &&
+      (r.value === '✓' || Number(r.value) > 0)
+    ).length;
+
+    // события: events[].month — 1-based
     const dayEvents = events.filter(e => {
-      const eDay   = typeof e.day   === 'string' ? parseInt(e.day)   : e.day;
-      const eMon   = typeof e.month === 'string' ? parseInt(e.month) : e.month;
+      const eDay = typeof e.day   === 'string' ? parseInt(e.day)   : e.day;
+      const eMon = typeof e.month === 'string' ? parseInt(e.month) : e.month;
       return eDay === d && eMon === (m + 1);
     });
 
-    const allDone   = totalTasks > 0 && doneTasks === totalTasks;
-    const goodHabits = habitsCount > 0 && dayDone >= Math.ceil(habitsCount * 0.8);
+    const allDone    = totalTasks > 0 && doneTasks === totalTasks;
+    const goodHabits = habitsCount > 0 && doneHabits >= Math.ceil(habitsCount * 0.8);
 
-    return { dayTasks, doneTasks, totalTasks, doneHabits: dayDone, dayEvents, allDone, goodHabits };
+    return { dayTasks, doneTasks, totalTasks, doneHabits, habitsCount, activeHabits, dayHabitRecords, dayEvents, allDone, goodHabits };
   };
 
   // ── navigation ──
@@ -373,7 +410,7 @@ const CalendarScreen = ({ navigation }) => {
 
   // ─── RENDER: Month cell ───────────────────────────────────────────────────────
   const renderCell = (d, m_ = month, y_ = year) => {
-    const { doneTasks, totalTasks, doneHabits, dayEvents, allDone, goodHabits } = getDayData(d, m_, y_);
+    const { doneTasks, totalTasks, doneHabits, habitsCount, dayEvents, allDone, goodHabits } = getDayData(d, m_, y_);
     const today     = new Date();
     const isToday   = d === today.getDate() && m_ === today.getMonth() && y_ === today.getFullYear();
     const dow       = new Date(y_, m_, d).getDay();
@@ -437,7 +474,7 @@ const CalendarScreen = ({ navigation }) => {
     return <View style={styles.grid}>{cells}</View>;
   };
 
-  // ─── RENDER: Week strip (7 day chips) ────────────────────────────────────────
+  // ─── RENDER: Week strip ──────────────────────────────────────────────────────────
   const renderWeekStrip = () => {
     const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     return (
@@ -446,7 +483,7 @@ const CalendarScreen = ({ navigation }) => {
           const d   = date.getDate();
           const m_  = date.getMonth();
           const y_  = date.getFullYear();
-          const { totalTasks, doneHabits, dayEvents, allDone, goodHabits } = getDayData(d, m_, y_);
+          const { totalTasks, doneHabits, habitsCount, dayEvents, allDone, goodHabits } = getDayData(d, m_, y_);
           const today   = new Date();
           const isToday = d === today.getDate() && m_ === today.getMonth() && y_ === today.getFullYear();
           const isSel   = selectedDay?.d === d && selectedDay?.m === m_ && selectedDay?.y === y_;
@@ -497,17 +534,9 @@ const CalendarScreen = ({ navigation }) => {
   const renderDayPanel = () => {
     if (!selectedDay) return null;
     const { d, m: m_, y: y_ } = selectedDay;
-    const { dayTasks, doneHabits, dayEvents } = getDayData(d, m_, y_);
+    const { dayTasks, doneHabits, habitsCount, activeHabits, dayHabitRecords, dayEvents } = getDayData(d, m_, y_);
     const label = `${d} ${MONTHS_GEN[m_]} ${y_}`;
     const ds    = dateStr(y_, m_, d);
-
-    // активные привычки для этого месяца
-    const activeHabits = habits.filter(h => h.shouldShow !== false);
-    // записи за этот день
-    const dayHabitRecords = habitRecords.filter(r => {
-      const rDay = typeof r.day === 'string' ? parseInt(r.day) : r.day;
-      return rDay === d;
-    });
 
     const panelHeight = dayPanelAnim.interpolate({
       inputRange: [0, 1], outputRange: [0, 360],
@@ -597,7 +626,7 @@ const CalendarScreen = ({ navigation }) => {
           <View style={styles.panelSection}>
             <View style={styles.panelSectionRow}>
               <Text style={[styles.panelSectionTitle, { color: '#fbbf24' }]}>
-                Привычки {activeHabits.length > 0 ? `(${doneHabits}/${activeHabits.length})` : ''}
+                Привычки {habitsCount > 0 ? `(${doneHabits}/${habitsCount})` : ''}
               </Text>
               <TouchableOpacity onPress={() => {
                 setSelectedDay(null);
@@ -607,7 +636,7 @@ const CalendarScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             {activeHabits.length === 0
-              ? <Text style={{ color: colors.textMuted, fontSize: 13 }}>Нет привычек</Text>
+              ? <Text style={{ color: colors.textMuted, fontSize: 13 }}>Нет активных привычек</Text>
               : activeHabits.map(h => {
                   const rec = dayHabitRecords.find(r => {
                     const rid = typeof r.habitid === 'string' ? parseInt(r.habitid) : r.habitid;
@@ -622,8 +651,8 @@ const CalendarScreen = ({ navigation }) => {
                         color={done ? '#fbbf24' : colors.textMuted}
                       />
                       <Text style={[
-                        { color: colors.textMain, marginLeft: 8, flex: 1, fontSize: 13 },
-                        !done && { color: colors.textMuted },
+                        { color: done ? colors.textMain : colors.textMuted, marginLeft: 8, flex: 1, fontSize: 13 },
+                        !done && { opacity: 0.6 },
                       ]} numberOfLines={1}>{h.name}</Text>
                       {rec && Number(rec.value) > 0 && typeof rec.value !== 'string' && (
                         <Text style={{ color: colors.textMuted, fontSize: 11 }}>{rec.value} {h.unit}</Text>
@@ -645,7 +674,7 @@ const CalendarScreen = ({ navigation }) => {
       onClose={() => setShowEventModal(false)}
       title={editEvent ? 'Редактировать событие' : 'Новое событие'}
     >
-      <View style={{ padding: 16 }}>
+      <View style={{ padding: 0 }}>
         <Text style={[styles.formLabel, { color: colors.textMuted }]}>ТИП</Text>
         <View style={styles.typeRow}>
           {EVENT_TYPES.map(t => (
@@ -734,14 +763,9 @@ const CalendarScreen = ({ navigation }) => {
               <Feather name="chevron-left" size={28} color={colors.accent1} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => {
-              if (viewMode === 'month') {
-                setWeekStart(getWeekStart(new Date()));
-                setMonth(new Date().getMonth());
-                setYear(new Date().getFullYear());
-              } else {
-                setMonth(new Date().getMonth());
-                setYear(new Date().getFullYear());
-              }
+              setWeekStart(getWeekStart(new Date()));
+              setMonth(new Date().getMonth());
+              setYear(new Date().getFullYear());
             }}>
               <View style={{ alignItems: 'center' }}>
                 <Text style={[styles.monthTitle, { color: colors.textMain }]}>
@@ -782,7 +806,7 @@ const CalendarScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* ── WEEKDAY HEADER (only month mode) ── */}
+          {/* ── WEEKDAY HEADER ── */}
           {viewMode === 'month' && (
             <View style={styles.weekHeader}>
               {WEEKDAYS.map((d, i) => (
@@ -847,8 +871,7 @@ const styles = StyleSheet.create({
   indicatorText:   { fontSize: 9, fontWeight: '700' },
   stickersContainer: { position: 'absolute', bottom: 3, right: 3, flexDirection: 'row', gap: 1 },
   weekStrip:       { flexDirection: 'row', justifyContent: 'space-around',
-                     paddingHorizontal: PADDING_H, paddingVertical: 12,
-                     borderBottomWidth: 1 },
+                     paddingHorizontal: PADDING_H, paddingVertical: 12, borderBottomWidth: 1 },
   weekChip:        { alignItems: 'center', justifyContent: 'center',
                      width: (SCREEN_WIDTH - PADDING_H * 2) / 7 - 4,
                      paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
