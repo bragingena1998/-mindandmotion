@@ -6,9 +6,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
-const SCREEN_HEIGHT = Dimensions.get('window').height;
-// Максимальная высота модалки — 92% экрана
-const MAX_MODAL_HEIGHT = SCREEN_HEIGHT * 0.92;
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const Modal = ({ visible, onClose, title, children }) => {
   const { colors } = useTheme();
@@ -20,19 +18,16 @@ const Modal = ({ visible, onClose, title, children }) => {
       animationType="fade"
       onRequestClose={onClose}
     >
+      {/* Тап по фону — закрыть */}
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable>
-          {/*
-            modal: maxHeight через пиксельное значение — так flex понимает границу.
-            Внутри: header фиксирован, ScrollView flex:1 заполняет остаток.
-          */}
+        {/* Стоп пропаганды клика через контент */}
+        <Pressable style={styles.modalWrapper} onPress={e => e.stopPropagation()}>
           <View style={[
             styles.modal,
             { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
           ]}>
-            {/* ЗАГОЛОВОК — фиксирован */}
             {title && (
-              <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
+              <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
                 <TouchableOpacity
                   style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
@@ -43,11 +38,10 @@ const Modal = ({ visible, onClose, title, children }) => {
               </View>
             )}
 
-            {/* СКРОЛЛ — flex:1, работает в любой точке */}
             <ScrollView
-              style={styles.scrollView}
+              style={styles.content}
               contentContainerStyle={styles.contentContainer}
-              showsVerticalScrollIndicator={true}
+              showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               nestedScrollEnabled={true}
               bounces={true}
@@ -69,11 +63,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+  // modalWrapper ограничивает высоту ␔ через пиксели чтобы flex работал
+  modalWrapper: {
+    width: '100%',
+    maxHeight: SCREEN_HEIGHT * 0.92,
+  },
+  // modal: flex column, ScrollView знает свою высоту
   modal: {
     width: '100%',
     maxWidth: 500,
-    // Пиксельное maxHeight — flex знает границу и ScrollView может занять flex:1
-    maxHeight: MAX_MODAL_HEIGHT,
     flexDirection: 'column',
     borderWidth: 2,
     borderRadius: 20,
@@ -90,8 +88,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 18, fontWeight: '700', textTransform: 'uppercase',
@@ -102,12 +99,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   closeIcon: { fontSize: 14, fontWeight: 'bold', marginTop: -2 },
-  scrollView: {
-    flex: 1,
+  content: {
+    flexShrink: 1,
   },
   contentContainer: {
-    padding: 24,
-    paddingTop: 16,
+    paddingHorizontal: 24,
     paddingBottom: 24,
   },
 });
