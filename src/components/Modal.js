@@ -2,11 +2,9 @@
 import React from 'react';
 import {
   View, Text, Modal as RNModal, StyleSheet,
-  TouchableOpacity, ScrollView, Pressable, Dimensions,
+  TouchableOpacity, ScrollView, Pressable,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const Modal = ({ visible, onClose, title, children }) => {
   const { colors } = useTheme();
@@ -18,18 +16,16 @@ const Modal = ({ visible, onClose, title, children }) => {
       animationType="fade"
       onRequestClose={onClose}
     >
+      {/* Тап по фону — закрыть */}
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable onPress={e => e.stopPropagation()} style={styles.container}>
-          {/*
-            modal: без overflow:hidden — чтобы border/shadow/скругления не обрезались.
-            scrollWrapper: overflow:hidden + borderRadius — контент внутри обрезается.
-          */}
+        {/* Стоп пропаганда клика через контент */}
+        <Pressable style={styles.modalWrapper}>
           <View style={[
             styles.modal,
             { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
           ]}>
             {title && (
-              <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
+              <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
                 <TouchableOpacity
                   style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
@@ -39,18 +35,16 @@ const Modal = ({ visible, onClose, title, children }) => {
                 </TouchableOpacity>
               </View>
             )}
-            {/* Обёртка с overflow:hidden чтобы ScrollView не вылезал за скруглённые углы */}
-            <View style={styles.scrollWrapper}>
-              <ScrollView
-                contentContainerStyle={styles.contentContainer}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                nestedScrollEnabled={true}
-                bounces={false}
-              >
-                {children}
-              </ScrollView>
-            </View>
+
+            <ScrollView
+              style={styles.content}
+              contentContainerStyle={styles.contentContainer}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+            >
+              {children}
+            </ScrollView>
           </View>
         </Pressable>
       </Pressable>
@@ -66,16 +60,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  container: {
+  modalWrapper: {
     width: '100%',
-    maxWidth: 500,
-    maxHeight: SCREEN_HEIGHT * 0.90,
+    maxHeight: '92%',
+    alignItems: 'center',
   },
   modal: {
     width: '100%',
+    maxWidth: 500,
     borderWidth: 2,
     borderRadius: 20,
-    // БЕЗ overflow:hidden — чтобы border+shadow были видны целиком
+    padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
@@ -86,10 +81,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
+    marginBottom: 20,
   },
   title: {
     fontSize: 18, fontWeight: '700', textTransform: 'uppercase',
@@ -100,17 +92,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   closeIcon: { fontSize: 14, fontWeight: 'bold', marginTop: -2 },
-  // overflow:hidden здесь — контент не вылезает за скруглённый нижний угол
-  scrollWrapper: {
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    overflow: 'hidden',
-  },
-  contentContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 32,
-  },
+  content: { width: '100%' },
+  contentContainer: { paddingBottom: 4 },
 });
 
 export default Modal;
