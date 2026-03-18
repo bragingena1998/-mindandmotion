@@ -47,7 +47,7 @@ const EVENT_TYPES = [
   { key: 'event',     label: 'Событие',        icon: '⭐' },
 ];
 
-// ─── InfiniteWheel ─────────────────────────────────────────────────────────────────────
+// ─── InfiniteWheel ─────────────────────────────────────────────────────────────
 const ITEM_H = 48;
 const VIS    = 5;
 const CTR    = Math.floor(VIS / 2);
@@ -117,7 +117,7 @@ const InfiniteWheel = ({ data, value, onChange, width = 72 }) => {
   );
 };
 
-// ─── DateDrumPicker ───────────────────────────────────────────────────────────────────
+// ─── DateDrumPicker ────────────────────────────────────────────────────────────
 const DateDrumPicker = ({ visible, value, onChange, onClose }) => {
   const { colors } = useTheme();
   const days   = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
@@ -165,7 +165,7 @@ const DateDrumPicker = ({ visible, value, onChange, onClose }) => {
   );
 };
 
-// ─── helpers ───────────────────────────────────────────────────────────────────────
+// ─── helpers ───────────────────────────────────────────────────────────────────
 function getWeekStart(date) {
   const d = new Date(date);
   const dow = d.getDay();
@@ -201,10 +201,13 @@ function getActiveHabitsForDay(habits, day, month0, year) {
   return { active, count: active.length };
 }
 
-// ─── DayPanel ───────────────────────────────────────────────────────────────────────
+// ─── DayPanel ──────────────────────────────────────────────────────────────────
+// Структура: Animated.View (flex column, fixed height)
+//   └─ dragHandle        (фиксирован)
+//   └─ dayPanelHeader    (фиксирован)
+//   └─ ScrollView flex:1 (скроллится)
 const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTasks, onNavigateHabits }) => {
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const lastY = useRef(0);
 
   useEffect(() => {
     if (selectedDay) {
@@ -226,9 +229,9 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
       onPanResponderGrant: () => {
-        translateY.setOffset(lastY.current);
+        translateY.setOffset(0);
         translateY.setValue(0);
       },
       onPanResponderMove: (_, g) => {
@@ -236,7 +239,6 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
       },
       onPanResponderRelease: (_, g) => {
         translateY.flattenOffset();
-        lastY.current = 0;
         if (g.dy > 80 || g.vy > 0.6) {
           onClose();
         } else {
@@ -254,14 +256,15 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
   const ds    = dateStr(y_, m_, d);
 
   return (
-    // Полупрозрачный фон поверх всего контента
     <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-      {/* Тап по пустому месту — закрыть */}
+      {/* Тап по фону — закрыть */}
       <TouchableOpacity
         style={StyleSheet.absoluteFillObject}
         activeOpacity={1}
         onPress={onClose}
       />
+
+      {/* Сама панель — flex column, фиксированная высота */}
       <Animated.View
         style={[
           styles.dayPanel,
@@ -269,30 +272,35 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
           { transform: [{ translateY }] },
         ]}
       >
-        {/* Ручка для свайпа */}
+        {/* Ручка свайпа — только она перехватывает жест */}
         <View {...panResponder.panHandlers} style={styles.dragHandle}>
           <View style={[styles.dragBar, { backgroundColor: colors.borderSubtle }]} />
         </View>
 
-        {/* Заголовок с кнопками */}
+        {/* Заголовок — фиксирован */}
         <View style={styles.dayPanelHeader}>
           <Text style={[styles.dayPanelTitle, { color: colors.accent1 }]}>{label}</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
             <TouchableOpacity onPress={onAddEvent} style={[styles.addEventBtn, { borderColor: colors.accent1 }]}>
               <Feather name="plus" size={14} color={colors.accent1} />
               <Text style={{ color: colors.accent1, fontSize: 11, fontWeight: '700', marginLeft: 4 }}>СОБЫТИЕ</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
               <Feather name="x" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Скролляемый контент */}
+        {/* Разделитель */}
+        <View style={{ height: 1, backgroundColor: colors.borderSubtle, marginHorizontal: 16, marginBottom: 4 }} />
+
+        {/* СКРОЛЛ — занимает всё оставшееся место в панели */}
         <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 16, paddingTop: 8 }}
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={true}
           keyboardShouldPersistTaps="handled"
+          bounces={true}
         >
           {/* Events */}
           {dayEvents.length > 0 && (
@@ -543,7 +551,7 @@ const CalendarScreen = ({ navigation }) => {
     catch (e) { console.error(e); }
   };
 
-  // ─── Cell ──────────────────────────────────────────────────────────────────────────
+  // ─── Cell ──────────────────────────────────────────────────────────────────
   const renderCell = (d, m_ = month, y_ = year) => {
     const { doneTasks, totalTasks, doneHabits, habitsCount, dayEvents, allDone, goodHabits } = getDayData(d, m_, y_);
     const today     = new Date();
@@ -600,7 +608,7 @@ const CalendarScreen = ({ navigation }) => {
     return <View style={styles.grid}>{cells}</View>;
   };
 
-  // ─── Week strip ─────────────────────────────────────────────────────────────────────
+  // ─── Week strip ────────────────────────────────────────────────────────────
   const renderWeekStrip = () => {
     const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     return (
@@ -750,7 +758,6 @@ const CalendarScreen = ({ navigation }) => {
             ? <ActivityIndicator size="large" color={colors.accent1} style={{ marginTop: 50 }} />
             : viewMode === 'month'
               ? (
-                // Месяц: скролл, поверх DayPanel
                 <View style={{ flex: 1 }}>
                   <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
                     {renderMonthGrid()}
@@ -768,7 +775,6 @@ const CalendarScreen = ({ navigation }) => {
                   )}
                 </View>
               ) : (
-                // Неделя: полоса дней + DayPanel занимает всё оставшееся место
                 <View style={{ flex: 1 }}>
                   {renderWeekStrip()}
                   {selectedDay && dayPanelData
@@ -833,43 +839,45 @@ const styles = StyleSheet.create({
   weekDots:        { flexDirection: 'row', gap: 3, marginTop: 4, height: 6, alignItems: 'center' },
   dot:             { width: 5, height: 5, borderRadius: 3 },
 
-  // DayPanel — абсолютное позиционирование (bottom sheet), занимает 60% экрана
-  dayPanel:        {
+  // DayPanel: flex column, фиксированная высота 62% экрана
+  // Внутри: заголовок фиксирован, ScrollView flex:1 скроллит контент
+  dayPanel: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
     height: SCREEN_HEIGHT * 0.62,
+    flexDirection: 'column',       // явный flex column
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 20,
   },
-  dragHandle:      { width: '100%', alignItems: 'center', paddingVertical: 10 },
-  dragBar:         { width: 40, height: 4, borderRadius: 2, opacity: 0.5 },
-  dayPanelHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                     paddingHorizontal: 16, paddingBottom: 8 },
-  dayPanelTitle:   { fontSize: 16, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
-  addEventBtn:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5,
-                     borderRadius: 8, borderWidth: 1 },
-  panelSection:    { marginBottom: 16 },
-  panelSectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  dragHandle:        { width: '100%', alignItems: 'center', paddingVertical: 10 },
+  dragBar:           { width: 40, height: 4, borderRadius: 2, opacity: 0.5 },
+  dayPanelHeader:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                       paddingHorizontal: 16, paddingBottom: 10 },
+  dayPanelTitle:     { fontSize: 16, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  addEventBtn:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5,
+                       borderRadius: 8, borderWidth: 1 },
+  scrollContent:     { padding: 16, paddingTop: 8, paddingBottom: 32 },
+  panelSection:      { marginBottom: 16 },
+  panelSectionRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   panelSectionTitle: { fontSize: 13, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
-  panelItem:       { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 10, marginBottom: 6 },
-  formLabel:       { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8, textTransform: 'uppercase' },
-  typeRow:         { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
-  typeChip:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12,
-                     paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
-  typeChipLabel:   { fontSize: 12, fontWeight: '700' },
-  dateTrigger:     { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12,
-                     borderWidth: 1, marginBottom: 16 },
-  drumSaveBtn:     { width: '100%', paddingVertical: 14, borderRadius: 999, alignItems: 'center', marginBottom: 10 },
-  drumCancelBtn:   { width: '100%', paddingVertical: 12, borderRadius: 999, borderWidth: 1, alignItems: 'center' },
+  panelItem:         { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 10, marginBottom: 6 },
+  formLabel:         { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8, textTransform: 'uppercase' },
+  typeRow:           { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
+  typeChip:          { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12,
+                       paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
+  typeChipLabel:     { fontSize: 12, fontWeight: '700' },
+  dateTrigger:       { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12,
+                       borderWidth: 1, marginBottom: 16 },
+  drumSaveBtn:       { width: '100%', paddingVertical: 14, borderRadius: 999, alignItems: 'center', marginBottom: 10 },
+  drumCancelBtn:     { width: '100%', paddingVertical: 12, borderRadius: 999, borderWidth: 1, alignItems: 'center' },
 });
 
 export default CalendarScreen;
