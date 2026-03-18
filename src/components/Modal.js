@@ -18,38 +18,47 @@ const Modal = ({ visible, onClose, title, children }) => {
       animationType="fade"
       onRequestClose={onClose}
     >
-      {/* Тап по фону — закрыть */}
+      {/* Тап по фону */}
       <Pressable style={styles.backdrop} onPress={onClose}>
-        {/* Стоп пропаганды клика через контент */}
-        <Pressable style={styles.modalWrapper} onPress={e => e.stopPropagation()}>
-          <View style={[
-            styles.modal,
-            { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
-          ]}>
-            {title && (
-              <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
-                <TouchableOpacity
-                  style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
-                  onPress={onClose}
-                >
-                  <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+        {/*
+          View вместо Pressable — имеет пиксельный maxHeight,
+          поэтому ScrollView внутри знает свою границу и скроллит правильно.
+          Pressable наружу перехватывает тап — внутренний View stopPropagation не нужен,
+          потому что View не передаёт нажатие вверх.
+        */}
+        <View style={styles.modalWrapper}>
+          <Pressable onPress={e => e.stopPropagation()} style={styles.modalInner}>
+            <View style={[
+              styles.modal,
+              { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
+            ]}>
+              {/* ЗАГОЛОВОК */}
+              {title && (
+                <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
+                  <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
+                  <TouchableOpacity
+                    style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
+                    onPress={onClose}
+                  >
+                    <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
-            <ScrollView
-              style={styles.content}
-              contentContainerStyle={styles.contentContainer}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              nestedScrollEnabled={true}
-              bounces={true}
-            >
-              {children}
-            </ScrollView>
-          </View>
-        </Pressable>
+              {/* СКРОЛЛ — flex:1 занимает остаток модалки, скроллит в любой точке */}
+              <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.contentContainer}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled={true}
+                bounces={true}
+              >
+                {children}
+              </ScrollView>
+            </View>
+          </Pressable>
+        </View>
       </Pressable>
     </RNModal>
   );
@@ -63,16 +72,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  // modalWrapper ограничивает высоту ␔ через пиксели чтобы flex работал
+  // View с пиксельным maxHeight — flex работает
   modalWrapper: {
     width: '100%',
-    maxHeight: SCREEN_HEIGHT * 0.92,
+    maxHeight: SCREEN_HEIGHT * 0.90,
+    flexDirection: 'column',
   },
-  // modal: flex column, ScrollView знает свою высоту
+  // Pressable для блокировки тапа на контент
+  modalInner: {
+    flex: 1,
+  },
   modal: {
     width: '100%',
     maxWidth: 500,
     flexDirection: 'column',
+    flex: 1,
     borderWidth: 2,
     borderRadius: 20,
     overflow: 'hidden',
@@ -88,7 +102,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
   },
   title: {
     fontSize: 18, fontWeight: '700', textTransform: 'uppercase',
@@ -99,12 +114,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   closeIcon: { fontSize: 14, fontWeight: 'bold', marginTop: -2 },
-  content: {
-    flexShrink: 1,
+  scrollView: {
+    flex: 1,
   },
   contentContainer: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
 });
 
