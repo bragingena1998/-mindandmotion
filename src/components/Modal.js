@@ -7,9 +7,6 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-// Максимальная высота скролля — 90% экрана минус заголовок (~64px)
-const HEADER_H = 64;
-const MAX_SCROLL_HEIGHT = SCREEN_HEIGHT * 0.90 - HEADER_H;
 
 const Modal = ({ visible, onClose, title, children }) => {
   const { colors } = useTheme();
@@ -22,12 +19,11 @@ const Modal = ({ visible, onClose, title, children }) => {
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable onPress={e => e.stopPropagation()}>
+        <Pressable onPress={e => e.stopPropagation()} style={styles.container}>
           <View style={[
             styles.modal,
             { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
           ]}>
-            {/* ЗАГОЛОВОК — фиксированная часть, не скроллится */}
             {title && (
               <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
                 <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
@@ -39,16 +35,12 @@ const Modal = ({ visible, onClose, title, children }) => {
                 </TouchableOpacity>
               </View>
             )}
-            {/* СКРОЛЛ — ограничен по высоте через maxHeight на самом ScrollView.
-                 Короткий контент — модалка сжимается по контенту.
-                 Длинный контент — скроллится внутри. */}
             <ScrollView
-              style={{ maxHeight: MAX_SCROLL_HEIGHT }}
               contentContainerStyle={styles.contentContainer}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               nestedScrollEnabled={true}
-              bounces={true}
+              bounces={false}
             >
               {children}
             </ScrollView>
@@ -67,9 +59,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  modal: {
+  container: {
     width: '100%',
     maxWidth: 500,
+    // Максимальная высота обёртки — 90% экрана в пикселях.
+    // При коротком контенте — сжимается по контенту.
+    // При длинном — ограничивается и ScrollView скроллит.
+    maxHeight: SCREEN_HEIGHT * 0.90,
+  },
+  modal: {
+    width: '100%',
     borderWidth: 2,
     borderRadius: 20,
     overflow: 'hidden',
