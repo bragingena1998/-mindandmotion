@@ -2,9 +2,13 @@
 import React from 'react';
 import {
   View, Text, Modal as RNModal, StyleSheet,
-  TouchableOpacity, ScrollView, Pressable,
+  TouchableOpacity, ScrollView, Pressable, Dimensions,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+// Максимальная высота модалки — 92% экрана
+const MAX_MODAL_HEIGHT = SCREEN_HEIGHT * 0.92;
 
 const Modal = ({ visible, onClose, title, children }) => {
   const { colors } = useTheme();
@@ -17,17 +21,16 @@ const Modal = ({ visible, onClose, title, children }) => {
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        {/* stopPropagation — клик по контенту не закрывает модалку */}
-        <Pressable style={styles.modalWrapper}>
+        <Pressable>
           {/*
-            modal — flex column с ограниченной высотой.
-            Заголовок фиксирован, ScrollView занимает flex:1.
+            modal: maxHeight через пиксельное значение — так flex понимает границу.
+            Внутри: header фиксирован, ScrollView flex:1 заполняет остаток.
           */}
           <View style={[
             styles.modal,
             { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
           ]}>
-            {/* ЗАГОЛОВОК — фиксированная часть */}
+            {/* ЗАГОЛОВОК — фиксирован */}
             {title && (
               <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
                 <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
@@ -40,7 +43,7 @@ const Modal = ({ visible, onClose, title, children }) => {
               </View>
             )}
 
-            {/* СКРОЛЛ — занимает всё оставшееся место */}
+            {/* СКРОЛЛ — flex:1, работает в любой точке */}
             <ScrollView
               style={styles.scrollView}
               contentContainerStyle={styles.contentContainer}
@@ -66,21 +69,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  // modalWrapper ограничивает высоту — без этого modal может уйти за экран
-  modalWrapper: {
-    width: '100%',
-    maxHeight: '92%',
-    alignItems: 'center',
-  },
-  // modal — flex column, высота ограничена через modalWrapper
   modal: {
     width: '100%',
     maxWidth: 500,
-    // НЕТ padding здесь — он вызывал растягивание мимо flex
+    // Пиксельное maxHeight — flex знает границу и ScrollView может занять flex:1
+    maxHeight: MAX_MODAL_HEIGHT,
+    flexDirection: 'column',
     borderWidth: 2,
     borderRadius: 20,
-    flexDirection: 'column',
-    // overflow: hidden чтобы скруглённые углы работали при скролле
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -88,7 +84,6 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 24,
   },
-  // Заголовок — фиксированный, не скроллируется
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -107,7 +102,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   closeIcon: { fontSize: 14, fontWeight: 'bold', marginTop: -2 },
-  // ScrollView — flex:1 чтобы заполнить оставшееся пространство в modal
   scrollView: {
     flex: 1,
   },
