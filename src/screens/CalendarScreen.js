@@ -47,7 +47,7 @@ const EVENT_TYPES = [
   { key: 'event',     label: 'Событие',        icon: '⭐' },
 ];
 
-// ─── InfiniteWheel ─────────────────────────────────────────────────────────────
+// ─── InfiniteWheel ───────────────────────────────────────────────────────────
 const ITEM_H = 48;
 const VIS    = 5;
 const CTR    = Math.floor(VIS / 2);
@@ -117,7 +117,7 @@ const InfiniteWheel = ({ data, value, onChange, width = 72 }) => {
   );
 };
 
-// ─── DateDrumPicker ────────────────────────────────────────────────────────────
+// ─── DateDrumPicker ──────────────────────────────────────────────────────────
 const DateDrumPicker = ({ visible, value, onChange, onClose }) => {
   const { colors } = useTheme();
   const days   = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
@@ -165,7 +165,7 @@ const DateDrumPicker = ({ visible, value, onChange, onClose }) => {
   );
 };
 
-// ─── helpers ───────────────────────────────────────────────────────────────────
+// ─── helpers ─────────────────────────────────────────────────────────────────
 function getWeekStart(date) {
   const d = new Date(date);
   const dow = d.getDay();
@@ -201,11 +201,12 @@ function getActiveHabitsForDay(habits, day, month0, year) {
   return { active, count: active.length };
 }
 
-// ─── DayPanel ──────────────────────────────────────────────────────────────────
-// Структура: Animated.View (flex column, fixed height)
-//   └─ dragHandle        (фиксирован)
-//   └─ dayPanelHeader    (фиксирован)
-//   └─ ScrollView flex:1 (скроллится)
+// ─── DayPanel ─────────────────────────────────────────────────────────────────
+// Структура: Animated.View (flex column)
+//   └─ dragHandle  (фиксирован, перехватывает свайп вниз для закрытия)
+//   └─ header      (фиксирован)
+//   └─ separator
+//   └─ ScrollView  (flex:1, вертикальный скролл списка)
 const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTasks, onNavigateHabits }) => {
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
@@ -226,10 +227,11 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
     }
   }, [selectedDay]);
 
-  const panResponder = useRef(
+  // PanResponder ТОЛЬКО на dragHandle — не мешает ScrollView
+  const dragPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 4,
       onPanResponderGrant: () => {
         translateY.setOffset(0);
         translateY.setValue(0);
@@ -264,7 +266,6 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
         onPress={onClose}
       />
 
-      {/* Сама панель — flex column, фиксированная высота */}
       <Animated.View
         style={[
           styles.dayPanel,
@@ -272,8 +273,8 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
           { transform: [{ translateY }] },
         ]}
       >
-        {/* Ручка свайпа — только она перехватывает жест */}
-        <View {...panResponder.panHandlers} style={styles.dragHandle}>
+        {/* Только ручка перехватывает свайп вниз */}
+        <View {...dragPanResponder.panHandlers} style={styles.dragHandle}>
           <View style={[styles.dragBar, { backgroundColor: colors.borderSubtle }]} />
         </View>
 
@@ -294,13 +295,15 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
         {/* Разделитель */}
         <View style={{ height: 1, backgroundColor: colors.borderSubtle, marginHorizontal: 16, marginBottom: 4 }} />
 
-        {/* СКРОЛЛ — занимает всё оставшееся место в панели */}
+        {/* Скроллируемый контент — flex:1 заполняет оставшееся */}
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={true}
           keyboardShouldPersistTaps="handled"
           bounces={true}
+          // Не передавать события вверх — скролл работает независимо
+          nestedScrollEnabled={true}
         >
           {/* Events */}
           {dayEvents.length > 0 && (
@@ -400,7 +403,7 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
   );
 };
 
-// ─── Main Screen ───────────────────────────────────────────────────────────────
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 const CalendarScreen = ({ navigation }) => {
   const { colors } = useTheme();
 
@@ -494,15 +497,21 @@ const CalendarScreen = ({ navigation }) => {
     setMonth(next.getMonth());
     setYear(next.getFullYear());
   };
-  const swipeGesture = Gesture.Pan().runOnJS(true).onEnd(e => {
-    if (viewMode === 'month') {
-      if (e.translationX >  50) changeMonth(-1);
-      if (e.translationX < -50) changeMonth(1);
-    } else {
-      if (e.translationX >  50) changeWeek(-1);
-      if (e.translationX < -50) changeWeek(1);
-    }
-  });
+
+  // Свайп только горизонтальный — не мешает вертикальному скроллу
+  const swipeGesture = Gesture.Pan()
+    .runOnJS(true)
+    .activeOffsetX([-30, 30])       // активируется только при горизонтальном движении
+    .failOffsetY([-15, 15])         // сразу отказывается если движение вертикальное
+    .onEnd(e => {
+      if (viewMode === 'month') {
+        if (e.translationX >  50) changeMonth(-1);
+        if (e.translationX < -50) changeMonth(1);
+      } else {
+        if (e.translationX >  50) changeWeek(-1);
+        if (e.translationX < -50) changeWeek(1);
+      }
+    });
 
   const selectDay = (d, m_ = month, y_ = year) => {
     if (selectedDay?.d === d && selectedDay?.m === m_ && selectedDay?.y === y_) {
@@ -551,7 +560,7 @@ const CalendarScreen = ({ navigation }) => {
     catch (e) { console.error(e); }
   };
 
-  // ─── Cell ──────────────────────────────────────────────────────────────────
+  // ─── Cell ─────────────────────────────────────────────────────────────────
   const renderCell = (d, m_ = month, y_ = year) => {
     const { doneTasks, totalTasks, doneHabits, habitsCount, dayEvents, allDone, goodHabits } = getDayData(d, m_, y_);
     const today     = new Date();
@@ -608,7 +617,7 @@ const CalendarScreen = ({ navigation }) => {
     return <View style={styles.grid}>{cells}</View>;
   };
 
-  // ─── Week strip ────────────────────────────────────────────────────────────
+  // ─── Week strip ───────────────────────────────────────────────────────────
   const renderWeekStrip = () => {
     const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     return (
@@ -839,13 +848,11 @@ const styles = StyleSheet.create({
   weekDots:        { flexDirection: 'row', gap: 3, marginTop: 4, height: 6, alignItems: 'center' },
   dot:             { width: 5, height: 5, borderRadius: 3 },
 
-  // DayPanel: flex column, фиксированная высота 62% экрана
-  // Внутри: заголовок фиксирован, ScrollView flex:1 скроллит контент
   dayPanel: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
     height: SCREEN_HEIGHT * 0.62,
-    flexDirection: 'column',       // явный flex column
+    flexDirection: 'column',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderTopWidth: 1,
