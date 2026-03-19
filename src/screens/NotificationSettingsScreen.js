@@ -26,8 +26,13 @@ const NotificationSettingsScreen = ({ onBack }) => {
     });
   }, []);
 
+  // Простая строка со свичем
   const SwitchRow = ({ emoji, title, sub, value, onChange, last }) => (
-    <View style={[styles.row, last && styles.rowLast, { borderBottomColor: colors.borderSubtle }]}>
+    <View style={[
+      styles.row,
+      { borderBottomColor: colors.borderSubtle },
+      last && { borderBottomWidth: 0 },
+    ]}>
       <View style={styles.rowLeft}>
         <Text style={styles.emoji}>{emoji}</Text>
         <View style={{ flex: 1 }}>
@@ -40,6 +45,21 @@ const NotificationSettingsScreen = ({ onBack }) => {
         onValueChange={onChange}
         trackColor={{ false: colors.borderSubtle, true: colors.accent1 }}
         thumbColor={'#fff'}
+      />
+    </View>
+  );
+
+  // Строка с барабаном времени — занимает всю ширину карточки
+  const TimeRow = ({ label, value, onChange, last }) => (
+    <View style={[
+      styles.timeBlock,
+      { borderBottomColor: colors.borderSubtle },
+      last && { borderBottomWidth: 0 },
+    ]}>
+      <Text style={[styles.timeBlockLabel, { color: colors.textMuted }]}>{label}</Text>
+      <TimePicker
+        value={value}
+        onChangeTime={v => onChange(v || '08:00')}
       />
     </View>
   );
@@ -74,13 +94,11 @@ const NotificationSettingsScreen = ({ onBack }) => {
                 onChange={v => update('morningEnabled', v)}
               />
               {settings.morningEnabled && (
-                <View style={[styles.pickerRow, { borderBottomColor: colors.borderSubtle }]}>
-                  <Text style={[styles.pickerLabel, { color: colors.textMuted }]}>Время</Text>
-                  <TimePicker
-                    value={settings.morningTime}
-                    onChangeTime={v => update('morningTime', v || '08:00')}
-                  />
-                </View>
+                <TimeRow
+                  label="Время утреннего"
+                  value={settings.morningTime}
+                  onChange={v => update('morningTime', v)}
+                />
               )}
 
               <SwitchRow
@@ -89,15 +107,15 @@ const NotificationSettingsScreen = ({ onBack }) => {
                 sub="Напоминание внести отметки за день"
                 value={settings.eveningEnabled}
                 onChange={v => update('eveningEnabled', v)}
+                last={!settings.eveningEnabled}
               />
               {settings.eveningEnabled && (
-                <View style={[styles.pickerRow, { borderBottomWidth: 0 }]}>
-                  <Text style={[styles.pickerLabel, { color: colors.textMuted }]}>Время</Text>
-                  <TimePicker
-                    value={settings.eveningTime}
-                    onChangeTime={v => update('eveningTime', v || '20:00')}
-                  />
-                </View>
+                <TimeRow
+                  label="Время вечернего"
+                  value={settings.eveningTime}
+                  onChange={v => update('eveningTime', v)}
+                  last
+                />
               )}
 
             </View>
@@ -121,7 +139,11 @@ const NotificationSettingsScreen = ({ onBack }) => {
                   <View style={[styles.minuteRow, { borderBottomColor: colors.borderSubtle }]}>
                     <Text style={[styles.minuteLabel, { color: colors.textMuted }]}>Первое напоминание за</Text>
                     <TextInput
-                      style={[styles.minuteInput, { backgroundColor: colors.background, borderColor: colors.borderSubtle, color: colors.textMain }]}
+                      style={[styles.minuteInput, {
+                        backgroundColor: colors.background,
+                        borderColor: colors.borderSubtle,
+                        color: colors.textMain,
+                      }]}
                       value={String(settings.taskReminderFirst)}
                       onChangeText={v => update('taskReminderFirst', parseInt(v) || 60)}
                       keyboardType="numeric"
@@ -132,7 +154,11 @@ const NotificationSettingsScreen = ({ onBack }) => {
                   <View style={[styles.minuteRow, { borderBottomWidth: 0 }]}>
                     <Text style={[styles.minuteLabel, { color: colors.textMuted }]}>Второе напоминание за</Text>
                     <TextInput
-                      style={[styles.minuteInput, { backgroundColor: colors.background, borderColor: colors.borderSubtle, color: colors.textMain }]}
+                      style={[styles.minuteInput, {
+                        backgroundColor: colors.background,
+                        borderColor: colors.borderSubtle,
+                        color: colors.textMain,
+                      }]}
                       value={String(settings.taskReminderSecond)}
                       onChangeText={v => update('taskReminderSecond', parseInt(v) || 10)}
                       keyboardType="numeric"
@@ -210,13 +236,12 @@ const NotificationSettingsScreen = ({ onBack }) => {
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <View style={[styles.pickerRow, { borderBottomWidth: 0 }]}>
-                    <Text style={[styles.pickerLabel, { color: colors.textMuted }]}>Время</Text>
-                    <TimePicker
-                      value={settings.weeklyTime}
-                      onChangeTime={v => update('weeklyTime', v || '20:00')}
-                    />
-                  </View>
+                  <TimeRow
+                    label="Время итога"
+                    value={settings.weeklyTime}
+                    onChange={v => update('weeklyTime', v)}
+                    last
+                  />
                 </>
               )}
 
@@ -274,18 +299,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1,
   },
-  rowLast: { borderBottomWidth: 0 },
   rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   emoji: { fontSize: 20, marginRight: 12 },
   rowTitle: { fontSize: 16, fontWeight: '500' },
   rowSub: { fontSize: 13, marginTop: 2 },
-  pickerRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 8,
+
+  // Блок с барабаном — занимает всю ширину, TimePicker без обёртки
+  timeBlock: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 0,
     borderBottomWidth: 1,
   },
-  pickerLabel: { fontSize: 14 },
+  timeBlockLabel: {
+    fontSize: 12, fontWeight: '600',
+    textTransform: 'uppercase', letterSpacing: 0.8,
+    marginBottom: 0,
+  },
+
   minuteRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12,
