@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { getToken } from './src/services/storage';
-import { registerForPushNotificationsAsync, scheduleMorningNotification } from './src/services/notifications';
+import { initNotifications } from './src/services/notifications';
 
 // Screens
 import HabitsScreen from './src/screens/HabitsScreen';
@@ -24,19 +24,19 @@ const MainTabs = ({ onLogout, onOpenSecret }) => {
   const tapCounter = useRef({ count: 0, lastTime: 0 });
 
   const handleProfileTap = (e) => {
-      const now = Date.now();
-      if (now - tapCounter.current.lastTime < 500) {
-        tapCounter.current.count += 1;
-      } else {
-        tapCounter.current.count = 1;
-      }
-      tapCounter.current.lastTime = now;
+    const now = Date.now();
+    if (now - tapCounter.current.lastTime < 500) {
+      tapCounter.current.count += 1;
+    } else {
+      tapCounter.current.count = 1;
+    }
+    tapCounter.current.lastTime = now;
 
-      if (tapCounter.current.count >= 3) {
-        e.preventDefault();
-        tapCounter.current.count = 0;
-        onOpenSecret();
-      }
+    if (tapCounter.current.count >= 3) {
+      e.preventDefault();
+      tapCounter.current.count = 0;
+      onOpenSecret();
+    }
   };
 
   return (
@@ -54,19 +54,17 @@ const MainTabs = ({ onLogout, onOpenSecret }) => {
         tabBarActiveTintColor: colors.accent1,
         tabBarInactiveTintColor: '#555',
         tabBarShowLabel: false,
-        tabBarIcon: ({ color, size, focused }) => {
+        tabBarIcon: ({ color, focused }) => {
           let iconName;
-
           if (route.name === 'Tasks') iconName = 'check-square';
           else if (route.name === 'Habits') iconName = 'zap';
           else if (route.name === 'Calendar') iconName = 'calendar';
           else if (route.name === 'Profile') iconName = 'user';
-
           return (
-            <Feather 
-              name={iconName} 
-              size={28} 
-              color={color} 
+            <Feather
+              name={iconName}
+              size={28}
+              color={color}
               style={focused ? { textShadowColor: colors.accent1, textShadowRadius: 10 } : {}}
             />
           );
@@ -76,8 +74,8 @@ const MainTabs = ({ onLogout, onOpenSecret }) => {
       <Tab.Screen name="Tasks" component={TasksScreen} />
       <Tab.Screen name="Habits" component={HabitsScreen} />
       <Tab.Screen name="Calendar" component={CalendarScreen} />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         children={() => <ProfileScreen onLogout={onLogout} />}
         listeners={{ tabPress: handleProfileTap }}
       />
@@ -89,16 +87,17 @@ const AppContent = () => {
   const { colors } = useTheme();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [currentScreen, setCurrentScreen] = useState('login'); 
+  const [currentScreen, setCurrentScreen] = useState('login');
 
   useEffect(() => {
     checkAuth();
-    initNotifications();
   }, []);
 
-  const initNotifications = async () => {
-    await registerForPushNotificationsAsync();
-    await scheduleMorningNotification();
+  // Инициализация уведомлений — только после авторизации
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    setCurrentScreen('main');
+    initNotifications(); // запуск уведомлений асинхронно
   };
 
   const checkAuth = async () => {
@@ -107,11 +106,12 @@ const AppContent = () => {
       if (token) {
         setIsAuthenticated(true);
         setCurrentScreen('main');
+        initNotifications(); // уже авторизован — инициализируем
       } else {
         setIsAuthenticated(false);
         setCurrentScreen('login');
       }
-    } catch(e) {
+    } catch (e) {
       setIsAuthenticated(false);
     } finally {
       setLoading(false);
@@ -122,25 +122,27 @@ const AppContent = () => {
 
   if (currentScreen === 'secret') {
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
-            <SecretChatScreen onExit={() => setCurrentScreen('main')} />
-        </SafeAreaView>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+        <SecretChatScreen onExit={() => setCurrentScreen('main')} />
+      </SafeAreaView>
     );
   }
 
   if (!isAuthenticated) {
-    if (currentScreen === 'register') return <RegisterScreen onNavigate={setCurrentScreen} onLoginSuccess={() => { setIsAuthenticated(true); setCurrentScreen('main'); }} />;
-    if (currentScreen === 'forgot-password') return <ForgotPasswordScreen onNavigate={setCurrentScreen} />;
-    return <LoginScreen onNavigate={setCurrentScreen} onLoginSuccess={() => { setIsAuthenticated(true); setCurrentScreen('main'); }} />;
+    if (currentScreen === 'register')
+      return <RegisterScreen onNavigate={setCurrentScreen} onLoginSuccess={handleLoginSuccess} />;
+    if (currentScreen === 'forgot-password')
+      return <ForgotPasswordScreen onNavigate={setCurrentScreen} />;
+    return <LoginScreen onNavigate={setCurrentScreen} onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <NavigationContainer>
-        <MainTabs 
-            onLogout={() => { setIsAuthenticated(false); setCurrentScreen('login'); }} 
-            onOpenSecret={() => setCurrentScreen('secret')} 
+        <MainTabs
+          onLogout={() => { setIsAuthenticated(false); setCurrentScreen('login'); }}
+          onOpenSecret={() => setCurrentScreen('secret')}
         />
       </NavigationContainer>
     </SafeAreaView>
