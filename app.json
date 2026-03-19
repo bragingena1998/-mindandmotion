@@ -8,6 +8,15 @@
             "usesCleartextTraffic": true
           }
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0f0f11",
+          "androidMode": "default",
+          "androidCollapsedTitle": "Mind&Motion"
+        }
       ]
     ],
     "name": "mindandmotion-mobile",
