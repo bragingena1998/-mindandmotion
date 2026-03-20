@@ -34,19 +34,42 @@ const TutorialOverlay = ({
 
   useEffect(() => {
     if (visible && currentStep) {
-      // Анимация появления
+      // Получаем позицию spotlight
+      const getSpotlightPosition = () => {
+        if (currentStep.targetRef && currentStep.targetRef.current) {
+          currentStep.targetRef.current.measure((fx, fy, width, height, px, py) => {
+            if (px && py) {
+              const targetX = px + width / 2 - SCREEN_WIDTH / 2;
+              const targetY = py + height / 2 - SCREEN_HEIGHT / 2;
+              Animated.timing(spotlightAnim, {
+                toValue: { x: targetX, y: targetY },
+                duration: 500,
+                useNativeDriver: false,
+              }).start();
+            }
+          });
+        } else {
+          const targetX = (currentStep.x || SCREEN_WIDTH / 2) - SCREEN_WIDTH / 2;
+          const targetY = (currentStep.y || SCREEN_HEIGHT / 2) - SCREEN_HEIGHT / 2;
+          Animated.timing(spotlightAnim, {
+            toValue: { x: targetX, y: targetY },
+            duration: 500,
+            useNativeDriver: false,
+          }).start();
+        }
+      };
+
+      // Анимация появления overlay
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 300,
         useNativeDriver: true,
       }).start();
 
-      // Анимация перемещения spotlight
-      Animated.timing(spotlightAnim, {
-        toValue: { x: currentStep.x || SCREEN_WIDTH / 2, y: currentStep.y || SCREEN_HEIGHT / 2 },
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
+      // Установка позиции spotlight с небольшой задержкой
+      setTimeout(() => {
+        getSpotlightPosition();
+      }, 100);
 
       // Анимация появления текста
       setTimeout(() => {

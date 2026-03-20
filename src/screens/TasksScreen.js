@@ -446,16 +446,14 @@ const TasksScreen = ({ navigation }) => {
       title: 'Добро пожаловать в задачи! 📝',
       description: 'Здесь вы можете управлять всеми своими задачами. Давайте рассмотрим основные функции.',
       spotlightSize: 200,
-      x: SCREEN_WIDTH / 2,
-      y: 100,
+      targetRef: null, // Центр экрана
       textPosition: { top: 200, left: 20, right: 20 },
     },
     {
       title: 'Создание задачи ➕',
       description: 'Нажмите на кнопку + чтобы создать новую задачу. Вы можете указать название, время, приоритет и комментарии.',
       spotlightSize: 60,
-      x: SCREEN_WIDTH - 40,
-      y: SCREEN_HEIGHT - 100,
+      targetRef: addButtonRef,
       textPosition: { top: null, bottom: 120, left: 20, right: 20 },
       showPointer: true,
       pointerType: 'tap',
@@ -464,8 +462,7 @@ const TasksScreen = ({ navigation }) => {
       title: 'Фильтрация задач 🔍',
       description: 'Используйте фильтры для отображения задач по статусу: все, активные, выполненные или просроченные.',
       spotlightSize: 150,
-      x: SCREEN_WIDTH / 2,
-      y: 80,
+      targetRef: filterRef,
       textPosition: { top: 150, left: 20, right: 20 },
       showPointer: true,
       pointerType: 'tap',
@@ -474,8 +471,7 @@ const TasksScreen = ({ navigation }) => {
       title: 'Свайп для действий 👉',
       description: 'Проведите пальцем по задаче вправо для быстрого выполнения или влево для удаления. Попробуйте!',
       spotlightSize: 300,
-      x: SCREEN_WIDTH / 2,
-      y: 300,
+      targetRef: taskListRef,
       textPosition: { top: null, bottom: 150, left: 20, right: 20 },
       showPointer: true,
       pointerType: 'swipe',
@@ -484,8 +480,7 @@ const TasksScreen = ({ navigation }) => {
       title: 'Готово! 🎉',
       description: 'Теперь вы знаете основы управления задачами. Начните планировать свой день эффективно!',
       spotlightSize: 200,
-      x: SCREEN_WIDTH / 2,
-      y: SCREEN_HEIGHT / 2,
+      targetRef: null, // Центр экрана
       textPosition: { top: SCREEN_HEIGHT / 2 - 100, left: 20, right: 20 },
     },
   ];
@@ -498,6 +493,11 @@ const TasksScreen = ({ navigation }) => {
   }, [loading, tutorialCompleted, tasks.length]);
 
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+  // Refs для элементов туториала
+  const addButtonRef = useRef(null);
+  const filterRef = useRef(null);
+  const taskListRef = useRef(null);
 
   useEffect(() => { loadTasks(); loadFolders(); }, []);
 
@@ -1015,7 +1015,7 @@ const TasksScreen = ({ navigation }) => {
 
           {/* ЧИПЫ ФИЛЬТРА */}
           {!dragTask && (
-            <View style={styles.chipsContainer}>
+            <View ref={filterRef} style={styles.chipsContainer}>
               <TouchableOpacity
                 style={[styles.chip, { backgroundColor: hideCompleted ? colors.accent1 : colors.surface, borderColor: colors.borderSubtle }]}
                 onPress={() => setHideCompleted(!hideCompleted)}
@@ -1093,6 +1093,7 @@ const TasksScreen = ({ navigation }) => {
 
           {/* СПИСОК ЗАДАЧ */}
           <FlatList
+            ref={taskListRef}
             data={sortedTasks}
             renderItem={renderTask}
             keyExtractor={(item) => item.id.toString()}
@@ -1111,6 +1112,7 @@ const TasksScreen = ({ navigation }) => {
           {/* FAB */}
           {!dragTask && (
             <TouchableOpacity
+              ref={addButtonRef}
               style={[styles.fab, { backgroundColor: colors.accent1 }]}
               onPress={() => {
                 setNewTask({ ...emptyTask(), folderId: activeFolderId });
