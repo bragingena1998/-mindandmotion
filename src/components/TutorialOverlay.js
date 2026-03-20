@@ -72,11 +72,11 @@ const TutorialOverlay = ({
   const spotlightRadius = spotlightSize / 2;
 
   return (
-    <Animated.View style={[styles.overlay, { opacity: fadeAnim }]} pointerEvents="none">
+    <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
       {/* Полупрозрачный фон */}
       <View style={styles.background} />
       
-      {/* Spotlight круг */}
+      {/* Spotlight круг (визуальный + прозрачный для нажатий) */}
       <Animated.View
         style={[
           styles.spotlight,
@@ -85,17 +85,15 @@ const TutorialOverlay = ({
             height: spotlightSize,
             borderRadius: spotlightRadius,
             backgroundColor: 'transparent',
+            borderWidth: 2,
+            borderColor: 'rgba(255, 255, 255, 0.3)',
             transform: [
               { translateX: spotlightAnim.x },
               { translateY: spotlightAnim.y },
             ],
           },
         ]}
-        pointerEvents="none"
-      >
-        {/* Прозрачный круг внутри spotlight */}
-        <View style={[styles.spotlightInner, { borderRadius: spotlightRadius }]} />
-      </Animated.View>
+      />
 
       {/* Текст туториала */}
       <Animated.View
@@ -104,7 +102,6 @@ const TutorialOverlay = ({
           currentStep.textPosition,
           { opacity: textAnim },
         ]}
-        pointerEvents="auto"
       >
         <Text style={[styles.title, { color: colors.textMain }]}>
           {currentStep.title}
@@ -165,7 +162,6 @@ const TutorialOverlay = ({
               ],
             },
           ]}
-          pointerEvents="none"
         >
           <Text style={styles.pointerEmoji}>
             {currentStep.pointerType === 'swipe' ? '👉' : '👆'}
@@ -195,17 +191,9 @@ const styles = StyleSheet.create({
   },
   spotlight: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  spotlightInner: {
-    position: 'absolute',
-    top: -2,
-    left: -2,
-    right: -2,
-    bottom: -2,
-    backgroundColor: 'transparent',
   },
   textContainer: {
     position: 'absolute',
