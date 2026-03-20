@@ -18,6 +18,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadSettings } from './settingsStorage';
+import api from './api';
 
 // Ключи в AsyncStorage
 const LAST_VISIT_KEY = '@mm_last_visit';
@@ -87,6 +88,71 @@ function nextOccurrence(hour, minute) {
   return target;
 }
 
+// Получение сводки задач для уведомлений
+async function getTasksSummary() {
+  try {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Задачи на сегодня
+    const todayTasksRes = await api.get('/tasks', {
+      params: {
+        year: today.getFullYear(),
+        month: today.getMonth() + 1,
+        day: today.getDate()
+      }
+    });
+    
+    // Задачи на завтра
+    const tomorrowTasksRes = await api.get('/tasks', {
+      params: {
+        year: tomorrow.getFullYear(),
+        month: tomorrow.getMonth() + 1,
+        day: tomorrow.getDate()
+      }
+    });
+    
+    const todayTasks = todayTasksRes.data || [];
+    const tomorrowTasks = tomorrowTasksRes.data || [];
+    
+    // Считаем статистику
+    const totalToday = todayTasks.length;
+    const overdueToday = todayTasks.filter(t => !t.done && new Date(`${t.date} ${t.time || '23:59'}`) < today).length;
+    const tomorrowDeadlines = tomorrowTasks.filter(t => t.deadline === tomorrow.toISOString().split('T')[0]).length;
+    
+    return {
+      totalToday,
+      overdueToday,
+      tomorrowDeadlines
+    };
+  } catch (error) {
+    console.error('Error getting tasks summary:', error);
+    return { totalToday: 0, overdueToday: 0, tomorrowDeadlines: 0 };
+  }
+}
+
+// Получение недельной статистики
+async function getWeeklyStats() {
+  try {
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay()); // Начало недели (вс)
+    
+    const statsRes = await api.get('/tasks/stats', {
+      params: {
+        startDate: weekStart.toISOString().split('T')[0],
+        endDate: today.toISOString().split('T')[0]
+      }
+    });
+    
+    return statsRes.data?.completedThisWeek || 0;
+  } catch (error) {
+    console.error('Error getting weekly stats:', error);
+    return 0;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 2. УТРЕННЕЕ + ВЕЧЕРНЕЕ
 // ---------------------------------------------------------------------------
@@ -108,11 +174,27 @@ export async function scheduleDailyNotifications() {
       scheduledTime.setDate(scheduledTime.getDate() + 1);
     }
     
+    // Получаем сводку задач для персонализированного уведомления
+    const { totalToday, overdueToday, tomorrowDeadlines } = await getTasksSummary();
+    
+    // Формируем текст уведомления
+    let body = `На сегодня ${totalToday} задач${totalToday === 0 ? '' : totalToday === 1 ? 'а' : 'и'}`;
+    
+    if (overdueToday > 0) {
+      body += `, ${overdueToday} просроченн${overdueToday === 1 ? 'ая' : overdueToday <= 4 ? 'ые' : 'ых'}`;
+    }
+    
+    if (tomorrowDeadlines > 0) {
+      body += `. На завтра ${tomorrowDeadlines} дедлайн${tomorrowDeadlines === 1 ? '' : 'ов'}`;
+    }
+    
+    body += '. Хороший день начинается с плана!';
+    
     await Notifications.scheduleNotificationAsync({
       identifier: 'morning-daily',
       content: {
         title: 'Доброе утро! 🌅',
-        body: 'Посмотри задачи на сегодня — хороший день начинается с плана!',
+        body,
         sound: true,
       },
       trigger: scheduledTime,
@@ -130,11 +212,21 @@ export async function scheduleDailyNotifications() {
       scheduledTime.setDate(scheduledTime.getDate() + 1);
     }
     
+    // Получаем информацию о дедлайнах на завтра
+    const { tomorrowDeadlines } = await getTasksSummary();
+    
+    // Формируем текст уведомления
+    let body = 'День почти завершён — внеси отметки и подведи итог дня!';
+    
+    if (tomorrowDeadlines > 0) {
+      body = `На завтра ${tomorrowDeadlines} дедлайн${tomorrowDeadlines === 1 ? '' : 'ов'}. ${body}`;
+    }
+    
     await Notifications.scheduleNotificationAsync({
       identifier: 'evening-daily',
       content: {
         title: 'Вечерний итог 🌙',
-        body: 'День почти завершён — внеси отметки и подведи итог дня!',
+        body,
         sound: true,
       },
       trigger: scheduledTime,
@@ -174,11 +266,14 @@ export async function scheduleWeeklyNotification() {
   
   scheduledTime.setDate(now.getDate() + daysUntilTarget);
 
+  // Получаем недельную статистику
+  const completedThisWeek = await getWeeklyStats();
+
   await Notifications.scheduleNotificationAsync({
     identifier: 'weekly-summary',
     content: {
       title: 'Недельный итог 📅',
-      body: 'Как прошла неделя? Загляни в Mind&Motion и подведи итог!',
+      body: `За эту неделю выполнено ${completedThisWeek} задач${completedThisWeek === 1 ? 'а' : completedThisWeek <= 4 ? 'и' : ''}. Загляни в Mind&Motion и подведи итог!`,
       sound: true,
     },
     trigger: scheduledTime,
