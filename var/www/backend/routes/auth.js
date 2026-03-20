@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const emailService = require('../emailService');
+const { createDemoData } = require('../utils/demoData');
 
 function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -191,6 +192,15 @@ router.post('/verify-code', async (req, res) => {
       process.env.JWT_SECRET || 'your-secret-key-12345',
       { expiresIn: '30d' }
     );
+
+    // Создаем демо-данные для нового пользователя
+    try {
+      await createDemoData(userId);
+      console.log('🎯 Демо-данные успешно созданы для пользователя:', userId);
+    } catch (demoError) {
+      console.error('❌ Ошибка создания демо-данных:', demoError);
+      // Не прерываем регистрацию, если демо-данные не создались
+    }
 
     res.json({ success: true, message: 'Регистрация успешна', token, userId, email, name });
   } catch (error) {

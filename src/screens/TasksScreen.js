@@ -4,14 +4,17 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
+  Alert,
   ActivityIndicator,
   RefreshControl,
-  Alert,
+  Modal,
   Animated,
+  Dimensions,
+  StyleSheet,
   ScrollView,
+  TextInput,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Background from '../components/Background';
@@ -31,6 +34,9 @@ import DatePicker from '../components/DatePicker';
 import TimePicker from '../components/TimePicker';
 import FocusSessionModal, { hasFocusSession, getFocusSession } from '../components/FocusSessionModal';
 import { scheduleTaskReminders, cancelTaskReminders } from '../services/notifications';
+import TutorialOverlay from '../components/TutorialOverlay';
+import TutorialButton from '../components/TutorialButton';
+import { useTutorial } from '../hooks/useTutorial';
 
 const toMysqlFormat = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
 
@@ -343,7 +349,6 @@ const DraggableTaskItem = React.memo(({
   );
 });
 
-// ==================== MAIN SCREEN ====================
 
 const TasksScreen = ({ navigation }) => {
   const { colors } = useTheme();
@@ -422,6 +427,78 @@ const TasksScreen = ({ navigation }) => {
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [showOverdueCleanupModal, setShowOverdueCleanupModal] = useState(false);
   const [overdueTasksList, setOverdueTasksList] = useState([]);
+
+  // Туториал
+  const {
+    isVisible: tutorialVisible,
+    currentStep: tutorialStep,
+    isCompleted: tutorialCompleted,
+    startTutorial,
+    restartTutorial,
+    nextStep,
+    previousStep,
+    closeTutorial,
+    skipTutorial,
+  } = useTutorial('tasks');
+
+  // Шаги туториала для задач
+  const tutorialSteps = [
+    {
+      title: 'Добро пожаловать в задачи! 📝',
+      description: 'Здесь вы можете управлять всеми своими задачами. Давайте рассмотрим основные функции.',
+      spotlightSize: 200,
+      x: SCREEN_WIDTH / 2,
+      y: 100,
+      textPosition: { top: 200, left: 20, right: 20 },
+    },
+    {
+      title: 'Создание задачи ➕',
+      description: 'Нажмите на кнопку + чтобы создать новую задачу. Вы можете указать название, время, приоритет и комментарии.',
+      spotlightSize: 60,
+      x: SCREEN_WIDTH - 40,
+      y: SCREEN_HEIGHT - 100,
+      textPosition: { top: null, bottom: 120, left: 20, right: 20 },
+      showPointer: true,
+      pointerType: 'tap',
+    },
+    {
+      title: 'Фильтрация задач 🔍',
+      description: 'Используйте фильтры для отображения задач по статусу: все, активные, выполненные или просроченные.',
+      spotlightSize: 150,
+      x: SCREEN_WIDTH / 2,
+      y: 80,
+      textPosition: { top: 150, left: 20, right: 20 },
+      showPointer: true,
+      pointerType: 'tap',
+    },
+    {
+      title: 'Свайп для действий 👉',
+      description: 'Проведите пальцем по задаче вправо для быстрого выполнения или влево для удаления. Попробуйте!',
+      spotlightSize: 300,
+      x: SCREEN_WIDTH / 2,
+      y: 300,
+      textPosition: { top: null, bottom: 150, left: 20, right: 20 },
+      showPointer: true,
+      pointerType: 'swipe',
+    },
+    {
+      title: 'Готово! 🎉',
+      description: 'Теперь вы знаете основы управления задачами. Начните планировать свой день эффективно!',
+      spotlightSize: 200,
+      x: SCREEN_WIDTH / 2,
+      y: SCREEN_HEIGHT / 2,
+      textPosition: { top: SCREEN_HEIGHT / 2 - 100, left: 20, right: 20 },
+    },
+  ];
+
+  // Запуск туториала при первом входе
+  useEffect(() => {
+    if (!loading && !tutorialCompleted && tasks.length > 0) {
+      setTimeout(() => startTutorial(), 1000);
+    }
+  }, [loading, tutorialCompleted, tasks.length]);
+
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
   useEffect(() => { loadTasks(); loadFolders(); }, []);
 
@@ -1445,6 +1522,20 @@ const TasksScreen = ({ navigation }) => {
           </View>
         </Modal>
       )}
+
+      {/* Кнопка туториала */}
+      <TutorialButton onPress={restartTutorial} />
+
+      {/* Туториал */}
+      <TutorialOverlay
+        visible={tutorialVisible}
+        steps={tutorialSteps}
+        currentStepIndex={tutorialStep}
+        onNext={nextStep}
+        onPrevious={previousStep}
+        onClose={closeTutorial}
+        onSkip={skipTutorial}
+      />
     </Background>
   );
 };
