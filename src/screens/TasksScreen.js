@@ -9,7 +9,6 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
-  Modal,
   Animated,
   Dimensions,
   StyleSheet,

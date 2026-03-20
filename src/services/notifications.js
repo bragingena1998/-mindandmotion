@@ -13,8 +13,33 @@
  * Тестировать только через APK!
  */
 
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
+// Проверка на Dev Client
+const Constants = require('expo-constants');
+const isDevClient = Constants?.executionEnvironment === 'storeClient' || __DEV__;
+
+let Notifications, Device;
+if (!isDevClient) {
+  const expoNotifications = require('expo-notifications');
+  const expoDevice = require('expo-device');
+  Notifications = expoNotifications;
+  Device = expoDevice;
+} else {
+  // Mock-объекты для Dev Client
+  Notifications = {
+    setNotificationHandler: () => {},
+    getPermissionsAsync: () => Promise.resolve({ status: 'granted' }),
+    requestPermissionsAsync: () => Promise.resolve({ status: 'granted' }),
+    getExpoPushTokenAsync: () => Promise.resolve({ data: 'mock-token' }),
+    scheduleNotificationAsync: () => Promise.resolve('mock-id'),
+    cancelScheduledNotificationAsync: () => Promise.resolve(),
+    getAllScheduledNotificationsAsync: () => Promise.resolve([]),
+    dismissAllNotificationsAsync: () => Promise.resolve(),
+  };
+  Device = {
+    isDevice: true,
+  };
+}
+
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadSettings } from './settingsStorage';
