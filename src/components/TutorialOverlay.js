@@ -72,7 +72,7 @@ const TutorialOverlay = ({
   const spotlightRadius = spotlightSize / 2;
 
   return (
-    <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+    <Animated.View style={[styles.overlay, { opacity: fadeAnim }]} pointerEvents="none">
       {/* Полупрозрачный фон */}
       <View style={styles.background} />
       
@@ -91,6 +91,7 @@ const TutorialOverlay = ({
             ],
           },
         ]}
+        pointerEvents="none"
       >
         {/* Прозрачный круг внутри spotlight */}
         <View style={[styles.spotlightInner, { borderRadius: spotlightRadius }]} />
@@ -100,13 +101,10 @@ const TutorialOverlay = ({
       <Animated.View
         style={[
           styles.textContainer,
-          {
-            opacity: textAnim,
-            top: currentStep.textPosition?.top || SCREEN_HEIGHT - 200,
-            left: currentStep.textPosition?.left || 20,
-            right: currentStep.textPosition?.right || 20,
-          },
+          currentStep.textPosition,
+          { opacity: textAnim },
         ]}
+        pointerEvents="auto"
       >
         <Text style={[styles.title, { color: colors.textMain }]}>
           {currentStep.title}
@@ -167,6 +165,7 @@ const TutorialOverlay = ({
               ],
             },
           ]}
+          pointerEvents="none"
         >
           <Text style={styles.pointerEmoji}>
             {currentStep.pointerType === 'swipe' ? '👉' : '👆'}
