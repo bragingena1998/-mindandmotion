@@ -30,6 +30,7 @@ import {
 import DatePicker from '../components/DatePicker';
 import TimePicker from '../components/TimePicker';
 import FocusSessionModal, { hasFocusSession, getFocusSession } from '../components/FocusSessionModal';
+import { scheduleTaskReminders, cancelTaskReminders } from '../services/notifications';
 
 const toMysqlFormat = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
 
@@ -711,6 +712,7 @@ const TasksScreen = ({ navigation }) => {
     try {
       setTasks(prev => prev.filter(t => t.id !== taskId));
       await tasksAPI.deleteTask(taskId);
+      await cancelTaskReminders(taskId); // Отменяем уведомления
       showToast('🗑️ Задача удалена');
     } catch { loadTasks(); Alert.alert('Ошибка', 'Не удалось удалить задачу'); }
   }, []);
@@ -1226,10 +1228,17 @@ const TasksScreen = ({ navigation }) => {
                     recurrenceType: newTask.recurrenceType,
                     folderId: newTask.folderId || null,
                   };
-                  await (editingTask
+                  const result = await (editingTask
                     ? tasksAPI.updateTask(editingTask.id, payload)
                     : tasksAPI.createTask(payload)
                   );
+                  
+                  // Планируем уведомления для задачи с временем
+                  const taskData = editingTask ? { ...editingTask, ...payload } : { ...result, ...payload };
+                  if (taskData.time && taskData.date) {
+                    await scheduleTaskReminders(taskData);
+                  }
+                  
                   showToast(editingTask ? '✏️ Задача обновлена' : '✅ Задача добавлена');
                   setShowAddModal(false);
                   setTimeout(() => loadTasks(), 300);

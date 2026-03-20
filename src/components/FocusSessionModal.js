@@ -14,6 +14,7 @@ import {
   AppState,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { scheduleSessionEndNotification, cancelSessionEndNotification } from '../services/notifications';
 
 const PRESETS = [
   { label: '15 мин', seconds: 15 * 60 },
@@ -119,6 +120,7 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
             setIsFinished(true);
             Vibration.vibrate([500, 300, 500]);
             _globalTimer = null;
+            // Уведомление уже запланировано, оно сработает через notifications.js
             return 0;
           }
           return prev - 1;
@@ -154,12 +156,21 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
 
   const handleStartPause = () => {
     if (isFinished) return;
+    if (!isRunning) {
+      // Запускаем таймер — планируем уведомление о конце
+      const durationMinutes = Math.ceil(timeLeft / 60);
+      scheduleSessionEndNotification(durationMinutes, task?.title);
+    } else {
+      // Пауза — отменяем уведомление
+      cancelSessionEndNotification();
+    }
     setIsRunning(prev => !prev);
   };
 
   const handleReset = () => {
     setIsRunning(false);
     setIsFinished(false);
+    cancelSessionEndNotification(); // Отменяем уведомление
     const t = selectedPreset >= 0 ? PRESETS[selectedPreset].seconds : totalTime;
     setTimeLeft(t);
     setTotalTime(t);
@@ -169,6 +180,7 @@ const FocusSessionModal = ({ visible, task, onClose, onComplete, onMinimize }) =
   const handleStopAndSave = () => {
     setIsRunning(false);
     clearInterval(intervalRef.current);
+    cancelSessionEndNotification(); // Отменяем уведомление
     _globalTimer = null;
     onComplete();
   };

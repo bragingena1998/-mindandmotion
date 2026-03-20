@@ -21,6 +21,7 @@ import api from '../services/api';
 import Modal from '../components/Modal';
 import Input from '../components/Input';
 import Button from '../components/Button';
+import { scheduleBirthdayNotification, cancelBirthdayNotification } from '../services/notifications';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PADDING_H = 16;
@@ -549,14 +550,26 @@ const CalendarScreen = ({ navigation }) => {
       notify_before: parseInt(eventForm.notify_before) || 1,
     };
     try {
-      if (editEvent) await api.put(`/birthdays/${editEvent.id}`, payload);
-      else           await api.post('/birthdays', payload);
+      if (editEvent) {
+        await api.put(`/birthdays/${editEvent.id}`, payload);
+        // Обновляем уведомление для события
+        const updatedEvent = { ...editEvent, ...payload };
+        await scheduleBirthdayNotification(updatedEvent);
+      } else {
+        const result = await api.post('/birthdays', payload);
+        // Планируем уведомление для нового события
+        await scheduleBirthdayNotification({ ...result, ...payload });
+      }
       setShowEventModal(false);
       loadData();
     } catch (e) { console.error(e); }
   };
   const deleteEvent = async id => {
-    try { await api.delete(`/birthdays/${id}`); loadData(); }
+    try { 
+      await cancelBirthdayNotification(id); // Отменяем уведомление
+      await api.delete(`/birthdays/${id}`); 
+      loadData(); 
+    }
     catch (e) { console.error(e); }
   };
 

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from '../services/settingsStorage';
+import { rescheduleAllDailyNotifications } from '../services/notifications';
 import Background from '../components/Background';
 import TimePicker from '../components/TimePicker';
 
@@ -22,6 +23,10 @@ const NotificationSettingsScreen = ({ onBack }) => {
     setSettings(prev => {
       const next = { ...prev, [key]: value };
       saveSettings(next);
+      // Перепланируем ежедневные/недельные уведомления при изменении времени или включения
+      if (['morningEnabled', 'morningTime', 'eveningEnabled', 'eveningTime', 'weeklyEnabled', 'weeklyDay', 'weeklyTime'].includes(key)) {
+        rescheduleAllDailyNotifications();
+      }
       return next;
     });
   }, []);
