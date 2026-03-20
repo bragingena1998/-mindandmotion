@@ -95,21 +95,21 @@ async function getTasksSummary() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    // Задачи на сегодня
-    const todayTasksRes = await api.get('/tasks', {
+    // Задачи на сегодня через новый эндпоинт
+    const todayTasksRes = await api.get('/tasks/date', {
       params: {
         year: today.getFullYear(),
-        month: today.getMonth() + 1,
-        day: today.getDate()
+        month: String(today.getMonth() + 1).padStart(2, '0'),
+        day: String(today.getDate()).padStart(2, '0')
       }
     });
     
-    // Задачи на завтра
-    const tomorrowTasksRes = await api.get('/tasks', {
+    // Задачи на завтра через новый эндпоинт
+    const tomorrowTasksRes = await api.get('/tasks/date', {
       params: {
         year: tomorrow.getFullYear(),
-        month: tomorrow.getMonth() + 1,
-        day: tomorrow.getDate()
+        month: String(tomorrow.getMonth() + 1).padStart(2, '0'),
+        day: String(tomorrow.getDate()).padStart(2, '0')
       }
     });
     

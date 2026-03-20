@@ -63,7 +63,9 @@ router.get('/', authenticateToken, async (req, res) => {
 // GET /api/tasks/stats
 router.get('/stats', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { startDate, endDate } = req.query;
+    
+    let query = `
       SELECT
         COUNT(CASE WHEN done = 1 AND DATE(done_date) = CURDATE() THEN 1 END) as completed_today,
         COUNT(CASE WHEN
@@ -74,10 +76,74 @@ router.get('/stats', authenticateToken, async (req, res) => {
         COUNT(CASE WHEN done = 1 AND YEAR(done_date) = YEAR(CURDATE()) AND MONTH(done_date) = MONTH(CURDATE()) THEN 1 END) as completed_month,
         COUNT(CASE WHEN done = 1 THEN 1 END) as completed_total
       FROM tasks WHERE user_id = ?
-    `, [req.userId]);
+    `;
+    
+    let params = [req.userId];
+    
+    // Если указан диапазон дат для недельной статистики
+    if (startDate && endDate) {
+      query = `
+        SELECT
+          COUNT(CASE WHEN done = 1 AND DATE(done_date) BETWEEN ? AND ? THEN 1 END) as completedThisWeek
+        FROM tasks WHERE user_id = ?
+      `;
+      params = [startDate, endDate, req.userId];
+    }
+    
+    const [rows] = await pool.query(query, params);
     res.json(rows[0]);
   } catch (err) {
     console.error('Stats error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/tasks/date — для получения задач конкретной даты (для уведомлений)
+router.get('/date', authenticateToken, async (req, res) => {
+  try {
+    const { year, month, day } = req.query;
+    const userId = req.userId;
+    
+    let query = `
+      SELECT t.*,
+        (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) as subtasks_count
+      FROM tasks t
+      WHERE t.user_id = ?
+    `;
+    let params = [userId];
+    
+    if (year && month && day) {
+      query += ` AND (
+        (t.done = 1 AND DATE(t.done_date) = ?)
+        OR
+        (t.done = 0 AND DATE(t.date) = ?)
+      )`;
+      const targetDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      params.push(targetDate, targetDate);
+    }
+    
+    query += ' ORDER BY t.done ASC, t.priority ASC, t.time ASC';
+    
+    const [rows] = await pool.query(query, params);
+    
+    const formatted = rows.map(row => ({
+      ...row,
+      done: Boolean(row.done),
+      isRecurring: Boolean(row.is_recurring),
+      isGenerated: Boolean(row.is_generated),
+      subtasks_count: row.subtasks_count || 0,
+      userId: row.user_id,
+      doneDate: row.done_date,
+      focusSessions: row.focus_sessions,
+      recurrenceType: row.recurrence_type,
+      recurrenceValue: row.recurrence_value,
+      templateId: row.templateid,
+      folderId: row.folderid,
+    }));
+    
+    res.json(formatted);
+  } catch (err) {
+    console.error('Date tasks error:', err);
     res.status(500).json({ error: err.message });
   }
 });
