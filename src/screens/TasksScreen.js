@@ -444,23 +444,27 @@ const TasksScreen = ({ navigation }) => {
   const tutorialSteps = [
     {
       title: 'Добро пожаловать в задачи! 📝',
-      description: 'Здесь вы можете управлять всеми своими задачами. Давайте рассмотрим основные функции.',
+      description: 'Это ваш главный экран для управления задачами. Давайте изучим основные функции.',
     },
     {
       title: 'Создание задачи ➕',
-      description: 'Нажмите на кнопку + в правом нижнем углу чтобы создать новую задачу. Вы можете указать название, время, приоритет и комментарии.',
+      description: 'Нажмите на кнопку + в правом нижнем углу чтобы создать задачу. Укажите название, дату, приоритет и другие параметры.',
     },
     {
-      title: 'Фильтрация задач 🔍',
-      description: 'Используйте фильтры "Все задачи" и "По дате/важности/имени" для отображения задач по статусу: все, активные, выполненные или просроченные.',
+      title: 'Фильтры и сортировка 🔍',
+      description: 'Используйте чипы для фильтрации выполненных задач и сортировки по дате, важности или названию.',
     },
     {
-      title: 'Свайп для действий 👉',
-      description: 'Проведите пальцем по задаче вправо для быстрого выполнения или влево для удаления. Попробуйте это сделать!',
+      title: 'Свайпы для быстрых действий 👉',
+      description: 'Свайп вправо на задаче → мгновенно выполнить. Свайп влево → запустить фокус-сессию для концентрации.',
+    },
+    {
+      title: 'Папки и перетаскивание �',
+      description: 'Долгое нажатие на задачу → перетащите в папку сверху. Папки можно сортировать долгим нажатием.',
     },
     {
       title: 'Готово! 🎉',
-      description: 'Теперь вы знаете основы управления задачами. Начните планировать свой день эффективно!',
+      description: 'Теперь вы умеете управлять задачами. Начните планировать свой день эффективно!',
     },
   ];
 
@@ -1496,8 +1500,10 @@ const TasksScreen = ({ navigation }) => {
         </Modal>
       )}
 
-      {/* Кнопка туториала */}
-      <TutorialButton onPress={restartTutorial} />
+      {/* Кнопка туториала в нижнем левом углу */}
+      <View style={styles.tutorialButtonContainer}>
+        <TutorialButton onPress={restartTutorial} />
+      </View>
 
       {/* Туториал */}
       <TutorialOverlay
@@ -1571,6 +1577,7 @@ const styles = StyleSheet.create({
   swipeActionRight: { backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: 20, borderRadius: 12, flex: 1 },
   swipeActionText: { fontSize: 24, color: 'white' },
   editButton: { position: 'absolute', top: 12, right: 12, padding: 4, zIndex: 10 },
+  tutorialButtonContainer: { position: 'absolute', left: 20, bottom: 20, zIndex: 100 },
   advancedToggle: { padding: 12, borderWidth: 1, borderRadius: 8, marginVertical: 8, alignItems: 'center' },
   advancedSettings: { padding: 12, borderWidth: 1, borderColor: 'rgba(148,163,184,0.2)', borderRadius: 8, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.05)' },
   subtaskCheckbox: { padding: 2 },

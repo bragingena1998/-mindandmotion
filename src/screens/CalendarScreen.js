@@ -847,8 +847,10 @@ const CalendarScreen = ({ navigation }) => {
 
           {renderEventModal()}
 
-          {/* Кнопка туториала */}
-          <TutorialButton onPress={restartTutorial} />
+          {/* Кнопка туториала в нижнем левом углу */}
+          <View style={styles.tutorialButtonContainer}>
+            <TutorialButton onPress={restartTutorial} />
+          </View>
 
           {/* Туториал */}
           <CalendarTutorial
@@ -935,6 +937,7 @@ const styles = StyleSheet.create({
                        borderWidth: 1, marginBottom: 16 },
   drumSaveBtn:       { width: '100%', paddingVertical: 14, borderRadius: 999, alignItems: 'center', marginBottom: 10 },
   drumCancelBtn:     { width: '100%', paddingVertical: 12, borderRadius: 999, borderWidth: 1, alignItems: 'center' },
+  tutorialButtonContainer: { position: 'absolute', left: 20, bottom: 20, zIndex: 100 },
 });
 
 export default CalendarScreen;

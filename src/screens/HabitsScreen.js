@@ -532,8 +532,10 @@ const HabitsScreen = ({ route }) => {
         </View>
       </Modal>
       
-      {/* Кнопка туториала */}
-      <TutorialButton onPress={restartTutorial} />
+      {/* Кнопка туториала в нижнем левом углу */}
+      <View style={styles.tutorialButtonContainer}>
+        <TutorialButton onPress={restartTutorial} />
+      </View>
 
       {/* Туториал */}
       <HabitsTutorial
@@ -609,6 +611,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     backgroundColor: 'rgba(0,0,0,0.05)',
   },
+  tutorialButtonContainer: { position: 'absolute', left: 20, bottom: 20, zIndex: 100 },
 });
 
 export default HabitsScreen;
