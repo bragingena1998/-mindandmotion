@@ -99,6 +99,15 @@ export async function scheduleDailyNotifications() {
 
   if (settings.morningEnabled) {
     const { hour, minute } = parseTime(settings.morningTime);
+    const now = new Date();
+    const scheduledTime = new Date();
+    scheduledTime.setHours(hour, minute, 0, 0);
+    
+    // Если время уже прошло сегодня, планируем на завтра
+    if (scheduledTime <= now) {
+      scheduledTime.setDate(scheduledTime.getDate() + 1);
+    }
+    
     await Notifications.scheduleNotificationAsync({
       identifier: 'morning-daily',
       content: {
@@ -106,16 +115,21 @@ export async function scheduleDailyNotifications() {
         body: 'Посмотри задачи на сегодня — хороший день начинается с плана!',
         sound: true,
       },
-      trigger: {
-        hour,
-        minute,
-        repeats: true,
-      },
+      trigger: scheduledTime,
     });
   }
 
   if (settings.eveningEnabled) {
     const { hour, minute } = parseTime(settings.eveningTime);
+    const now = new Date();
+    const scheduledTime = new Date();
+    scheduledTime.setHours(hour, minute, 0, 0);
+    
+    // Если время уже прошло сегодня, планируем на завтра
+    if (scheduledTime <= now) {
+      scheduledTime.setDate(scheduledTime.getDate() + 1);
+    }
+    
     await Notifications.scheduleNotificationAsync({
       identifier: 'evening-daily',
       content: {
@@ -123,11 +137,7 @@ export async function scheduleDailyNotifications() {
         body: 'День почти завершён — внеси отметки и подведи итог дня!',
         sound: true,
       },
-      trigger: {
-        hour,
-        minute,
-        repeats: true,
-      },
+      trigger: scheduledTime,
     });
   }
 }
@@ -146,6 +156,24 @@ export async function scheduleWeeklyNotification() {
   // weeklyDay: 0=Вс, 1=Пн ... в JS getDay() 0=вск, наш 0=Вс — совпадает
   const weekday = settings.weeklyDay + 1; // expo: 1=вск, 2=пн...
 
+  // Находим следующую дату с нужным днём недели
+  const now = new Date();
+  const scheduledTime = new Date();
+  
+  // Устанавливаем время
+  scheduledTime.setHours(hour, minute, 0, 0);
+  
+  // Находим следующий нужный день недели
+  const currentDay = now.getDay(); // 0=вск, 1=пн...
+  const targetDay = weekday - 1; // конвертируем обратно в JS формат
+  
+  let daysUntilTarget = targetDay - currentDay;
+  if (daysUntilTarget <= 0) {
+    daysUntilTarget += 7; // если день уже прошёл или сегодня, на следующую неделю
+  }
+  
+  scheduledTime.setDate(now.getDate() + daysUntilTarget);
+
   await Notifications.scheduleNotificationAsync({
     identifier: 'weekly-summary',
     content: {
@@ -153,12 +181,7 @@ export async function scheduleWeeklyNotification() {
       body: 'Как прошла неделя? Загляни в Mind&Motion и подведи итог!',
       sound: true,
     },
-    trigger: {
-      weekday,
-      hour,
-      minute,
-      repeats: true,
-    },
+    trigger: scheduledTime,
   });
 }
 
@@ -351,4 +374,21 @@ export async function initNotifications() {
 export async function rescheduleAllDailyNotifications() {
   await scheduleDailyNotifications();
   await scheduleWeeklyNotification();
+}
+
+// ---------------------------------------------------------------------------
+// 10. ПЕРЕПЛАНИРОВАНИЕ ПОВТОРЯЮЩИХСЯ УВЕДОМЛЕНИЙ
+// Вызывать ежедневно для обновления утренних/вечерних уведомлений
+// ---------------------------------------------------------------------------
+export async function rescheduleRepeatingNotifications() {
+  const settings = await loadSettings();
+  
+  // Перепланируем только если включены
+  if (settings.morningEnabled || settings.eveningEnabled) {
+    await scheduleDailyNotifications();
+  }
+  
+  if (settings.weeklyEnabled) {
+    await scheduleWeeklyNotification();
+  }
 }

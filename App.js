@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { getToken } from './src/services/storage';
-import { initNotifications } from './src/services/notifications';
+import { initNotifications, rescheduleRepeatingNotifications } from './src/services/notifications';
 
 // Screens
 import HabitsScreen from './src/screens/HabitsScreen';
@@ -98,6 +98,8 @@ const AppContent = () => {
     setIsAuthenticated(true);
     setCurrentScreen('main');
     initNotifications(); // запуск уведомлений асинхронно
+    // Перепланируем повторяющиеся уведомления на сегодня
+    rescheduleRepeatingNotifications();
   };
 
   const checkAuth = async () => {
@@ -107,6 +109,8 @@ const AppContent = () => {
         setIsAuthenticated(true);
         setCurrentScreen('main');
         initNotifications(); // уже авторизован — инициализируем
+        // Перепланируем повторяющиеся уведомления на сегодня
+        rescheduleRepeatingNotifications();
       } else {
         setIsAuthenticated(false);
         setCurrentScreen('login');
