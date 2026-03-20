@@ -18,6 +18,10 @@ import Button from '../components/Button';
 import DatePicker from '../components/DatePicker';
 import ReorderHabitsModal from '../components/ReorderHabitsModal';
 import MonthPickerModal from '../components/MonthPickerModal';
+import TutorialOverlay from '../components/TutorialOverlay';
+import TutorialButton from '../components/TutorialButton';
+import HabitsTutorial from '../components/HabitsTutorial';
+import { useTutorial } from '../hooks/useTutorial';
 
 const formatDateISO = (date) => {
   if (!date) return null;
@@ -107,6 +111,26 @@ const HabitsScreen = ({ route }) => {
   const [showCustomUnit, setShowCustomUnit] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [habitToDelete, setHabitToDelete] = useState(null);
+
+  // Туториал
+  const {
+    isVisible: tutorialVisible,
+    currentStep: tutorialStep,
+    isCompleted: tutorialCompleted,
+    startTutorial,
+    restartTutorial,
+    nextStep,
+    previousStep,
+    closeTutorial,
+    skipTutorial,
+  } = useTutorial('habits');
+
+  // Запуск туториала при первом входе
+  useEffect(() => {
+    if (!loading && !tutorialCompleted && habits.length > 0) {
+      setTimeout(() => startTutorial(), 1000);
+    }
+  }, [loading, tutorialCompleted, habits.length]);
 
   useEffect(() => {
     if (route?.params?.year && route?.params?.month) {
@@ -507,6 +531,19 @@ const HabitsScreen = ({ route }) => {
           </View>
         </View>
       </Modal>
+      
+      {/* Кнопка туториала */}
+      <TutorialButton onPress={restartTutorial} />
+
+      {/* Туториал */}
+      <HabitsTutorial
+        visible={tutorialVisible}
+        currentStep={tutorialStep}
+        onNext={nextStep}
+        onPrevious={previousStep}
+        onClose={closeTutorial}
+        onSkip={skipTutorial}
+      />
     </ScrollView>
   );
 };

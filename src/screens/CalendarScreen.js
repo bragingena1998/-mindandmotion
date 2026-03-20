@@ -22,6 +22,10 @@ import Modal from '../components/Modal';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { scheduleBirthdayNotification, cancelBirthdayNotification } from '../services/notifications';
+import TutorialOverlay from '../components/TutorialOverlay';
+import TutorialButton from '../components/TutorialButton';
+import CalendarTutorial from '../components/CalendarTutorial';
+import { useTutorial } from '../hooks/useTutorial';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PADDING_H = 16;
@@ -426,6 +430,26 @@ const CalendarScreen = ({ navigation }) => {
   const [eventForm,      setEventForm]      = useState(EMPTY_FORM);
   const [showDrumPicker, setShowDrumPicker] = useState(false);
 
+  // Туториал
+  const {
+    isVisible: tutorialVisible,
+    currentStep: tutorialStep,
+    isCompleted: tutorialCompleted,
+    startTutorial,
+    restartTutorial,
+    nextStep,
+    previousStep,
+    closeTutorial,
+    skipTutorial,
+  } = useTutorial('calendar');
+
+  // Запуск туториала при первом входе
+  useEffect(() => {
+    if (!loading && !tutorialCompleted && events.length > 0) {
+      setTimeout(() => startTutorial(), 1000);
+    }
+  }, [loading, tutorialCompleted, events.length]);
+
   useFocusEffect(
     useCallback(() => { loadData(); }, [year, month])
   );
@@ -822,6 +846,19 @@ const CalendarScreen = ({ navigation }) => {
           }
 
           {renderEventModal()}
+
+          {/* Кнопка туториала */}
+          <TutorialButton onPress={restartTutorial} />
+
+          {/* Туториал */}
+          <CalendarTutorial
+            visible={tutorialVisible}
+            currentStep={tutorialStep}
+            onNext={nextStep}
+            onPrevious={previousStep}
+            onClose={closeTutorial}
+            onSkip={skipTutorial}
+          />
         </View>
       </GestureDetector>
     </GestureHandlerRootView>
