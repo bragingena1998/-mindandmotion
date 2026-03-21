@@ -10,14 +10,20 @@ const TutorialButton = ({ onPress, onLongPress, style }) => {
 
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }, style]}
+      style={[
+        styles.container, 
+        { 
+          backgroundColor: colors.accent1, 
+          borderColor: colors.accent1,
+          borderWidth: 3,
+        }, 
+        style
+      ]}
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.circle, { backgroundColor: colors.accent1 }]}>
-        <Text style={[styles.text, { color: '#020617' }]}>?</Text>
-      </View>
+      <Text style={[styles.text, { color: '#020617' }]}>?</Text>
     </TouchableOpacity>
   );
 };
@@ -25,32 +31,24 @@ const TutorialButton = ({ onPress, onLongPress, style }) => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: 9999,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 3.84,
-    elevation: 8,
-  },
-  circle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 12,
   },
   text: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
   },
 });
 

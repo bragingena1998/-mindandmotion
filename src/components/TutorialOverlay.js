@@ -18,6 +18,7 @@ const TutorialOverlay = ({ visible, steps, currentStepIndex, onNext, onPrevious,
   useEffect(() => {
     if (visible) {
       // Простая анимация появления
+      if (__DEV__) console.log('🔧 Tutorial overlay showing, step:', currentStepIndex);
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 300,
@@ -25,6 +26,7 @@ const TutorialOverlay = ({ visible, steps, currentStepIndex, onNext, onPrevious,
       }).start();
     } else {
       // Анимация исчезновения
+      if (__DEV__) console.log('🔧 Tutorial overlay hiding');
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 200,

@@ -1528,8 +1528,12 @@ const TasksScreen = ({ navigation }) => {
 
       {/* Кнопка туториала в нижнем левом углу */}
       <View style={styles.tutorialButtonContainer}>
+        {__DEV__ && console.log('🔧 Rendering tutorial button')}
         <TutorialButton 
-          onPress={restartTutorial} 
+          onPress={() => {
+            console.log('🔧 Tutorial button pressed');
+            restartTutorial();
+          }} 
           onLongPress={handleResetTutorials}
         />
       </View>
@@ -1606,7 +1610,7 @@ const styles = StyleSheet.create({
   swipeActionRight: { backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: 20, borderRadius: 12, flex: 1 },
   swipeActionText: { fontSize: 24, color: 'white' },
   editButton: { position: 'absolute', top: 12, right: 12, padding: 4, zIndex: 10 },
-  tutorialButtonContainer: { position: 'absolute', left: 20, bottom: 80, zIndex: 1000 },
+  tutorialButtonContainer: { position: 'absolute', left: 16, bottom: 100, zIndex: 9999 },
   advancedToggle: { padding: 12, borderWidth: 1, borderRadius: 8, marginVertical: 8, alignItems: 'center' },
   advancedSettings: { padding: 12, borderWidth: 1, borderColor: 'rgba(148,163,184,0.2)', borderRadius: 8, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.05)' },
   subtaskCheckbox: { padding: 2 },
