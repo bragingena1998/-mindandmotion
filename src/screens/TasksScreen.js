@@ -475,6 +475,19 @@ const TasksScreen = ({ navigation }) => {
     }
   }, [loading, tutorialCompleted, tasks.length]);
 
+  // Для отладки: сброс туториалов
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('🔧 Tutorial status:', { loading, tutorialCompleted, tasksLength: tasks.length });
+    }
+  }, [loading, tutorialCompleted, tasks.length]);
+
+  // Сброс туториалов для тестирования
+  const handleResetTutorials = async () => {
+    await resetAllTutorials();
+    console.log('🔄 Все туториалы сброшены');
+  };
+
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
   useEffect(() => { loadTasks(); loadFolders(); }, []);
@@ -955,12 +968,25 @@ const TasksScreen = ({ navigation }) => {
           {/* HEADER */}
           <View style={[styles.header, { backgroundColor: colors.surface }]}>
             <Text style={[styles.headerTitle, { color: colors.accentText }]}>МОИ ЗАДАЧИ</Text>
-            <TouchableOpacity onPress={() => setShowMonthPicker(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={[styles.headerTitle, { color: colors.accentText }]}>
-                {selectedDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase()}
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.textMuted }}>▼</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {__DEV__ && (
+                <TouchableOpacity 
+                  style={[{ padding: 8, borderRadius: 6, backgroundColor: colors.accent1 }]} 
+                  onPress={() => {
+                    console.log('🔧 Force start tutorial');
+                    startTutorial();
+                  }}
+                >
+                  <Text style={{ color: '#020617', fontSize: 12, fontWeight: '600' }}>T</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => setShowMonthPicker(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={[styles.headerTitle, { color: colors.accentText }]}>
+                  {selectedDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase()}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.textMuted }}>▼</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* ФОКУС-БАННЕР */}
@@ -1502,7 +1528,10 @@ const TasksScreen = ({ navigation }) => {
 
       {/* Кнопка туториала в нижнем левом углу */}
       <View style={styles.tutorialButtonContainer}>
-        <TutorialButton onPress={restartTutorial} />
+        <TutorialButton 
+          onPress={restartTutorial} 
+          onLongPress={handleResetTutorials}
+        />
       </View>
 
       {/* Туториал */}
@@ -1577,7 +1606,7 @@ const styles = StyleSheet.create({
   swipeActionRight: { backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: 20, borderRadius: 12, flex: 1 },
   swipeActionText: { fontSize: 24, color: 'white' },
   editButton: { position: 'absolute', top: 12, right: 12, padding: 4, zIndex: 10 },
-  tutorialButtonContainer: { position: 'absolute', left: 20, bottom: 20, zIndex: 100 },
+  tutorialButtonContainer: { position: 'absolute', left: 20, bottom: 80, zIndex: 1000 },
   advancedToggle: { padding: 12, borderWidth: 1, borderRadius: 8, marginVertical: 8, alignItems: 'center' },
   advancedSettings: { padding: 12, borderWidth: 1, borderColor: 'rgba(148,163,184,0.2)', borderRadius: 8, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.05)' },
   subtaskCheckbox: { padding: 2 },

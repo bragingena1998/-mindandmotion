@@ -5,13 +5,14 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
-const TutorialButton = ({ onPress, style }) => {
+const TutorialButton = ({ onPress, onLongPress, style }) => {
   const { colors } = useTheme();
 
   return (
     <TouchableOpacity
       style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }, style]}
       onPress={onPress}
+      onLongPress={onLongPress}
       activeOpacity={0.7}
     >
       <View style={[styles.circle, { backgroundColor: colors.accent1 }]}>
@@ -24,33 +25,31 @@ const TutorialButton = ({ onPress, style }) => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 60,
-    right: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 100,
+    zIndex: 1000,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 3.84,
-    elevation: 5,
+    elevation: 8,
   },
   circle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
   text: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
   },
 });
