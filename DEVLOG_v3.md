@@ -307,3 +307,24 @@
 - **Этап 5Д** — Foreground Service для Android (оставшийся техдолг)
 
 ---
+
+## 📅 21.03.2026 (суббота)
+
+### ✅ Этапы 9 + 10 (без дублирования логотипа на экранах)
+
+#### Этап 9 — Безопасность
+- `src/services/appLock.js` — PIN (4–6 цифр), SHA-256 + соль, `expo-secure-store`; флаги в AsyncStorage
+- `src/screens/AppLockScreen.js` — клавиатура, биометрия (`expo-local-authentication`), авто-запрос Face ID/отпечатка при включённой опции
+- `src/components/AppLockSettingsSection.js` — блок «Защита приложения» в настройках: PIN, биометрия, смена/отключение
+- `App.js` — после логина / при холодном старте: экран блокировки если PIN включён; `AppState` → блокировка при уходе в фон
+- iOS: `NSFaceIDUsageDescription` в `app.json`
+
+#### Этап 10 — Брендинг
+- `src/components/BrandedSplash.js` — тот же SVG-логотип что у таба дашборда + анимированный «блик»
+- Старт: нативный splash сразу скрывается (`expo-splash-screen`), ~1.1 с показывается `BrandedSplash`; фон splash в `app.json` → `#0f0f11`
+- Мини-логотипы по углам экранов **не** добавлялись — бренд уже в центральной кнопке табов
+
+#### Зависимости
+- `expo-splash-screen`, `expo-local-authentication`, `expo-crypto`, `expo-secure-store`
+
+---

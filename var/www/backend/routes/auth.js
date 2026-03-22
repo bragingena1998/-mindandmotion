@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const emailService = require('../emailService');
-const { createDemoData } = require('../utils/demoData');
+const { createDemoData: createDemoDataForUser } = require('../utils/demoData');
 
 function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -14,7 +14,7 @@ function validateEmail(email) {
 // POST /api/register
 router.post('/register', async (req, res) => {
   console.log('📝 Register request:', req.body);
-  const { email, password, name, birthdate } = req.body;
+  const { email, password, name, birthdate, createDemoData = true } = req.body;
 
   if (!email || !password || !name) {
     return res.status(400).json({ error: 'Заполните все обязательные поля' });
@@ -44,6 +44,14 @@ router.post('/register', async (req, res) => {
       { expiresIn: '30d' }
     );
 
+    if (createDemoData) {
+      try {
+        await createDemoDataForUser(userId);
+      } catch (demoError) {
+        console.error('❌ Ошибка создания демо-данных (register):', demoError);
+      }
+    }
+
     res.json({ token, userId, email, name });
   } catch (err) {
     console.error('❌ Registration error:', err);
@@ -70,7 +78,11 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET || 'your-secret-key-12345',
+      { expiresIn: '30d' }
+    );
     res.json({ token, userId: user.id });
   } catch (err) {
     console.error('Login error:', err);
@@ -134,7 +146,7 @@ router.post('/send-verification-code', async (req, res) => {
 
 // POST /api/verify-code
 router.post('/verify-code', async (req, res) => {
-  const { name, email, birthdate, password, code } = req.body;
+  const { name, email, birthdate, password, code, createDemoData = true } = req.body;
   const cleanCode = String(code).replace(/\s+/g, '');
 
   console.log('📝 Verify email request:', { email, name, originalCode: code, cleanCode, serverTimeUTC: new Date().toISOString() });
@@ -193,13 +205,17 @@ router.post('/verify-code', async (req, res) => {
       { expiresIn: '30d' }
     );
 
-    // Создаем демо-данные для нового пользователя
-    try {
-      await createDemoData(userId);
-      console.log('🎯 Демо-данные успешно созданы для пользователя:', userId);
-    } catch (demoError) {
-      console.error('❌ Ошибка создания демо-данных:', demoError);
-      // Не прерываем регистрацию, если демо-данные не создались
+    // Создаем демо-данные для нового пользователя (если включено)
+    if (createDemoData) {
+      try {
+        await createDemoDataForUser(userId);
+        console.log('🎯 Демо-данные успешно созданы для пользователя:', userId);
+      } catch (demoError) {
+        console.error('❌ Ошибка создания демо-данных:', demoError);
+        // Не прерываем регистрацию, если демо-данные не создались
+      }
+    } else {
+      console.log('ℹ️ Создание демо-данных отключено пользователем:', userId);
     }
 
     res.json({ success: true, message: 'Регистрация успешна', token, userId, email, name });

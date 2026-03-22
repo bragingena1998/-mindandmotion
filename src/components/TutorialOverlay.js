@@ -14,6 +14,9 @@ const TutorialOverlay = ({ visible, steps, currentStepIndex, onNext, onPrevious,
   const currentStep = steps[currentStepIndex];
   const isLastStep = currentStepIndex === steps.length - 1;
   const isFirstStep = currentStepIndex === 0;
+  const titleColor = colors.textMain;
+  const descriptionColor = colors.textMuted;
+  const skipColor = colors.textMuted;
 
   useEffect(() => {
     if (visible) {
@@ -45,10 +48,10 @@ const TutorialOverlay = ({ visible, steps, currentStepIndex, onNext, onPrevious,
       {/* Простое окно по центру */}
       <View style={styles.centerContainer}>
         <View style={[styles.modal, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-          <Text style={[styles.title, { color: colors.textMain }]}>
+          <Text style={[styles.title, { color: titleColor }]}>
             {currentStep.title}
           </Text>
-          <Text style={[styles.description, { color: colors.textSecondary }]}>
+          <Text style={[styles.description, { color: descriptionColor }]}>
             {currentStep.description}
           </Text>
           
@@ -76,7 +79,7 @@ const TutorialOverlay = ({ visible, steps, currentStepIndex, onNext, onPrevious,
           {/* Кнопка пропуска */}
           {!isLastStep && (
             <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
-              <Text style={[styles.skipButtonText, { color: colors.textMuted }]}>Пропустить туториал</Text>
+              <Text style={[styles.skipButtonText, { color: skipColor }]}>Пропустить туториал</Text>
             </TouchableOpacity>
           )}
 
@@ -194,7 +197,6 @@ const styles = StyleSheet.create({
   progressDot: {
     height: 8,
     borderRadius: 4,
-    transition: 'all 0.2s ease',
   },
 });
 

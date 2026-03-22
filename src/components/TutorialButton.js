@@ -13,9 +13,9 @@ const TutorialButton = ({ onPress, onLongPress, style }) => {
       style={[
         styles.container, 
         { 
-          backgroundColor: colors.accent1, 
-          borderColor: colors.accent1,
-          borderWidth: 3,
+          backgroundColor: `${colors.surface}AA`,
+          borderColor: colors.borderSubtle,
+          borderWidth: 1,
         }, 
         style
       ]}
@@ -23,32 +23,31 @@ const TutorialButton = ({ onPress, onLongPress, style }) => {
       onLongPress={onLongPress}
       activeOpacity={0.7}
     >
-      <Text style={[styles.text, { color: '#020617' }]}>?</Text>
+      <Text style={[styles.text, { color: colors.textMuted }]}>?</Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 9999,
+    zIndex: 999,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 12,
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 4,
   },
   text: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
 

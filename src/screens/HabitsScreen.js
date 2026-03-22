@@ -1,5 +1,6 @@
 // src/screens/HabitsScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -22,6 +23,7 @@ import TutorialOverlay from '../components/TutorialOverlay';
 import TutorialButton from '../components/TutorialButton';
 import HabitsTutorial from '../components/HabitsTutorial';
 import { useTutorial } from '../hooks/useTutorial';
+import { useDataSync } from '../contexts/DataSyncContext';
 
 const formatDateISO = (date) => {
   if (!date) return null;
@@ -85,6 +87,7 @@ const LifeProgressBar = ({ label, value, color }) => {
 
 const HabitsScreen = ({ route }) => {
   const { colors } = useTheme();
+  const { bumpAll } = useDataSync();
   const [loading, setLoading] = useState(true);
   const [habits, setHabits] = useState([]);
   const [profile, setProfile] = useState(null);
@@ -142,6 +145,16 @@ const HabitsScreen = ({ route }) => {
   useEffect(() => { loadProfile(); }, []);
   useEffect(() => { loadHabits(); }, [year, month]);
   useEffect(() => { if (habits.length > 0) loadRecords(); }, [habits, year, month]);
+
+  // Не подписываемся на tick: bumpAll после ячейки обновляет дашборд/другие экраны,
+  // а полный loadHabits+loadRecords здесь давал «перезагрузку страницы» при каждом вводе.
+
+  // После отметок на дашборде — при возврате на вкладку подтягиваем записи
+  useFocusEffect(
+    useCallback(() => {
+      loadRecords();
+    }, [year, month])
+  );
 
   const loadProfile = async () => {
     try {
@@ -208,6 +221,7 @@ const HabitsScreen = ({ route }) => {
       } else {
         await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
       }
+      bumpAll();
     } catch (error) { console.error('Ошибка сохранения записи:', error); loadRecords(); }
   };
 
@@ -215,9 +229,11 @@ const HabitsScreen = ({ route }) => {
     if (!habitToDelete) return;
     const habitId = habitToDelete.id;
     try {
-      await api.delete(`/habits/${habitId}?year=${year}&month=${month}`);
+      // Без year/month — полное удаление (с query сервер только архивирует месяц)
+      await api.delete(`/habits/${habitId}`);
       setHabits(habits.filter(h => h.id !== habitId));
       setRecords(records.filter(r => r.habitid !== habitId));
+      bumpAll();
     } catch (error) {
       Alert.alert('Ошибка', 'Не удалось удалить привычку.');
     } finally {
@@ -273,6 +289,7 @@ const HabitsScreen = ({ route }) => {
         await api.post('/habits', payload);
       }
       await loadHabits();
+      bumpAll();
       setShowHabitModal(false);
       setShowCustomUnit(false);
       setShowAdvanced(false);

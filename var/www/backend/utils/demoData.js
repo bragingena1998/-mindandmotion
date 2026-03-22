@@ -1,286 +1,183 @@
-// utils/demoData.js
-// Генерация демо-данных для нового пользователя
-
 const pool = require('../db');
 
-// Демо-задачи
-const demoTasks = [
-  {
-    title: 'Позвонить в банк',
-    date: new Date().toISOString().split('T')[0],
-    time: '10:00',
-    priority: 'high',
-    comment: 'Уточнить условия по кредитной карте',
-    done: false,
-    deadline: new Date().toISOString().split('T')[0],
-    isRecurring: 0,
-    recurrenceType: null
-  },
-  {
-    title: 'Купить продукты',
-    date: new Date().toISOString().split('T')[0],
-    time: '18:00',
-    priority: 'medium',
-    comment: 'Молоко, хлеб, яйца, сыр, овощи',
-    done: false,
-    deadline: null,
-    isRecurring: 0,
-    recurrenceType: null
-  },
-  {
-    title: 'Встреча с командой',
-    date: new Date().toISOString().split('T')[0],
-    time: '14:00',
-    priority: 'high',
-    comment: 'Обсудить новый проект',
-    done: false,
-    deadline: new Date().toISOString().split('T')[0],
-    isRecurring: 0,
-    recurrenceType: null
-  },
-  {
-    title: 'Прочитать статью про React Native',
-    date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // завтра
-    time: '20:00',
-    priority: 'low',
-    comment: 'Новая статья о производительности',
-    done: false,
-    deadline: null,
-    isRecurring: 0,
-    recurrenceType: null
-  },
-  {
-    title: 'Спортивная тренировка',
-    date: new Date().toISOString().split('T')[0],
-    time: '07:00',
-    priority: 'medium',
-    comment: 'Кардио + силовые упражнения',
-    done: true,
-    doneDate: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    deadline: null,
-    isRecurring: 1,
-    recurrenceType: 'daily'
-  },
-  {
-    title: 'Уборка квартиры',
-    date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], // вчера
-    time: '16:00',
-    priority: 'low',
-    comment: 'Пылесос, вымыть полы',
-    done: false,
-    deadline: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    isRecurring: 0,
-    recurrenceType: null
-  }
-];
+const dayMs = 24 * 60 * 60 * 1000;
+const toDate = (date) => date.toISOString().split('T')[0];
 
-// Демо-привычки
-const demoHabits = [
-  {
-    title: 'Медитация',
-    color: '#6366f1',
-    icon: '🧘',
-    frequency: 'daily',
-    targetCount: 1,
-    bestStreak: 7,
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
-  },
-  {
-    title: 'Чтение книг',
-    color: '#10b981',
-    icon: '📚',
-    frequency: 'daily',
-    targetCount: 1,
-    bestStreak: 14,
-    createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
-  },
-  {
-    title: 'Прогулка',
-    color: '#f59e0b',
-    icon: '🚶',
-    frequency: 'daily',
-    targetCount: 1,
-    bestStreak: 3,
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
-  },
-  {
-    title: 'Пить воду',
-    color: '#06b6d4',
-    icon: '💧',
-    frequency: 'daily',
-    targetCount: 8,
-    bestStreak: 21,
-    createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
-  },
-  {
-    title: 'Витамины',
-    color: '#ec4899',
-    icon: '💊',
-    frequency: 'daily',
-    targetCount: 1,
-    bestStreak: 5,
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
-  },
-  {
-    title: 'Спорт',
-    color: '#ef4444',
-    icon: '🏃',
-    frequency: 'weekly',
-    targetCount: 3,
-    bestStreak: 2,
-    createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
-  }
-];
-
-// Демо-события и ДР
-const demoBirthdays = [
-  {
-    name: 'День рождения мамы',
-    type: 'birthday',
-    day: 15,
-    month: 4,
-    year: 1975,
-    notify_before: 3
-  },
-  {
-    name: 'День рождения друга',
-    type: 'birthday',
-    day: 22,
-    month: 5,
-    year: 1990,
-    notify_before: 2
-  },
-  {
-    name: 'День программиста',
-    type: 'event',
-    day: 12,
-    month: 9,
-    year: null,
-    notify_before: 1
-  },
-  {
-    name: 'Годовщина работы',
-    type: 'important',
-    day: 1,
-    month: 3,
-    year: 2020,
-    notify_before: 7
-  },
-  {
-    name: 'Поездка на море',
-    type: 'event',
-    day: 10,
-    month: 7,
-    year: 2026,
-    notify_before: 14
-  }
-];
-
-// Генерация записей привычек за последние 30 дней
-async function generateHabitRecords(userId, habits) {
-  const records = [];
+const getDemoTasks = () => {
   const today = new Date();
-  
+  const yesterday = new Date(Date.now() - dayMs);
+  const tomorrow = new Date(Date.now() + dayMs);
+  const inThreeDays = new Date(Date.now() + dayMs * 3);
+
+  return [
+    {
+      title: 'Пить воду в течение дня',
+      date: toDate(today),
+      time: '09:00',
+      priority: 2,
+      comment: 'Цель: 8 стаканов за день',
+      done: 0,
+      deadline: toDate(today),
+      done_date: null,
+    },
+    {
+      title: '20 минут чтения книги',
+      date: toDate(today),
+      time: '21:00',
+      priority: 2,
+      comment: 'Подойдет любая книга из списка',
+      done: 0,
+      deadline: null,
+      done_date: null,
+    },
+    {
+      title: 'Тренировка: отжимания',
+      date: toDate(yesterday),
+      time: '19:00',
+      priority: 1,
+      comment: '3 подхода по 10 повторений',
+      done: 0,
+      deadline: toDate(yesterday),
+      done_date: null,
+    },
+    {
+      title: 'Разобрать задачи по проекту',
+      date: toDate(tomorrow),
+      time: '11:30',
+      priority: 1,
+      comment: 'Собрать приоритеты и сроки',
+      done: 0,
+      deadline: toDate(inThreeDays),
+      done_date: null,
+    },
+    {
+      title: 'Прогулка 3 км',
+      date: toDate(today),
+      time: '07:30',
+      priority: 3,
+      comment: 'Спокойный темп, без спешки',
+      done: 1,
+      deadline: null,
+      done_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    },
+    {
+      title: 'Проверить почту и календарь',
+      date: toDate(tomorrow),
+      time: '08:30',
+      priority: 3,
+      comment: 'План на день и новые события',
+      done: 0,
+      deadline: null,
+      done_date: null,
+    },
+  ];
+};
+
+const demoHabits = [
+  { name: 'Пить воду', unit: 'Кол-во', plan: 8, target_type: 'daily' },
+  { name: 'Отжимания', unit: 'Кол-во', plan: 30, target_type: 'daily' },
+  { name: 'Чтение книги', unit: 'Часы', plan: 1, target_type: 'daily' },
+  { name: 'Ведение проекта', unit: 'Часы', plan: 8, target_type: 'period' },
+  { name: 'Прогулка', unit: 'Дни', plan: 1, target_type: 'daily' },
+  { name: 'Тренировки за неделю', unit: 'Дни', plan: 4, target_type: 'period' },
+];
+
+const demoEvents = [
+  { name: 'День рождения мамы', type: 'birthday', day: 15, month: 4, year: 1975, notify_before: 3 },
+  { name: 'День рождения друга', type: 'birthday', day: 22, month: 5, year: 1990, notify_before: 2 },
+  { name: 'Встреча по личному проекту', type: 'event', day: 12, month: 9, year: null, notify_before: 1 },
+  { name: 'Годовщина работы', type: 'important', day: 1, month: 3, year: 2020, notify_before: 7 },
+  { name: 'Отпуск', type: 'event', day: 10, month: 7, year: 2026, notify_before: 14 },
+];
+
+const DEMO_TASK_TITLES = getDemoTasks().map(t => t.title);
+const DEMO_HABIT_NAMES = demoHabits.map(h => h.name);
+const DEMO_EVENT_NAMES = demoEvents.map(e => e.name);
+
+async function createHabitRecords(userId, habits) {
+  const today = new Date();
+
   for (const habit of habits) {
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      
-      // Генерируем записи в зависимости от частоты
-      let shouldAddRecord = false;
-      
-      if (habit.frequency === 'daily') {
-        shouldAddRecord = Math.random() > 0.2; // 80% вероятность
-      } else if (habit.frequency === 'weekly') {
-        shouldAddRecord = Math.random() > 0.6; // 40% вероятность
-      }
-      
-      if (shouldAddRecord) {
-        const count = habit.frequency === 'daily' 
-          ? Math.min(Math.floor(Math.random() * habit.targetCount) + 1, habit.targetCount)
-          : 1;
-        
-        records.push({
-          habit_id: habit.id,
-          date: dateStr,
-          count,
-          created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-        });
-      }
+    for (let i = 0; i < 14; i += 1) {
+      const d = new Date(today.getTime() - i * dayMs);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+
+      const progressRatio = 0.35 + (i % 4) * 0.15;
+      const rawValue = habit.plan * progressRatio;
+      const value = Math.max(1, Math.round(rawValue));
+
+      await pool.query(
+        `INSERT INTO habit_records (user_id, habit_id, year, month, day, value)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = CURRENT_TIMESTAMP`,
+        [userId, habit.id, year, month, day, value]
+      );
     }
-  }
-  
-  if (records.length > 0) {
-    const values = records.map(r => 
-      `(${userId}, ${r.habit_id}, '${r.date}', ${r.count}, '${r.created_at}')`
-    ).join(', ');
-    
-    await pool.query(`
-      INSERT INTO habit_records (user_id, habit_id, date, count, created_at)
-      VALUES ${values}
-    `);
   }
 }
 
-// Основная функция создания демо-данных
 async function createDemoData(userId) {
   try {
-    console.log('🎯 Создание демо-данных для пользователя:', userId);
-    
-    // 1. Создаем задачи
-    for (const task of demoTasks) {
-      await pool.query(`
-        INSERT INTO tasks (
-          user_id, title, date, time, priority, comment, done, 
-          done_date, deadline, is_recurring, recurrence_type, 
-          recurrence_value, is_generated, templateid, folderid, 
-          focus_sessions, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-      `, [
-        userId, task.title, task.date, task.time, task.priority, 
-        task.comment, task.done ? 1 : 0, task.doneDate || null,
-        task.deadline, task.isRecurring, task.recurrenceType,
-        null, 0, null, null, 0
-      ]);
+    const [[taskCount]] = await pool.query('SELECT COUNT(*) as count FROM tasks WHERE user_id = ?', [userId]);
+    const [[habitCount]] = await pool.query('SELECT COUNT(*) as count FROM habits WHERE user_id = ?', [userId]);
+    const [[eventCount]] = await pool.query('SELECT COUNT(*) as count FROM birthdays WHERE user_id = ?', [userId]);
+
+    if (taskCount.count > 0 || habitCount.count > 0 || eventCount.count > 0) {
+      console.log('ℹ️ Демо-данные пропущены, у пользователя уже есть контент:', userId);
+      return false;
     }
-    
-    // 2. Создаем привычки
-    const habitIds = [];
-    for (const habit of demoHabits) {
-      const [result] = await pool.query(`
-        INSERT INTO habits (
-          user_id, title, color, icon, frequency, target_count, 
-          best_streak, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        userId, habit.title, habit.color, habit.icon, 
-        habit.frequency, habit.targetCount, habit.bestStreak,
-        habit.createdAt
-      ]);
-      
-      habitIds.push({
-        ...habit,
-        id: result.insertId
-      });
+
+    for (const task of getDemoTasks()) {
+      await pool.query(
+        `INSERT INTO tasks (user_id, title, date, time, priority, comment, done, done_date, deadline, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [userId, task.title, task.date, task.time, task.priority, task.comment, task.done, task.done_date, task.deadline]
+      );
     }
-    
-    // 3. Создаем записи привычек
-    await generateHabitRecords(userId, habitIds);
-    
-    // 4. Создаем события/ДР
-    for (const birthday of demoBirthdays) {
-      await pool.query(`
-        INSERT INTO birthdays (
-          user_id, name, type, day, month, year, notify_before
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `, [
-        userId, birthday.name, birthday.type, birthday.day, 
-        birthday.month, birthday.year, birthday.notify_before
-      ]);
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 14);
+    const startYear = startDate.getFullYear();
+    const startMonth = startDate.getMonth() + 1;
+    const startDateStr = toDate(startDate);
+
+    const createdHabits = [];
+    for (let i = 0; i < demoHabits.length; i += 1) {
+      const habit = demoHabits[i];
+      const [result] = await pool.query(
+        `INSERT INTO habits (
+          user_id, name, unit, plan, start_year, start_month, target_type, start_date, end_date, days_of_week, order_index, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          userId,
+          habit.name,
+          habit.unit,
+          habit.plan,
+          startYear,
+          startMonth,
+          habit.target_type,
+          startDateStr,
+          null,
+          JSON.stringify([]),
+          i,
+        ]
+      );
+      createdHabits.push({ ...habit, id: result.insertId });
     }
-    
-    console.log('✅ Демо-данные успешно созданы');
+
+    await createHabitRecords(userId, createdHabits);
+
+    for (const event of demoEvents) {
+      await pool.query(
+        `INSERT INTO birthdays (user_id, name, day, month, year, type, notify_before)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [userId, event.name, event.day, event.month, event.year, event.type, event.notify_before]
+      );
+    }
+
+    console.log('✅ Демо-данные успешно созданы для пользователя:', userId);
     return true;
   } catch (error) {
     console.error('❌ Ошибка при создании демо-данных:', error);
@@ -288,4 +185,36 @@ async function createDemoData(userId) {
   }
 }
 
-module.exports = { createDemoData };
+async function deleteDemoData(userId) {
+  try {
+    const taskWhere = DEMO_TASK_TITLES.map(() => 'title = ?').join(' OR ');
+    const habitWhere = DEMO_HABIT_NAMES.map(() => 'name = ?').join(' OR ');
+    const eventWhere = DEMO_EVENT_NAMES.map(() => 'name = ?').join(' OR ');
+
+    const [taskRes] = await pool.query(
+      `DELETE FROM tasks WHERE user_id = ? AND (${taskWhere})`,
+      [userId, ...DEMO_TASK_TITLES]
+    );
+
+    const [habitRes] = await pool.query(
+      `DELETE FROM habits WHERE user_id = ? AND (${habitWhere})`,
+      [userId, ...DEMO_HABIT_NAMES]
+    );
+
+    const [eventRes] = await pool.query(
+      `DELETE FROM birthdays WHERE user_id = ? AND (${eventWhere})`,
+      [userId, ...DEMO_EVENT_NAMES]
+    );
+
+    return {
+      tasks: taskRes.affectedRows || 0,
+      habits: habitRes.affectedRows || 0,
+      events: eventRes.affectedRows || 0,
+    };
+  } catch (error) {
+    console.error('❌ Ошибка удаления демо-данных:', error);
+    throw error;
+  }
+}
+
+module.exports = { createDemoData, deleteDemoData };

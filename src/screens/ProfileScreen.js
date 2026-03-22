@@ -3,10 +3,13 @@ import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, ActivityIndicator
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
-import { removeToken } from '../services/storage';
+import { getUserId, removeToken } from '../services/storage';
 import AlertModal from '../components/AlertModal';
+import Modal from '../components/Modal';
+import Button from '../components/Button';
 import SettingsScreen from './SettingsScreen';
 
 const ProfileScreen = ({ onLogout }) => {
@@ -15,11 +18,28 @@ const ProfileScreen = ({ onLogout }) => {
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'success' });
+  const [showDeleteDemoModal, setShowDeleteDemoModal] = useState(false);
+  const [deletingDemo, setDeletingDemo] = useState(false);
+  const [hideDeleteDemoButton, setHideDeleteDemoButton] = useState(false);
 
   const showAlert = (title, message, type = 'success') =>
     setAlertConfig({ visible: true, title, message, type });
 
   useEffect(() => { loadProfile(); }, []);
+
+  useEffect(() => {
+    const syncDeleteDemoButtonState = async () => {
+      try {
+        const uid = await getUserId();
+        if (!uid) return;
+        const hidden = await AsyncStorage.getItem(`@mm_demo_data_deleted_${uid}`);
+        setHideDeleteDemoButton(hidden === 'true');
+      } catch (error) {
+        console.error('Ошибка проверки состояния кнопки демо-данных:', error);
+      }
+    };
+    syncDeleteDemoButtonState();
+  }, []);
 
   const loadProfile = async () => {
     try {
@@ -32,6 +52,25 @@ const ProfileScreen = ({ onLogout }) => {
   const handleLogout = async () => {
     await removeToken();
     onLogout();
+  };
+
+  const handleDeleteDemoData = async () => {
+    try {
+      setDeletingDemo(true);
+      const response = await api.delete('/user/demo-data');
+      const uid = await getUserId();
+      if (uid) {
+        await AsyncStorage.setItem(`@mm_demo_data_deleted_${uid}`, 'true');
+      }
+      setHideDeleteDemoButton(true);
+      setShowDeleteDemoModal(false);
+      const { tasks = 0, habits = 0, events = 0 } = response.data || {};
+      showAlert('Готово', `Демо-данные удалены.\nЗадачи: ${tasks}\nПривычки: ${habits}\nСобытия: ${events}`);
+    } catch (error) {
+      showAlert('Ошибка', error?.response?.data?.error || 'Не удалось удалить демо-данные', 'error');
+    } finally {
+      setDeletingDemo(false);
+    }
   };
 
   const themes = [
@@ -119,6 +158,14 @@ const ProfileScreen = ({ onLogout }) => {
         >
           <Text style={[styles.actionText, { color: colors.textMain }]}>⚙️ Настройки</Text>
         </TouchableOpacity>
+        {!hideDeleteDemoButton && (
+          <TouchableOpacity
+            style={[styles.actionButton, { marginTop: 12, backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
+            onPress={() => setShowDeleteDemoModal(true)}
+          >
+            <Text style={[styles.actionText, { color: colors.textMuted }]}>🧹 Удалить демо-данные</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={[styles.actionButton, { marginTop: 12, borderColor: colors.danger1, borderWidth: 1, backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}
           onPress={handleLogout}
@@ -136,6 +183,36 @@ const ProfileScreen = ({ onLogout }) => {
         type={alertConfig.type}
         onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
       />
+
+      <Modal
+        visible={showDeleteDemoModal}
+        onClose={() => !deletingDemo && setShowDeleteDemoModal(false)}
+        title="Удалить демо-данные?"
+      >
+        <Text style={{ color: colors.textMain, textAlign: 'center', marginBottom: 12 }}>
+          Будут удалены только базовые демо-задачи, демо-привычки и демо-события.
+        </Text>
+        <Text style={{ color: colors.textMuted, textAlign: 'center', marginBottom: 20 }}>
+          Это действие нельзя отменить.
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Button
+            title="Отмена"
+            variant="outline"
+            onPress={() => setShowDeleteDemoModal(false)}
+            style={{ flex: 1 }}
+            disabled={deletingDemo}
+          />
+          <Button
+            title={deletingDemo ? 'Удаляю...' : 'Удалить'}
+            variant="danger"
+            noBorder
+            onPress={handleDeleteDemoData}
+            style={{ flex: 1 }}
+            disabled={deletingDemo}
+          />
+        </View>
+      </Modal>
     </ScrollView>
   );
 };

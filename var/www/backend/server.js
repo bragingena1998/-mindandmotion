@@ -30,6 +30,7 @@ const folderRoutes   = require('./routes/folders');
 const subtaskRoutes  = require('./routes/subtasks');
 const subtaskActions = require('./routes/subtaskActions');
 const birthdayRoutes = require('./routes/birthdays');
+const secretChatRoutes = require('./routes/secretChat');
 
 app.use('/api', authRoutes);                          // /api/login, /api/register, /api/verify-code...
 app.use('/api/user', userRoutes);                     // /api/user/profile, /api/user/password
@@ -39,6 +40,7 @@ app.use('/api/subtasks', subtaskActions);             // /api/subtasks/:id/toggl
 app.use('/api/habits', habitRoutes);                  // /api/habits
 app.use('/api/folders', folderRoutes);                // /api/folders
 app.use('/api/birthdays', birthdayRoutes);            // /api/birthdays
+app.use('/api', secretChatRoutes);                    // /api/secret-chat
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

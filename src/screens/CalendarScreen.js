@@ -26,6 +26,7 @@ import TutorialOverlay from '../components/TutorialOverlay';
 import TutorialButton from '../components/TutorialButton';
 import CalendarTutorial from '../components/CalendarTutorial';
 import { useTutorial } from '../hooks/useTutorial';
+import { useDataSync } from '../contexts/DataSyncContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PADDING_H = 16;
@@ -410,6 +411,7 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const CalendarScreen = ({ navigation }) => {
+  const { bumpAll } = useDataSync();
   const { colors } = useTheme();
 
   const [viewMode, setViewMode]   = useState('month');
@@ -586,13 +588,15 @@ const CalendarScreen = ({ navigation }) => {
       }
       setShowEventModal(false);
       loadData();
+      bumpAll();
     } catch (e) { console.error(e); }
   };
   const deleteEvent = async id => {
     try { 
       await cancelBirthdayNotification(id); // Отменяем уведомление
       await api.delete(`/birthdays/${id}`); 
-      loadData(); 
+      loadData();
+      bumpAll();
     }
     catch (e) { console.error(e); }
   };

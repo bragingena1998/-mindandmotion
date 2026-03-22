@@ -1,10 +1,11 @@
 // src/screens/TasksScreen.js
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
   FlatList,
+  SectionList,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
@@ -14,6 +15,9 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Background from '../components/Background';
@@ -25,7 +29,6 @@ import { getToken } from '../services/storage';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import {
   GestureHandlerRootView,
-  LongPressGestureHandler,
   PanGestureHandler,
   State,
 } from 'react-native-gesture-handler';
@@ -36,8 +39,20 @@ import { scheduleTaskReminders, cancelTaskReminders } from '../services/notifica
 import TutorialOverlay from '../components/TutorialOverlay';
 import TutorialButton from '../components/TutorialButton';
 import { useTutorial } from '../hooks/useTutorial';
+import { useDataSync } from '../contexts/DataSyncContext';
+import { countTodayPlanTotal, countCompletedToday } from '../utils/taskDayStats';
 
 const toMysqlFormat = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const normPriority = (p) => {
+  if (p === 1 || p === 'high') return 'high';
+  if (p === 3 || p === 'low') return 'low';
+  return 'medium';
+};
 
 const tasksAPI = {
   getTasks: async (params) => (await api.get('/tasks', { params })).data,
@@ -187,7 +202,8 @@ const FolderDropChip = React.memo(({ folder, isHovered, colors, onMeasure }) => 
 });
 
 // ==================== DRAGGABLE TASK ITEM ====================
-// ВАЖНО: PanGestureHandler снаружи, LongPressGestureHandler внутри.
+// Один PanGestureHandler с activateAfterLongPress: иначе failOffsetY + activeOffsetX
+// ломали перетаскивание вверх в папки (pan падал в FAILED до активации).
 
 const DraggableTaskItem = React.memo(({
   item,
@@ -213,16 +229,17 @@ const DraggableTaskItem = React.memo(({
   getTaskStatus,
   formatTaskDate,
 }) => {
-  const longPressRef = useRef(null);
   const panRef = useRef(null);
 
   const isExpanded = expandedTasks[item.id];
   const taskSubtasks = subtasks[item.id] || [];
   const isLoadingSubtasks = loadingSubtasks[item.id];
-  const getPriorityColor = () => ({ high: colors.danger1, medium: colors.accent1, low: colors.ok1 }[item.priority] || colors.textMuted);
+  const pri = normPriority(item.priority);
+  const getPriorityColor = () => ({ high: colors.danger1, medium: colors.accent1, low: colors.ok1 }[pri] || colors.textMuted);
   const taskStatus = getTaskStatus(item);
+  const isTaskDone = !!(item.completed ?? item.done);
   const getStatusColor = () => {
-    if (item.completed) return colors.textMuted;
+    if (isTaskDone) return colors.textMuted;
     if (taskStatus === 'overdue') return colors.danger1;
     if (taskStatus === 'today') return colors.ok1;
     return colors.borderSubtle;
@@ -251,29 +268,26 @@ const DraggableTaskItem = React.memo(({
   };
 
   const onSwipeableOpen = (direction) => {
-    if (direction === 'left') { swipeableRefs.current[item.id]?.close(); toggleTask(item.id); }
+    if (direction === 'left') {
+      swipeableRefs.current[item.id]?.close();
+      toggleTask(item.id);
+    }
     if (direction === 'right') { swipeableRefs.current[item.id]?.close(); setFocusTask(item); setFocusVisible(true); }
   };
 
   return (
     <PanGestureHandler
       ref={panRef}
-      simultaneousHandlers={longPressRef}
+      activateAfterLongPress={400}
       onGestureEvent={onPanGestureEvent}
-      onHandlerStateChange={onPanStateChange}
+      onHandlerStateChange={({ nativeEvent }) => {
+        if (nativeEvent.state === State.ACTIVE) {
+          onLongPressStart(item, nativeEvent.absoluteX, nativeEvent.absoluteY);
+        }
+        onPanStateChange({ nativeEvent });
+      }}
     >
       <Animated.View style={{ marginBottom: 12, opacity: isDraggingThis ? 0.4 : 1 }}>
-        <LongPressGestureHandler
-          ref={longPressRef}
-          simultaneousHandlers={panRef}
-          minDurationMs={400}
-          onHandlerStateChange={({ nativeEvent }) => {
-            if (nativeEvent.state === State.ACTIVE) {
-              onLongPressStart(item, nativeEvent.absoluteX, nativeEvent.absoluteY);
-            }
-          }}
-        >
-          <Animated.View>
             <Swipeable
               ref={(ref) => { swipeableRefs.current[item.id] = ref; }}
               renderLeftActions={renderLeftActions}
@@ -286,20 +300,20 @@ const DraggableTaskItem = React.memo(({
               enabled={!dragTask}
             >
               <TouchableOpacity
-                style={[styles.taskItem, { backgroundColor: colors.surface, borderColor: getStatusColor(), borderWidth: 2, opacity: item.completed ? 0.6 : 1, marginBottom: 0, borderRadius: 12 }]}
+                style={[styles.taskItem, { backgroundColor: colors.surface, borderColor: getStatusColor(), borderWidth: 2, opacity: isTaskDone ? 0.6 : 1, marginBottom: 0, borderRadius: 12 }]}
                 activeOpacity={0.7}
                 onPress={() => !dragTask && toggleExpand(item.id)}
               >
                 <TouchableOpacity style={styles.checkboxArea} onPress={(e) => { e.stopPropagation(); if (!dragTask) toggleTask(item.id); }}>
-                  <View style={[styles.checkbox, { borderColor: getStatusColor(), backgroundColor: item.completed ? getStatusColor() : 'transparent' }]}>
-                    {item.completed && <Text style={styles.checkmark}>✓</Text>}
+                  <View style={[styles.checkbox, { borderColor: getStatusColor(), backgroundColor: isTaskDone ? getStatusColor() : 'transparent' }]}>
+                    {isTaskDone && <Text style={styles.checkmark}>✓</Text>}
                   </View>
                 </TouchableOpacity>
                 <View style={styles.taskContent}>
-                  <Text style={[styles.taskTitle, { color: item.completed ? colors.textMuted : colors.textMain, paddingRight: 30 }]} numberOfLines={isExpanded ? 0 : 2}>
+                  <Text style={[styles.taskTitle, { color: isTaskDone ? colors.textMuted : colors.textMain, paddingRight: 30 }]} numberOfLines={isExpanded ? 0 : 2}>
                     {item.title}
                   </Text>
-                  {!item.completed && (
+                  {!isTaskDone && (
                     <View style={styles.statusBadge}>
                       {taskStatus === 'overdue' && <Text style={[styles.statusText, { color: colors.danger1 }]}>🔥 ПРОСРОЧЕНО</Text>}
                       {taskStatus === 'today' && <Text style={[styles.statusText, { color: colors.ok1 }]}>⚡ СЕГОДНЯ</Text>}
@@ -308,7 +322,7 @@ const DraggableTaskItem = React.memo(({
                   )}
                   <View style={styles.taskMeta}>
                     <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
-                      <Text style={styles.priorityText}>{item.priority === 'high' ? 'Высокий' : item.priority === 'medium' ? 'Средний' : 'Низкий'}</Text>
+                      <Text style={styles.priorityText}>{pri === 'high' ? 'Высокий' : pri === 'medium' ? 'Средний' : 'Низкий'}</Text>
                     </View>
                     <Text style={[styles.taskDate, { color: colors.textMuted }]}>{formatTaskDate(item)}</Text>
                     {((item.subtasks_count > 0) || taskSubtasks.length > 0) && (
@@ -341,8 +355,6 @@ const DraggableTaskItem = React.memo(({
                 )}
               </View>
             )}
-          </Animated.View>
-        </LongPressGestureHandler>
       </Animated.View>
     </PanGestureHandler>
   );
@@ -351,6 +363,7 @@ const DraggableTaskItem = React.memo(({
 
 const TasksScreen = ({ navigation }) => {
   const { colors } = useTheme();
+  const { tick, bumpAll } = useDataSync();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -438,6 +451,7 @@ const TasksScreen = ({ navigation }) => {
     previousStep,
     closeTutorial,
     skipTutorial,
+    resetAllTutorials,
   } = useTutorial('tasks');
 
   // Шаги туториала для задач
@@ -491,6 +505,11 @@ const TasksScreen = ({ navigation }) => {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
   useEffect(() => { loadTasks(); loadFolders(); }, []);
+
+  useEffect(() => {
+    if (tick === 0) return;
+    loadTasks();
+  }, [tick]);
 
   useEffect(() => {
     if (!focusVisible && hasFocusSession()) {
@@ -680,19 +699,6 @@ const TasksScreen = ({ navigation }) => {
 
   // ==================== STATS & TASKS ====================
 
-  const loadStats = async () => {
-    try {
-      const res = await api.get('/tasks/stats');
-      setStats({
-        today: res.data.completed_today || 0,
-        todayPlan: res.data.total_today_plan || 0,
-        week: res.data.completed_week || 0,
-        month: res.data.completed_month || 0,
-        total: res.data.completed_total || 0,
-      });
-    } catch (err) { console.error('Статистика ошибка:', err); }
-  };
-
   const loadTasks = async (date = selectedDate) => {
     try {
       setError('');
@@ -702,9 +708,11 @@ const TasksScreen = ({ navigation }) => {
       const isCurrentMonth = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
       const params = isCurrentMonth ? {} : { month: date.getMonth(), year: date.getFullYear() };
       let tasksData;
+      let statsApi;
       if (isCurrentMonth) {
-        const [res] = await Promise.all([tasksAPI.getTasks(params), loadStats()]);
+        const [res, resStats] = await Promise.all([tasksAPI.getTasks(params), api.get('/tasks/stats')]);
         tasksData = res;
+        statsApi = resStats;
       } else {
         tasksData = await tasksAPI.getTasks(params);
       }
@@ -713,6 +721,7 @@ const TasksScreen = ({ navigation }) => {
         priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
         dueDate: task.deadline || task.date,
         completed: task.done || false,
+        doneDate: task.doneDate || task.done_date || null,
         time: task.time || null,
         isRecurring: task.isRecurring ?? task.is_recurring ?? task.isrecurring ?? 0,
         recurrenceType: task.recurrenceType ?? task.recurrence_type ?? task.recurrencetype ?? null,
@@ -720,6 +729,21 @@ const TasksScreen = ({ navigation }) => {
         folderId: task.folderId ?? task.folder_id ?? null,
       }));
       setTasks(formatted);
+      if (isCurrentMonth && statsApi) {
+        setStats({
+          today: countCompletedToday(formatted),
+          todayPlan: countTodayPlanTotal(formatted),
+          week: statsApi.data.completed_week || 0,
+          month: statsApi.data.completed_month || 0,
+          total: statsApi.data.completed_total || 0,
+        });
+      } else if (isCurrentMonth) {
+        setStats((prev) => ({
+          ...prev,
+          today: countCompletedToday(formatted),
+          todayPlan: countTodayPlanTotal(formatted),
+        }));
+      }
       if (loading) checkOverdueTasks(formatted);
       setLoading(false);
     } catch (err) {
@@ -756,24 +780,38 @@ const TasksScreen = ({ navigation }) => {
 
   const onRefresh = async () => { setRefreshing(true); await loadTasks(); setRefreshing(false); };
 
-  const toggleTask = async (taskId) => {
+  const toggleTask = useCallback(async (taskId) => {
     try {
       const t = tasks.find(x => x.id === taskId);
       if (!t) return;
-      setTasks(prev => prev.map(x => x.id === taskId ? { ...x, completed: !x.completed } : x));
-      const done = !t.completed;
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      const wasDone = !!(t.completed ?? t.done);
+      const done = !wasDone;
+      setTasks(prev => prev.map(x => x.id === taskId ? { ...x, completed: done, done } : x));
       await tasksAPI.updateTask(taskId, {
         title: t.title, date: t.date, deadline: t.deadline,
-        priority: t.priority === 'high' ? 1 : t.priority === 'low' ? 3 : 2,
+        priority: normPriority(t.priority) === 'high' ? 1 : normPriority(t.priority) === 'low' ? 3 : 2,
         comment: t.comment || '', done, doneDate: done ? toMysqlFormat(new Date()) : null,
         time: t.time, isRecurring: t.isRecurring, recurrenceType: t.recurrenceType,
         folderId: t.folderId || null,
       });
       if (done) showToast('✅ Задача выполнена!');
+      else showToast('↩ Задача снова в работе');
       if (done && t.isRecurring) setTimeout(() => loadTasks(), 1000);
-      await loadStats();
+      setTasks((prev) => {
+        const next = prev.map((x) =>
+          x.id === taskId ? { ...x, doneDate: done ? toMysqlFormat(new Date()) : null } : x
+        );
+        setStats((s) => ({
+          ...s,
+          today: countCompletedToday(next),
+          todayPlan: countTodayPlanTotal(next),
+        }));
+        return next;
+      });
+      bumpAll();
     } catch { loadTasks(); }
-  };
+  }, [tasks, bumpAll]);
 
   const deleteTask = useCallback(async (taskId) => {
     try {
@@ -781,8 +819,9 @@ const TasksScreen = ({ navigation }) => {
       await tasksAPI.deleteTask(taskId);
       await cancelTaskReminders(taskId); // Отменяем уведомления
       showToast('🗑️ Задача удалена');
+      bumpAll();
     } catch { loadTasks(); Alert.alert('Ошибка', 'Не удалось удалить задачу'); }
-  }, []);
+  }, [bumpAll]);
 
   const stopRecurring = async (taskId) => {
     try {
@@ -927,6 +966,66 @@ const TasksScreen = ({ navigation }) => {
     return 0;
   });
 
+  const getDateGroupLabel = useCallback((isoDate) => {
+    if (!isoDate) return 'Без даты';
+    const d = new Date(isoDate);
+    if (isNaN(d.getTime())) return 'Без даты';
+    const todayDate = new Date();
+    const today = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
+    const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((target - today) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return 'Сегодня';
+    if (diffDays === 1) return 'Завтра';
+    return target.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long' });
+  }, []);
+
+  const taskSections = useMemo(() => {
+    const empty = [
+      { key: 'overdue', title: 'ПРОСРОЧЕННЫЕ', color: colors.danger1, data: [] },
+      { key: 'today', title: 'СЕГОДНЯ', color: colors.accent1, data: [] },
+      { key: 'future', title: 'БУДУЩИЕ', color: '#60a5fa', data: [] },
+      { key: 'nodate', title: 'БЕЗ ДАТЫ', color: colors.textMuted, data: [] },
+    ];
+    if (sortBy !== 'date') {
+      return [
+        ...empty,
+        { key: 'custom', title: sortBy === 'priority' ? 'СОРТИРОВКА: ВАЖНОСТЬ' : 'СОРТИРОВКА: НАЗВАНИЕ', color: colors.textMuted, data: sortedTasks },
+      ];
+    }
+
+    const overdue = [];
+    const todayGroup = [];
+    const futureMap = {};
+    const noDate = [];
+
+    sortedTasks.forEach((task) => {
+      const hasDate = !!task.date;
+      if (!hasDate) {
+        noDate.push(task);
+        return;
+      }
+      const status = getTaskStatus(task);
+      if (status === 'overdue') overdue.push(task);
+      if (status === 'today') todayGroup.push(task);
+      if (status === 'future') {
+        const key = (task.deadline || task.date || '').split('T')[0];
+        if (!futureMap[key]) futureMap[key] = [];
+        futureMap[key].push(task);
+      }
+    });
+
+    const future = Object.keys(futureMap)
+      .sort((a, b) => new Date(a) - new Date(b))
+      .flatMap((date) => [{ isDateHeader: true, id: `header-${date}`, dateLabel: getDateGroupLabel(date) }, ...futureMap[date]]);
+
+    return [
+      { key: 'overdue', title: 'ПРОСРОЧЕННЫЕ', color: colors.danger1, data: overdue },
+      { key: 'today', title: 'СЕГОДНЯ', color: colors.accent1, data: todayGroup },
+      { key: 'future', title: 'БУДУЩИЕ', color: '#60a5fa', data: future },
+      { key: 'nodate', title: 'БЕЗ ДАТЫ', color: colors.textMuted, data: noDate },
+    ];
+  }, [sortedTasks, sortBy, colors, getTaskStatus, getDateGroupLabel]);
+
   // ==================== RENDER ====================
 
   const renderTask = useCallback(({ item }) => (
@@ -954,7 +1053,32 @@ const TasksScreen = ({ navigation }) => {
       getTaskStatus={getTaskStatus}
       formatTaskDate={formatTaskDate}
     />
-  ), [colors, dragTask, expandedTasks, subtasks, loadingSubtasks, onLongPressStart, onPanGestureEvent, onPanStateChange, getFolderById, getTaskStatus, formatTaskDate]);
+  ), [
+    colors, dragTask, expandedTasks, subtasks, loadingSubtasks, onLongPressStart, onPanGestureEvent, onPanStateChange,
+    getFolderById, getTaskStatus, formatTaskDate, toggleTask, toggleExpand, handleEditTask, toggleSubtask, deleteSubtask,
+    setFocusTask, setFocusVisible,
+  ]);
+
+  const renderSectionHeader = useCallback(({ section }) => {
+    if (!section.data.length) return null;
+    return (
+      <View style={styles.sectionHeaderWrap}>
+        <Text style={[styles.sectionHeaderText, { color: section.color }]}>{section.title}</Text>
+      </View>
+    );
+  }, []);
+
+  const renderSectionItem = useCallback((params) => {
+    const { item } = params;
+    if (item?.isDateHeader) {
+      return (
+        <View style={styles.dateHeaderWrap}>
+          <Text style={[styles.dateHeaderText, { color: colors.textMuted }]}>{item.dateLabel}</Text>
+        </View>
+      );
+    }
+    return renderTask(params);
+  }, [colors.textMuted, renderTask]);
 
   if (loading) return <Background><View style={styles.centerContainer}><ActivityIndicator size="large" color={colors.accent1} /></View></Background>;
 
@@ -969,17 +1093,6 @@ const TasksScreen = ({ navigation }) => {
           <View style={[styles.header, { backgroundColor: colors.surface }]}>
             <Text style={[styles.headerTitle, { color: colors.accentText }]}>МОИ ЗАДАЧИ</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {__DEV__ && (
-                <TouchableOpacity 
-                  style={[{ padding: 8, borderRadius: 6, backgroundColor: colors.accent1 }]} 
-                  onPress={() => {
-                    console.log('🔧 Force start tutorial');
-                    startTutorial();
-                  }}
-                >
-                  <Text style={{ color: '#020617', fontSize: 12, fontWeight: '600' }}>T</Text>
-                </TouchableOpacity>
-              )}
               <TouchableOpacity onPress={() => setShowMonthPicker(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Text style={[styles.headerTitle, { color: colors.accentText }]}>
                   {selectedDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase()}
@@ -1096,13 +1209,15 @@ const TasksScreen = ({ navigation }) => {
           </ScrollView>
 
           {/* СПИСОК ЗАДАЧ */}
-          <FlatList
-            data={sortedTasks}
-            renderItem={renderTask}
-            keyExtractor={(item) => item.id.toString()}
+          <SectionList
+            sections={taskSections}
+            renderItem={renderSectionItem}
+            renderSectionHeader={renderSectionHeader}
+            keyExtractor={(item, index) => String(item.id || `row-${index}`)}
             contentContainerStyle={styles.listContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent1} />}
             scrollEnabled={!dragTask}
+            stickySectionHeadersEnabled={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={[styles.emptyText, { color: colors.textMuted }]}>
@@ -1321,7 +1436,10 @@ const TasksScreen = ({ navigation }) => {
                   
                   showToast(editingTask ? '✏️ Задача обновлена' : '✅ Задача добавлена');
                   setShowAddModal(false);
-                  setTimeout(() => loadTasks(), 300);
+                  setTimeout(() => {
+                    loadTasks();
+                    bumpAll();
+                  }, 300);
                 } catch (err) {
                   Alert.alert('Ошибка', 'Не удалось сохранить: ' + err.message);
                   setLoading(false);
@@ -1528,12 +1646,8 @@ const TasksScreen = ({ navigation }) => {
 
       {/* Кнопка туториала в нижнем левом углу */}
       <View style={styles.tutorialButtonContainer}>
-        {__DEV__ && console.log('🔧 Rendering tutorial button')}
         <TutorialButton 
-          onPress={() => {
-            console.log('🔧 Tutorial button pressed');
-            restartTutorial();
-          }} 
+          onPress={restartTutorial}
           onLongPress={handleResetTutorials}
         />
       </View>
@@ -1558,6 +1672,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(148,163,184,0.25)' },
   headerTitle: { fontSize: 18, fontWeight: 'bold', letterSpacing: 0.12, textTransform: 'uppercase' },
   listContent: { padding: 16, paddingBottom: 100 },
+  sectionHeaderWrap: { paddingTop: 8, paddingBottom: 10 },
+  sectionHeaderText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8 },
+  dateHeaderWrap: { marginTop: 4, marginBottom: 8 },
+  dateHeaderText: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
   taskItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
   checkboxArea: { paddingRight: 10 },
   checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginRight: 2 },
@@ -1610,7 +1728,7 @@ const styles = StyleSheet.create({
   swipeActionRight: { backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: 20, borderRadius: 12, flex: 1 },
   swipeActionText: { fontSize: 24, color: 'white' },
   editButton: { position: 'absolute', top: 12, right: 12, padding: 4, zIndex: 10 },
-  tutorialButtonContainer: { position: 'absolute', left: 16, bottom: 100, zIndex: 9999 },
+  tutorialButtonContainer: { position: 'absolute', left: 16, bottom: 24, zIndex: 9999 },
   advancedToggle: { padding: 12, borderWidth: 1, borderRadius: 8, marginVertical: 8, alignItems: 'center' },
   advancedSettings: { padding: 12, borderWidth: 1, borderColor: 'rgba(148,163,184,0.2)', borderRadius: 8, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.05)' },
   subtaskCheckbox: { padding: 2 },

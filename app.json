@@ -13,11 +13,12 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#0f0f11",
+          "color": "#000000",
           "androidMode": "default",
           "androidCollapsedTitle": "Mind&Motion"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "name": "mindandmotion-mobile",
     "slug": "mindandmotion-mobile",
@@ -28,16 +29,19 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Mind&Motion использует Face ID для входа в приложение."
+      }
     },
     "android": {
       "package": "com.bragin22.mindandmotionmobile.dev",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#000000"
       }
     },
     "web": {

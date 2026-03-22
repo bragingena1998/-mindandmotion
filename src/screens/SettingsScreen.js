@@ -12,6 +12,7 @@ import AlertModal from '../components/AlertModal';
 import DatePickerModal from '../components/DatePickerModal';
 import Background from '../components/Background';
 import NotificationSettingsScreen from './NotificationSettingsScreen';
+import AppLockSettingsSection from '../components/AppLockSettingsSection';
 
 const formatDateDisplay = (dateStr) => {
   if (!dateStr) return '';
@@ -156,9 +157,11 @@ const SettingsScreen = ({ onBack, user: initialUser, onUserUpdate }) => {
             </TouchableOpacity>
           </View>
 
+          <AppLockSettingsSection />
+
           {/* БЕЗОПАСНОСТЬ */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>БЕЗОПАСНОСТЬ</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>АККАУНТ: ПАРОЛЬ</Text>
             <TouchableOpacity
               style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
               onPress={() => setShowPasswordModal(true)}

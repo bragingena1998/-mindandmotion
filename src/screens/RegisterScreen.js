@@ -30,7 +30,14 @@ const RegisterScreen = ({ onNavigate, onLoginSuccess }) => {
   const { colors } = useTheme();
   
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', birthdate: '', code: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    birthdate: '',
+    code: '',
+    createDemoData: true,
+  });
   const [loading, setLoading] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' });
@@ -117,6 +124,32 @@ const RegisterScreen = ({ onNavigate, onLoginSuccess }) => {
                 </View>
 
                 <Input label="Пароль" secureTextEntry value={formData.password} onChangeText={t => setFormData({...formData, password: t})} />
+                <TouchableOpacity
+                  onPress={() => setFormData(prev => ({ ...prev, createDemoData: !prev.createDemoData }))}
+                  style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2, marginBottom: 4 }}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: 4,
+                      borderWidth: 1,
+                      borderColor: formData.createDemoData ? colors.accent1 : colors.borderSubtle,
+                      backgroundColor: formData.createDemoData ? colors.accent1 : 'transparent',
+                      marginRight: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {formData.createDemoData && (
+                      <Text style={{ color: '#020617', fontSize: 10, fontWeight: '700' }}>✓</Text>
+                    )}
+                  </View>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                    Добавить базовые демо-данные (задачи/привычки/события)
+                  </Text>
+                </TouchableOpacity>
                 <Button title="Получить код" onPress={handleSendCode} loading={loading} style={{ marginTop: 24 }} />
               </>
             ) : (

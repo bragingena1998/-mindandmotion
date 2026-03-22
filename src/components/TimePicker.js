@@ -5,8 +5,8 @@ import {
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
-const ITEM_HEIGHT = 52;
-const VISIBLE = 5;
+const ITEM_HEIGHT = 40;
+const VISIBLE = 3;
 const CENTER = Math.floor(VISIBLE / 2); // 2
 const MULT = 40;
 
@@ -138,7 +138,7 @@ const TimePicker = ({ label, value, onChangeTime }) => {
       </View>
 
       <RNModal visible={isOpen} transparent animationType="fade">
-        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end', paddingBottom: 24 }]}>
           <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
             <Text style={[styles.title, { color: colors.accentText }]}>ВЫБЕРИТЕ ВРЕМЯ</Text>
             <View style={styles.row}>

@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getUserId } from '../services/storage';
 
 const TUTORIAL_KEY = '@mm_tutorial_completed';
 
@@ -10,12 +11,26 @@ export const useTutorial = (screenName) => {
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [userId, setUserId] = useState(null);
+
+  const getTutorialKey = useCallback(
+    () => `${TUTORIAL_KEY}_${screenName}_${userId || 'anon'}`,
+    [screenName, userId]
+  );
+
+  useEffect(() => {
+    const loadUserId = async () => {
+      const uid = await getUserId();
+      setUserId(uid || null);
+    };
+    loadUserId();
+  }, []);
 
   // Проверка, завершен ли туториал для экрана
   useEffect(() => {
     const checkTutorialStatus = async () => {
       try {
-        const completed = await AsyncStorage.getItem(`${TUTORIAL_KEY}_${screenName}`);
+        const completed = await AsyncStorage.getItem(getTutorialKey());
         setIsCompleted(!!completed);
       } catch (error) {
         console.error('Error checking tutorial status:', error);
@@ -23,7 +38,7 @@ export const useTutorial = (screenName) => {
     };
 
     checkTutorialStatus();
-  }, [screenName]);
+  }, [getTutorialKey]);
 
   // Запуск туториала
   const startTutorial = useCallback(() => {
@@ -54,24 +69,24 @@ export const useTutorial = (screenName) => {
     setIsVisible(false);
     // Отмечаем туториал как завершенный
     try {
-      await AsyncStorage.setItem(`${TUTORIAL_KEY}_${screenName}`, 'true');
+      await AsyncStorage.setItem(getTutorialKey(), 'true');
       setIsCompleted(true);
     } catch (error) {
       console.error('Error saving tutorial status:', error);
     }
-  }, [screenName]);
+  }, [getTutorialKey]);
 
   // Пропуск туториала
   const skipTutorial = useCallback(async () => {
     setIsVisible(false);
     // Отмечаем туториал как пропущенный (завершенный)
     try {
-      await AsyncStorage.setItem(`${TUTORIAL_KEY}_${screenName}`, 'true');
+      await AsyncStorage.setItem(getTutorialKey(), 'true');
       setIsCompleted(true);
     } catch (error) {
       console.error('Error saving tutorial status:', error);
     }
-  }, [screenName]);
+  }, [getTutorialKey]);
 
   // Сброс всех туториалов (для тестирования)
   const resetAllTutorials = useCallback(async () => {

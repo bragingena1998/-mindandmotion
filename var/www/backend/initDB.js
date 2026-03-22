@@ -139,6 +139,40 @@ async function initializeDB() {
       }
     }
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS secret_chat_settings (
+        \`key\` VARCHAR(64) PRIMARY KEY,
+        \`value\` TEXT
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS secret_chat_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        text TEXT NOT NULL,
+        is_author TINYINT(1) DEFAULT 0,
+        tomato_count INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS secret_chat_user_meta (
+        user_id INT PRIMARY KEY,
+        rank_name VARCHAR(500) DEFAULT 'Семечка Сомнения',
+        gmo_infected TINYINT(1) DEFAULT 0,
+        mute_until DATETIME NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    await pool.query(`
+      INSERT IGNORE INTO secret_chat_settings (\`key\`, \`value\`) VALUES
+      ('chat_password', 'семечка сомнения'),
+      ('login_title', 'Тайный огород'),
+      ('sacred_text', '')
+    `);
+    console.log('✓ secret_chat tables OK');
+
     console.log('✓ Database tables initialized');
   } catch (err) {
     console.error('Database initialization error:', err);

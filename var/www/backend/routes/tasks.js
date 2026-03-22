@@ -65,13 +65,14 @@ router.get('/stats', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
+    // total_today_plan: сегодня в [date..deadline] — все строки; просрочка — только done=0 (иначе раздувает счётчик)
     let query = `
       SELECT
         COUNT(CASE WHEN done = 1 AND DATE(done_date) = CURDATE() THEN 1 END) as completed_today,
-        COUNT(CASE WHEN
-          (done = 0 AND (deadline IS NULL OR date <= CURDATE()))
-          OR (done = 1 AND DATE(done_date) = CURDATE())
-        THEN 1 END) as total_today_plan,
+        COUNT(CASE WHEN (
+          (CURDATE() >= DATE(\`date\`) AND CURDATE() <= COALESCE(DATE(deadline), DATE(\`date\`)))
+          OR (done = 0 AND COALESCE(DATE(deadline), DATE(\`date\`)) < CURDATE())
+        ) THEN 1 END) as total_today_plan,
         COUNT(CASE WHEN done = 1 AND YEARWEEK(done_date, 1) = YEARWEEK(CURDATE(), 1) THEN 1 END) as completed_week,
         COUNT(CASE WHEN done = 1 AND YEAR(done_date) = YEAR(CURDATE()) AND MONTH(done_date) = MONTH(CURDATE()) THEN 1 END) as completed_month,
         COUNT(CASE WHEN done = 1 THEN 1 END) as completed_total

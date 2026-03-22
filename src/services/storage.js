@@ -33,6 +33,16 @@ export const getToken = async () => {
   }
 };
 
+// Получение ID пользователя
+export const getUserId = async () => {
+  try {
+    return await AsyncStorage.getItem(KEYS.USER_ID);
+  } catch (error) {
+    console.error('Ошибка получения userId:', error);
+    return null;
+  }
+};
+
 // Удаление данных авторизации (выход)
 export const removeToken = async () => {
   try {
@@ -83,6 +93,7 @@ export const getTheme = async () => {
 export default {
   saveToken,
   getToken,
+  getUserId,
   removeToken,
   saveUserEmail,
   getUserEmail,
