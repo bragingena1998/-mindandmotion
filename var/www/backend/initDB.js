@@ -146,17 +146,6 @@ async function initializeDB() {
       )
     `);
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS secret_chat_messages (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        text TEXT NOT NULL,
-        is_author TINYINT(1) DEFAULT 0,
-        tomato_count INT DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )
-    `);
-    await pool.query(`
       CREATE TABLE IF NOT EXISTS secret_chat_user_meta (
         user_id INT PRIMARY KEY,
         rank_name VARCHAR(500) DEFAULT 'Семечка Сомнения',

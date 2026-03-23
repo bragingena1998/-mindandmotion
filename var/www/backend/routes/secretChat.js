@@ -10,7 +10,7 @@ const DEFAULT_RANK = 'Семечка Сомнения';
 
 async function ensureDefaults() {
   await pool.query(`
-    INSERT IGNORE INTO secret_chat_settings (\`key\`, \`value\`) VALUES
+    INSERT IGNORE INTO chat_settings (`key`, `value`) VALUES
     ('chat_password', 'семечка сомнения'),
     ('login_title', 'Тайный огород'),
     ('sacred_text', '')
@@ -19,7 +19,7 @@ async function ensureDefaults() {
 
 async function getAllSettings() {
   await ensureDefaults();
-  const [rows] = await pool.query('SELECT `key`, `value` FROM secret_chat_settings');
+  const [rows] = await pool.query('SELECT `key`, `value` FROM chat_settings');
   const o = {};
   rows.forEach((r) => {
     o[r.key] = r.value;
@@ -38,7 +38,7 @@ router.get('/secret-chat', authenticateToken, async (req, res) => {
               m.tomato_count AS tomatoCount,
               m.is_author AS isAuthor,
               u.name AS userName
-       FROM secret_chat_messages m
+       FROM chat_messages m
        JOIN users u ON u.id = m.user_id
        ORDER BY m.id ASC`
     );
@@ -94,7 +94,7 @@ router.post('/secret-chat', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Режим автора только для админа' });
     }
     await pool.query(
-      'INSERT INTO secret_chat_messages (user_id, text, is_author) VALUES (?, ?, ?)',
+      'INSERT INTO chat_messages (user_id, text, is_author) VALUES (?, ?, ?)',
       [userId, String(text).trim(), isAuthor]
     );
     res.json({ ok: true });
@@ -110,7 +110,7 @@ router.post('/secret-chat/tomato', authenticateToken, async (req, res) => {
     const { messageId } = req.body;
     if (!messageId) return res.status(400).json({ error: 'messageId' });
     await pool.query(
-      'UPDATE secret_chat_messages SET tomato_count = tomato_count + 1 WHERE id = ?',
+      'UPDATE chat_messages SET tomato_count = tomato_count + 1 WHERE id = ?',
       [messageId]
     );
     res.json({ ok: true });
@@ -131,21 +131,21 @@ router.post('/secret-chat/punish', authenticateToken, async (req, res) => {
 
     if (type === 'gmo') {
       await pool.query(
-        `INSERT INTO secret_chat_user_meta (user_id, gmo_infected, rank_name)
+        `INSERT INTO chat_user_meta (user_id, gmo_infected, rank_name)
          VALUES (?, 1, ?)
          ON DUPLICATE KEY UPDATE gmo_infected = 1`,
         [targetId, DEFAULT_RANK]
       );
     } else if (type === 'cure') {
       await pool.query(
-        `INSERT INTO secret_chat_user_meta (user_id, gmo_infected, rank_name)
+        `INSERT INTO chat_user_meta (user_id, gmo_infected, rank_name)
          VALUES (?, 0, ?)
          ON DUPLICATE KEY UPDATE gmo_infected = 0`,
         [targetId, DEFAULT_RANK]
       );
     } else if (type === 'mute' && duration) {
       await pool.query(
-        `INSERT INTO secret_chat_user_meta (user_id, mute_until, rank_name)
+        `INSERT INTO chat_user_meta (user_id, mute_until, rank_name)
          VALUES (?, DATE_ADD(NOW(), INTERVAL ? MINUTE), ?)
          ON DUPLICATE KEY UPDATE mute_until = DATE_ADD(NOW(), INTERVAL ? MINUTE)`,
         [targetId, Number(duration), DEFAULT_RANK, Number(duration)]
@@ -193,7 +193,7 @@ router.get('/secret-chat/users', authenticateToken, async (req, res) => {
               COALESCE(m.rank_name, ?) AS \`rank\`,
               COALESCE(m.gmo_infected, 0) AS gmo_infected
        FROM users u
-       LEFT JOIN secret_chat_user_meta m ON m.user_id = u.id
+       LEFT JOIN chat_user_meta m ON m.user_id = u.id
        ORDER BY u.id ASC`,
       [DEFAULT_RANK]
     );
@@ -219,7 +219,7 @@ router.put('/secret-chat/rank', authenticateToken, async (req, res) => {
     const { userId, newRank } = req.body;
     if (!userId || !newRank) return res.status(400).json({ error: 'userId, newRank' });
     await pool.query(
-      `INSERT INTO secret_chat_user_meta (user_id, rank_name)
+      `INSERT INTO chat_user_meta (user_id, rank_name)
        VALUES (?, ?)
        ON DUPLICATE KEY UPDATE rank_name = VALUES(rank_name)`,
       [userId, newRank]
@@ -237,7 +237,7 @@ router.post('/secret-chat/clear', authenticateToken, async (req, res) => {
     if (Number(req.userId) !== 4) {
       return res.status(403).json({ error: 'Только админ' });
     }
-    await pool.query('DELETE FROM secret_chat_messages');
+    await pool.query('DELETE FROM chat_messages');
     res.json({ ok: true });
   } catch (err) {
     console.error('secret-chat clear:', err);
