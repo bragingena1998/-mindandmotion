@@ -32,12 +32,15 @@ const getGreeting = () => {
 const formatDateRu = (date) =>
   new Intl.DateTimeFormat('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }).format(date);
 
-const isoToday = () => new Date().toISOString().split('T')[0];
+const isoToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
 
 const isoTomorrow = () => {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
 
 const parseHabitData = (h) => {

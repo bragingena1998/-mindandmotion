@@ -15,12 +15,12 @@
           "icon": "./assets/icon.png",
           "color": "#000000",
           "androidMode": "default",
-          "androidCollapsedTitle": "Mind&Motion"
+          "androidCollapsedTitle": "Mind & Motion"
         }
       ],
       "expo-secure-store"
     ],
-    "name": "mindandmotion-mobile",
+    "name": "Mind & Motion",
     "slug": "mindandmotion-mobile",
     "version": "1.0.0",
     "orientation": "portrait",

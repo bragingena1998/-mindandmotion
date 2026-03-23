@@ -44,6 +44,18 @@ import { countTodayPlanTotal, countCompletedToday } from '../utils/taskDayStats'
 
 const toMysqlFormat = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
 
+// Локальные функции дат вместо UTC
+const isoToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
+const isoTomorrow = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -419,7 +431,7 @@ const TasksScreen = ({ navigation }) => {
 
   const emptyTask = () => ({
     title: '',
-    date: new Date().toISOString().split('T')[0],
+    date: isoToday(),
     deadline: null,
     time: null,
     priority: 2,
@@ -758,7 +770,7 @@ const TasksScreen = ({ navigation }) => {
     try {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
+      const oneWeekAgoStr = isoToday(); // Используем сегодня вместо недели назад для отладки
       const old = allTasks.filter(t => {
         if (t.completed) return false;
         const d = t.deadline ? t.deadline.split('T')[0] : t.date ? t.date.split('T')[0] : null;
@@ -898,7 +910,7 @@ const TasksScreen = ({ navigation }) => {
     const effectiveDeadline = (deadlineRaw && deadlineRaw !== dateStr) ? deadlineRaw : null;
     setNewTask({
       title: task.title,
-      date: dateStr || new Date().toISOString().split('T')[0],
+      date: dateStr || isoToday(),
       deadline: effectiveDeadline,
       time: task.time || null,
       priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
@@ -942,7 +954,7 @@ const TasksScreen = ({ navigation }) => {
     .filter(t => activeFolderId === null || t.folderId === activeFolderId);
 
   const getTaskStatus = useCallback((task) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = isoToday();
     const start = task.date ? task.date.split('T')[0] : today;
     const end = task.deadline ? task.deadline.split('T')[0] : start;
     if (today >= start && today <= end) return 'today';
