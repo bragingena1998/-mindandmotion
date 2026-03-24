@@ -8,10 +8,9 @@ import {
   TouchableOpacity,
   View,
   Animated,
-  PanGestureHandler,
   Alert,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 import Background from '../components/Background';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
@@ -447,18 +446,21 @@ const DashboardScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <Background>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.accent1} />
-        </View>
-      </Background>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Background>
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={colors.accent1} />
+          </View>
+        </Background>
+      </GestureHandlerRootView>
     );
   }
 
   const hasAnyTask = overdueList.length + todayList.length + tomorrowList.length > 0;
 
   return (
-    <Background>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Background>
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent1} />}
@@ -641,7 +643,8 @@ const DashboardScreen = ({ navigation }) => {
         type={toast.type}
         onHide={() => setToast(prev => ({ ...prev, visible: false }))}
       />
-    </Background>
+      </Background>
+    </GestureHandlerRootView>
   );
 };
 
