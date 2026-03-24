@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '../contexts/ThemeContext';
+import Modal from './Modal';
+import Input from './Input';
 import Button from './Button';
 import {
   isAppLockEnabled,
@@ -20,6 +22,32 @@ import {
   setGracePeriod,
   getGracePeriod,
 } from '../services/appLock';
+
+const PinModalBody = ({
+  title,
+  error,
+  onConfirm,
+  onClose,
+  children,
+  confirmLabel,
+}) => {
+  const { colors } = useTheme();
+  return (
+    <>
+      <Text style={{ color: colors.textMuted, marginBottom: 12, textAlign: 'center' }}>
+        {title}
+      </Text>
+      {children}
+      {error ? (
+        <Text style={{ color: colors.danger1, marginTop: 8, textAlign: 'center' }}>{error}</Text>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+        <Button title="Отмена" variant="secondary" onPress={onClose} style={{ flex: 1 }} />
+        <Button title={confirmLabel} onPress={onConfirm} style={{ flex: 1 }} />
+      </View>
+    </>
+  );
+};
 
 const AppLockSettingsSection = () => {
   const { colors } = useTheme();
