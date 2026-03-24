@@ -266,10 +266,10 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
       {/* Тап по фону — закрыть */}
-      <TouchableOpacity
+      {/* Оверлей для перехвата свайпа вниз - НЕ перехватывает тапы */}
+      <View
         style={StyleSheet.absoluteFillObject}
-        activeOpacity={1}
-        onPress={onClose}
+        pointerEvents="box-none"
       />
 
       <Animated.View

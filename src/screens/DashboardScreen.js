@@ -727,7 +727,7 @@ const DashboardScreen = ({ navigation }) => {
                           justifyContent: 'center',
                           alignItems: 'center'
                         }}>
-                          {st.completed && <Text style={{ color: '#020617', fontSize: 12, fontWeight: 'bold' }}>✓</Text>}
+                          {!!st.completed && <Text style={{ color: '#020617', fontSize: 12, fontWeight: 'bold' }}>✓</Text>}
                         </View>
                         <Text style={{ 
                           flex: 1, 

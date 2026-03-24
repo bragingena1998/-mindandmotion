@@ -9,7 +9,13 @@ import { DataSyncProvider } from './src/contexts/DataSyncContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getToken } from './src/services/storage';
 import { initNotifications, rescheduleRepeatingNotifications } from './src/services/notifications';
-import { isAppLockEnabled, shouldRequirePin, setBackgroundTime, isBiometricUnlockEnabled } from './src/services/appLock';
+import {
+  isAppLockEnabled,
+  isBiometricUnlockEnabled,
+  shouldRequirePin,
+  shouldRequireBiometric,
+  setBackgroundTime,
+} from './src/services/appLock';
 import * as LocalAuthentication from 'expo-local-authentication';
 import BrandedSplash from './src/components/BrandedSplash';
 import AppLockScreen from './src/screens/AppLockScreen';
@@ -225,6 +231,13 @@ const AppContent = () => {
               }
               
               if (hardware && enrolled) {
+                // Добавляем проверку grace period для биометрии
+                const requireBio = await shouldRequireBiometric();
+                if (__DEV__) {
+                  console.log('🔐 Should require biometric:', requireBio);
+                }
+                if (!requireBio) return; // Grace period не истёк
+                  
                 const result = await LocalAuthentication.authenticateAsync({
                   promptMessage: 'Вход в Mind&Motion',
                   cancelLabel: 'Отмена',

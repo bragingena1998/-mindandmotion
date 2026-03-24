@@ -163,3 +163,9 @@ export async function shouldRequirePin() {
   
   return shouldRequire;
 }
+
+/** Проверить нужно ли запрашивать биометрию */
+export async function shouldRequireBiometric() {
+  // Используем ту же логику что и для PIN-кода
+  return await shouldRequirePin();
+}
