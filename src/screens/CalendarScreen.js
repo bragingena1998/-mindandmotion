@@ -547,15 +547,7 @@ const CalendarScreen = ({ navigation }) => {
     
     // В недельном режиме всегда открываем день, не закрываем при повторном клике
     if (viewMode === 'week') {
-      // Принудительно закрываем и открываем заново для гарантии обновления
-      setSelectedDay(null);
-      setTimeout(() => {
-        const newDay = { d, m: m_, y: y_ };
-        if (__DEV__) {
-          console.log('📅 Setting new day (week mode):', newDay);
-        }
-        setSelectedDay(newDay);
-      }, 0);
+      setSelectedDay({ d, m: m_, y: y_ });
       return;
     }
     

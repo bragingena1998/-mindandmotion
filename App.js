@@ -184,18 +184,18 @@ const AppContent = () => {
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (next) => {
       if (next === 'background') {
-        // Сохраняем время сворачивания
+        // Сворачиваем приложение
+        if (__DEV__) {
+          console.log('🔐 App going to background');
+        }
         await setBackgroundTime();
         if (!isAuthenticated) return;
-        try {
-          const lock = await isAppLockEnabled();
-          if (lock) setAppUnlocked(false);
-        } catch (e) {
-          /* ignore */
+        if (await isAppLockEnabled()) {
+          // НЕ сбрасываем appUnlocked здесь, чтобы grace period работал
         }
       } else if (next === 'active') {
         // Возвращаемся из фона
-        if (!isAuthenticated || !appUnlocked) return;
+        if (!isAuthenticated) return; // ← ИЗМЕНЕНО: убрана проверка appUnlocked
         
         try {
           const lock = await isAppLockEnabled();

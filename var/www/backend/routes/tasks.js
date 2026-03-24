@@ -11,7 +11,10 @@ router.get('/', authenticateToken, async (req, res) => {
 
     let query = `
       SELECT t.*,
-      (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) as subtasks_count
+        CASE WHEN EXISTS (
+          SELECT 1 FROM subtasks s WHERE s.task_id = t.id
+        ) THEN 1 ELSE 0 END AS has_subtasks,
+        (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) as subtasks_count
       FROM tasks t
       WHERE t.user_id = ?
     `;
