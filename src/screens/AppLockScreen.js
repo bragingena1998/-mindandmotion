@@ -163,7 +163,7 @@ const AppLockScreen = ({ onUnlock }) => {
                       disabled={!bioAvailable || !bioEnabled}
                     >
                       <Text style={{ fontSize: 22 }}>
-                        {bioAvailable && bioEnabled ? '👆' : ' '}
+                        {bioAvailable && bioEnabled ? '👆' : '👆'}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -197,14 +197,7 @@ const AppLockScreen = ({ onUnlock }) => {
           ))}
         </View>
 
-        {bioAvailable && bioEnabled && (
-          <TouchableOpacity onPress={tryBiometric} style={{ marginTop: 16 }}>
-            <Text style={{ color: colors.accent1, fontWeight: '600' }}>
-              🔐 Войти по отпечатку / Face ID
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+              </View>
     </Background>
   );
 };

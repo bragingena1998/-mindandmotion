@@ -201,19 +201,38 @@ const AppContent = () => {
           const lock = await isAppLockEnabled();
           if (!lock) return;
           
+          if (__DEV__) {
+            console.log('🔐 App state active: checking biometric...');
+          }
+          
           const requirePin = await shouldRequirePin();
+          if (__DEV__) {
+            console.log('🔐 requirePin:', requirePin);
+          }
+          
           if (!requirePin) {
             // PIN не нужен, проверяем биометрию
             const bioEnabled = await isBiometricUnlockEnabled();
+            if (__DEV__) {
+              console.log('🔐 bioEnabled:', bioEnabled);
+            }
+            
             if (bioEnabled) {
               const hardware = await LocalAuthentication.hasHardwareAsync();
               const enrolled = await LocalAuthentication.isEnrolledAsync();
+              if (__DEV__) {
+                console.log('🔐 hardware:', hardware, 'enrolled:', enrolled);
+              }
+              
               if (hardware && enrolled) {
                 const result = await LocalAuthentication.authenticateAsync({
                   promptMessage: 'Вход в Mind&Motion',
                   cancelLabel: 'Отмена',
                   disableDeviceFallback: false,
                 });
+                if (__DEV__) {
+                  console.log('🔐 biometric result:', result);
+                }
                 if (!result.success) {
                   setAppUnlocked(false);
                 }
@@ -221,9 +240,15 @@ const AppContent = () => {
             }
           } else {
             // Нужен PIN
+            if (__DEV__) {
+              console.log('🔐 PIN required');
+            }
             setAppUnlocked(false);
           }
         } catch (e) {
+          if (__DEV__) {
+            console.log('🔐 Biometric error:', e);
+          }
           // При ошибке запрашиваем PIN
           setAppUnlocked(false);
         }

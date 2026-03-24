@@ -541,6 +541,13 @@ const CalendarScreen = ({ navigation }) => {
     });
 
   const selectDay = (d, m_ = month, y_ = year) => {
+    // В недельном режиме всегда открываем день, не закрываем при повторном клике
+    if (viewMode === 'week') {
+      setSelectedDay({ d, m: m_, y: y_ });
+      return;
+    }
+    
+    // В месячном режиме - закрываем при повторном клике
     if (selectedDay?.d === d && selectedDay?.m === m_ && selectedDay?.y === y_) {
       setSelectedDay(null);
     } else {

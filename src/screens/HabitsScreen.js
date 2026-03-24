@@ -531,7 +531,7 @@ const HabitsScreen = ({ route }) => {
         )}
 
         <View style={{ marginTop: 8 }}>
-          <Button title="Сохранить" onPress={saveHabit} />
+          <Button title="Сохранить" onPress={saveHabit} keyboardShouldPersistTaps="always" />
         </View>
       </Modal>
 

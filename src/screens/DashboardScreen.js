@@ -373,7 +373,7 @@ const DashboardScreen = ({ navigation }) => {
 
   const pri = normPriority(task.priority);
   const strip = pri === 'high' ? colors.danger1 : pri === 'medium' ? colors.accent1 : 'transparent';
-  const folderLbl = task.folderId ? `📁 ${task.folderId}` : null;
+  const folderLbl = getFolderLabel(task.folderId);
 
   return (
     <PanGestureHandler
