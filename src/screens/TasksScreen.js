@@ -364,7 +364,7 @@ const DraggableTaskItem = React.memo(({
                 {isLoadingSubtasks ? <ActivityIndicator size="small" color={colors.accent1} /> : (
                   <>
                     {taskSubtasks.length === 0 && <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 8 }}>Нет подзадач</Text>}
-                    {taskSubtasks.map(st => <SubtaskItem key={st.id} subtask={st} parentId={item.id} colors={colors} onToggle={toggleSubtask} onDelete={deleteSubtask} onEdit={editSubtask} />)}
+                    {taskSubtasks.map(st => <SubtaskItem key={st.id} subtask={st} parentId={item.id} colors={colors} onToggle={toggleSubtask} onDelete={deleteSubtask} onEdit={() => editSubtask(st, item.id)} />)}
                     <TouchableOpacity style={styles.addSubtaskBtn} onPress={() => { setCurrentTaskForSubtask(item.id); setShowAddSubtaskModal(true); }}>
                       <Text style={[styles.addSubtaskBtnText, { color: colors.accent1 }]}>+ Добавить подзадачу</Text>
                     </TouchableOpacity>
