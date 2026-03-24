@@ -309,6 +309,25 @@ const DashboardScreen = ({ navigation }) => {
     await loadTaskSubtasks(task.id);
   }, [loadTaskSubtasks]);
 
+  const toggleSubtaskInModal = useCallback(async (subtaskId) => {
+    // Оптимистичный апдейт
+    setTaskSubtasks(prev =>
+      prev.map(st =>
+        st.id === subtaskId ? { ...st, completed: !st.completed } : st
+      )
+    );
+    try {
+      await api.put(`/subtasks/${subtaskId}/toggle`);
+    } catch (e) {
+      // Откат при ошибке
+      setTaskSubtasks(prev =>
+        prev.map(st =>
+          st.id === subtaskId ? { ...st, completed: !st.completed } : st
+        )
+      );
+    }
+  }, []);
+
   const formatTaskMeta = useCallback(
     (task) => {
       const parts = [];
@@ -718,27 +737,32 @@ const DashboardScreen = ({ navigation }) => {
                         borderWidth: 1,
                         borderColor: colors.borderSubtle
                       }}>
-                        <View style={{ 
-                          width: 20, 
-                          height: 20, 
-                          borderRadius: 10, 
-                          borderWidth: 2, 
-                          borderColor: colors.accent1, 
-                          backgroundColor: st.completed ? colors.accent1 : 'transparent',
-                          marginRight: 12,
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}>
+                        <TouchableOpacity
+                          onPress={() => toggleSubtaskInModal(st.id)}
+                          style={{ 
+                            width: 20, 
+                            height: 20, 
+                            borderRadius: 10, 
+                            borderWidth: 2, 
+                            borderColor: colors.accent1, 
+                            backgroundColor: st.completed ? colors.accent1 : 'transparent',
+                            marginRight: 12,
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                          }}
+                        >
                           {!!st.completed && <Text style={{ color: '#020617', fontSize: 12, fontWeight: 'bold' }}>✓</Text>}
-                        </View>
-                        <Text style={{ 
-                          flex: 1, 
-                          color: colors.textMain,
-                          textDecorationLine: st.completed ? 'line-through' : 'none',
-                          opacity: st.completed ? 0.6 : 1
-                        }}>
-                          {st.title}
-                        </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => toggleSubtaskInModal(st.id)}>
+                          <Text style={{ 
+                            flex: 1, 
+                            color: colors.textMain,
+                            textDecorationLine: st.completed ? 'line-through' : 'none',
+                            opacity: st.completed ? 0.6 : 1
+                          }}>
+                            {st.title}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
                     ))}
                   </View>
