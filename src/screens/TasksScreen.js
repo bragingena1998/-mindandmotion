@@ -238,6 +238,7 @@ const DraggableTaskItem = React.memo(({
   handleEditTask,
   toggleSubtask,
   deleteSubtask,
+  editSubtask,
   setCurrentTaskForSubtask,
   setShowAddSubtaskModal,
   setFocusTask,
@@ -1092,6 +1093,7 @@ const TasksScreen = ({ navigation }) => {
       handleEditTask={handleEditTask}
       toggleSubtask={toggleSubtask}
       deleteSubtask={deleteSubtask}
+      editSubtask={editSubtask}
       setCurrentTaskForSubtask={setCurrentTaskForSubtask}
       setShowAddSubtaskModal={setShowAddSubtaskModal}
       setFocusTask={setFocusTask}
@@ -1102,7 +1104,7 @@ const TasksScreen = ({ navigation }) => {
     />
   ), [
     colors, dragTask, expandedTasks, subtasks, loadingSubtasks, onLongPressStart, onPanGestureEvent, onPanStateChange,
-    getFolderById, getTaskStatus, formatTaskDate, toggleTask, toggleExpand, handleEditTask, toggleSubtask, deleteSubtask,
+    getFolderById, getTaskStatus, formatTaskDate, toggleTask, toggleExpand, handleEditTask, toggleSubtask, deleteSubtask, editSubtask,
     setFocusTask, setFocusVisible,
   ]);
 
