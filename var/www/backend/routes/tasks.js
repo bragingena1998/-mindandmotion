@@ -353,14 +353,30 @@ router.put('/:id', authenticateToken, async (req, res) => {
       }
 
       const nextDateStr = nextDate.toISOString().split('T')[0];
-      await pool.query(
+      const [newTaskResult] = await pool.query(
         `INSERT INTO tasks (user_id, date, time, deadline, title, priority, comment, done, focus_sessions,
           is_recurring, recurrence_type, recurrence_value, is_generated, template_id, folder_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 1, ?, ?, 1, ?, ?)`,
         [req.userId, nextDateStr, time || null, deadline || null, title, priority || 2,
          comment || '', recurrenceType, recurrenceValue || null, taskId, folderId || null]
       );
-      console.log(`♻️ Цикличная задача создана на ${nextDateStr}`);
+      
+      // Копируем подзадачи из оригинальной задачи в новую
+      const newTaskId = newTaskResult.insertId;
+      const [originalSubtasks] = await pool.query(
+        'SELECT title FROM subtasks WHERE task_id = ?',
+        [taskId]
+      );
+      
+      if (originalSubtasks.length > 0) {
+        await pool.query(
+          'INSERT INTO subtasks (task_id, title, completed) VALUES ?',
+          [originalSubtasks.map(st => [newTaskId, st.title, false])]
+        );
+        console.log(`♻️ Скопировано ${originalSubtasks.length} подзадач для задачи ${newTaskId}`);
+      }
+      
+      console.log(`♻️ Цикличная задача создана на ${nextDateStr} с подзадачами`);
     }
 
     res.json({ message: 'Task updated successfully' });

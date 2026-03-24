@@ -40,7 +40,7 @@ const Modal = ({ visible, onClose, title, children }) => {
               style={styles.content}
               contentContainerStyle={styles.contentContainer}
               showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
+              keyboardShouldPersistTaps="always"
               nestedScrollEnabled
             >
               {children}

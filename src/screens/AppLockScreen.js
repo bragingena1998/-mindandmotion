@@ -13,6 +13,7 @@ import Background from '../components/Background';
 import {
   verifyPin,
   isBiometricUnlockEnabled,
+  secureGet,
 } from '../services/appLock';
 
 const KEYS = [
@@ -28,8 +29,26 @@ const AppLockScreen = ({ onUnlock }) => {
   const [error, setError] = useState('');
   const [bioAvailable, setBioAvailable] = useState(false);
   const [bioEnabled, setBioEnabled] = useState(false);
+  const [pinLength, setPinLength] = useState(4); // Длина настроенного PIN
 
   const triedAutoBio = useRef(false);
+
+  useEffect(() => {
+    checkBiometric();
+    loadPinLength();
+  }, []);
+
+  const loadPinLength = async () => {
+    // Определяем длину PIN по хэшу (упрощенный подход)
+    try {
+      const hash = await secureGet('mm_app_pin_hash_v1');
+      if (hash) {
+        // В реальном приложении нужно хранить длину PIN отдельно
+        // Пока будем использовать максимальную длину 6
+        setPinLength(6);
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +91,6 @@ const AppLockScreen = ({ onUnlock }) => {
 
   const submit = async (value) => {
     setError('');
-    if (value.length < 4 || value.length > 6) return;
     const ok = await verifyPin(value);
     if (ok) {
       setPin('');
@@ -94,11 +112,14 @@ const AppLockScreen = ({ onUnlock }) => {
       tryBiometric();
       return;
     }
-    if (pin.length >= 6) return;
+    if (pin.length >= pinLength) return;
     const next = pin + key;
     setPin(next);
     setError('');
-    if (next.length === 6) submit(next);
+    // Автоматическая проверка при достижении нужной длины
+    if (next.length >= 4 && next.length <= 6) {
+      submit(next);
+    }
   };
 
   return (
@@ -110,7 +131,7 @@ const AppLockScreen = ({ onUnlock }) => {
         </Text>
 
         <View style={styles.dots}>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {Array.from({ length: pinLength }, (_, i) => (
             <View
               key={i}
               style={[
@@ -128,15 +149,6 @@ const AppLockScreen = ({ onUnlock }) => {
           <Text style={[styles.err, { color: colors.danger1 }]}>{error}</Text>
         ) : (
           <View style={{ height: 22 }} />
-        )}
-
-        {pin.length >= 4 && pin.length < 6 && (
-          <TouchableOpacity
-            style={[styles.enterBtn, { backgroundColor: colors.accent1 }]}
-            onPress={() => submit(pin)}
-          >
-            <Text style={styles.enterBtnText}>Войти</Text>
-          </TouchableOpacity>
         )}
 
         <View style={styles.pad}>

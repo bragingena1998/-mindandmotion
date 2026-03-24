@@ -76,10 +76,13 @@ const ProfileScreen = ({ onLogout }) => {
   const themes = [
     { key: 'default', emoji: '🌑', name: 'Default' },
     { key: 'storm',   emoji: '⚡',    name: 'Storm' },
-    { key: 'ice',     emoji: '❌️',    name: 'Ice' },
+    { key: 'ice',     emoji: '🧊',    name: 'Ice' },
     { key: 'blood',   emoji: '🔥',    name: 'Blood' },
     { key: 'toxic',   emoji: '☢️',    name: 'Toxic' },
     { key: 'glitch',  emoji: '👾',    name: 'Glitch' },
+    { key: 'sunset',  emoji: '🌅',    name: 'Sunset' },
+    { key: 'ocean',   emoji: '🌊',    name: 'Ocean' },
+    { key: 'forest',  emoji: '🌲',    name: 'Forest' },
   ];
 
   if (loading) return (

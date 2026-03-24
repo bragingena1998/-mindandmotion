@@ -102,7 +102,40 @@ const themes = {
     accentText: '#d8b4fe',
     accentBorder: '#d8b4fe',
     gradientPrimary: ['#d8b4fe', '#9333ea'],
-  }
+  },
+  sunset: {
+    ...BASE_DARK,
+    background: '#1a0f05', // Темно-оранжевый фон
+    surface: '#2a1a0a',    // Оранжевая подложка
+    accent1: '#f97316',    // Orange-500 (Закатный оранжевый)
+    accent2: '#fb923c',    // Orange-400 (Светлый закат)
+    
+    accentText: '#f97316',
+    accentBorder: '#f97316',
+    gradientPrimary: ['#f97316', '#ea580c'],
+  },
+  ocean: {
+    ...BASE_DARK,
+    background: '#0a1929', // Темно-синий океан
+    surface: '#0f2744',    // Синяя подложка
+    accent1: '#0ea5e9',    // Sky-500 (Океанский синий)
+    accent2: '#38bdf8',    // Sky-400 (Светлый океан)
+    
+    accentText: '#0ea5e9',
+    accentBorder: '#0ea5e9',
+    gradientPrimary: ['#0ea5e9', '#0284c7'],
+  },
+  forest: {
+    ...BASE_DARK,
+    background: '#0a1f0a', // Темно-зеленый лес
+    surface: '#0f2e0f',    // Зеленая подложка
+    accent1: '#16a34a',    // Green-600 (Лесной зеленый)
+    accent2: '#22c55e',    // Green-500 (Светлый лес)
+    
+    accentText: '#16a34a',
+    accentBorder: '#16a34a',
+    gradientPrimary: ['#16a34a', '#15803d'],
+  },
 };
 
 export const ThemeProvider = ({ children }) => {

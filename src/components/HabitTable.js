@@ -39,6 +39,8 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
   // Timer state
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [manualInput, setManualInput] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
   const timerRef = useRef(null);
 
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -85,17 +87,44 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
   const saveTimer = () => {
     setIsTimerRunning(false);
     setShowTimerModal(false);
+    setShowManualInput(false);
     if (!editingCell) return;
     
-    // Convert seconds to hours (e.g., 0.5 hours)
-    const hoursToAdd = parseFloat((timerSeconds / 3600).toFixed(2));
+    let valueToSave = 0;
     
-    // Get current value to ADD to it
-    const currentValue = getValue(editingCell.habitId, editingCell.day);
-    const newValue = (currentValue || 0) + hoursToAdd;
+    if (showManualInput && manualInput) {
+      // Ручной ввод
+      valueToSave = parseFloat(manualInput) || 0;
+    } else {
+      // Таймер
+      valueToSave = timerSeconds / 3600; // Convert seconds to hours
+    }
     
-    onCellChange(editingCell.habitId, year, month, editingCell.day, newValue);
+    onCellChange(editingCell.habitId, editingCell.day, valueToSave);
+    setEditingCell(null);
     setTimerSeconds(0);
+    setManualInput('');
+  };
+
+  const clearCell = () => {
+    setIsTimerRunning(false);
+    setShowTimerModal(false);
+    setShowManualInput(false);
+    if (!editingCell) return;
+    
+    onCellChange(editingCell.habitId, editingCell.day, 0);
+    setEditingCell(null);
+    setTimerSeconds(0);
+    setManualInput('');
+  };
+
+  const openTimerModal = (habit, day) => {
+    setEditingCell({ habitId: habit.id, day });
+    setTimerSeconds(0);
+    setIsTimerRunning(false);
+    setManualInput('');
+    setShowManualInput(false);
+    setShowTimerModal(true);
   };
 
   const getDayOfWeek = (year, month, day) => {
@@ -367,35 +396,65 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
       {/* TIMER MODAL */}
       <Modal visible={showTimerModal} onClose={() => setShowTimerModal(false)} title="Таймер">
         <View style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ fontSize: 48, fontWeight: 'bold', color: colors.accent1, fontFamily: 'monospace', marginBottom: 30 }}>
+          {!showManualInput ? (
+            <>
+              <Text style={{ fontSize: 48, fontWeight: 'bold', color: colors.accent1, fontFamily: 'monospace', marginBottom: 30 }}>
                 {formatTimer(timerSeconds)}
-            </Text>
-            
-            <View style={{ flexDirection: 'row', gap: 16, marginBottom: 20 }}>
+              </Text>
+              
+              <View style={{ flexDirection: 'row', gap: 16, marginBottom: 20 }}>
                 <TouchableOpacity 
-                    onPress={() => setIsTimerRunning(!isTimerRunning)} 
-                    style={{ 
-                        backgroundColor: isTimerRunning ? colors.surface : colors.accent1, 
-                        paddingVertical: 12, paddingHorizontal: 24, borderRadius: 30, borderWidth: 1, borderColor: colors.accent1 
-                    }}
+                  onPress={() => setIsTimerRunning(!isTimerRunning)} 
+                  style={{ 
+                    backgroundColor: isTimerRunning ? colors.surface : colors.accent1, 
+                    paddingVertical: 12, paddingHorizontal: 24, borderRadius: 30, borderWidth: 1, borderColor: colors.accent1 
+                  }}
                 >
-                    <Text style={{ color: isTimerRunning ? colors.accent1 : '#020617', fontWeight: 'bold', fontSize: 16 }}>
-                        {isTimerRunning ? "ПАУЗА" : "СТАРТ"}
-                    </Text>
+                  <Text style={{ color: isTimerRunning ? colors.accent1 : '#020617', fontWeight: 'bold', fontSize: 16 }}>
+                    {isTimerRunning ? "ПАУЗА" : "СТАРТ"}
+                  </Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
-                    onPress={() => { setIsTimerRunning(false); setTimerSeconds(0); }} 
-                    style={{ backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 30, borderWidth: 1, borderColor: colors.borderSubtle }}
+                  onPress={() => { setIsTimerRunning(false); setTimerSeconds(0); }} 
+                  style={{ backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 30, borderWidth: 1, borderColor: colors.borderSubtle }}
                 >
-                    <Text style={{ color: colors.textMain, fontWeight: 'bold', fontSize: 16 }}>СБРОС</Text>
+                  <Text style={{ color: colors.textMain, fontWeight: 'bold', fontSize: 16 }}>СБРОС</Text>
                 </TouchableOpacity>
-            </View>
+              </View>
 
-            <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
-                <Button title="Отмена" variant="outline" style={{ flex: 1 }} onPress={() => setShowTimerModal(false)} />
-                <Button title="Сохранить" style={{ flex: 1 }} onPress={saveTimer} />
-            </View>
+              <TouchableOpacity 
+                onPress={() => setShowManualInput(true)}
+                style={{ backgroundColor: colors.surface, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.borderSubtle, marginBottom: 20 }}
+              >
+                <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Ручной ввод</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={{ fontSize: 16, color: colors.textMain, marginBottom: 10 }}>Введите значение (часы):</Text>
+              <Input
+                value={manualInput}
+                onChangeText={setManualInput}
+                placeholder="0.5"
+                keyboardType="numeric"
+                style={{ marginBottom: 20, textAlign: 'center' }}
+              />
+              
+              <TouchableOpacity 
+                onPress={() => setShowManualInput(false)}
+                style={{ backgroundColor: colors.surface, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.borderSubtle, marginBottom: 20 }}
+              >
+                <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Назад к таймеру</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+            <Button title="Отмена" variant="outline" style={{ flex: 1 }} onPress={() => setShowTimerModal(false)} />
+            <Button title="Очистить" variant="danger" style={{ flex: 1 }} onPress={clearCell} />
+            <Button title="Сохранить" style={{ flex: 1, fontSize: 14 }} onPress={saveTimer} />
+          </View>
         </View>
       </Modal>
 

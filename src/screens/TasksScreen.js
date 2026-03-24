@@ -125,7 +125,7 @@ const toastStyles = StyleSheet.create({
 
 // ==================== SUBTASK ITEM ====================
 
-const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete }) => {
+const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete, onEdit }) => {
   const isCompleted = !!subtask.completed;
   return (
     <View style={styles.subtaskItem}>
@@ -137,11 +137,16 @@ const SubtaskItem = React.memo(({ subtask, parentId, colors, onToggle, onDelete 
           {isCompleted && <Text style={[styles.checkmark, { fontSize: 12 }]}>✓</Text>}
         </View>
       </TouchableOpacity>
-      <Text style={[
-        styles.subtaskTitle,
-        { color: isCompleted ? colors.textMuted : colors.textMain },
-        isCompleted && { textDecorationLine: 'line-through' }
-      ]}>{subtask.title || '(без названия)'}</Text>
+      <TouchableOpacity 
+        style={{ flex: 1 }} 
+        onPress={() => onEdit(subtask, parentId)}
+      >
+        <Text style={[
+          styles.subtaskTitle,
+          { color: isCompleted ? colors.textMuted : colors.textMain },
+          isCompleted && { textDecorationLine: 'line-through' }
+        ]}>{subtask.title || '(без названия)'}</Text>
+      </TouchableOpacity>
       <TouchableOpacity onPress={() => onDelete(subtask.id, parentId)} style={styles.subtaskDeleteBtn}>
         <Text style={{ fontSize: 14 }}>🗑️</Text>
       </TouchableOpacity>
@@ -359,7 +364,7 @@ const DraggableTaskItem = React.memo(({
                 {isLoadingSubtasks ? <ActivityIndicator size="small" color={colors.accent1} /> : (
                   <>
                     {taskSubtasks.length === 0 && <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 8 }}>Нет подзадач</Text>}
-                    {taskSubtasks.map(st => <SubtaskItem key={st.id} subtask={st} parentId={item.id} colors={colors} onToggle={toggleSubtask} onDelete={deleteSubtask} />)}
+                    {taskSubtasks.map(st => <SubtaskItem key={st.id} subtask={st} parentId={item.id} colors={colors} onToggle={toggleSubtask} onDelete={deleteSubtask} onEdit={editSubtask} />)}
                     <TouchableOpacity style={styles.addSubtaskBtn} onPress={() => { setCurrentTaskForSubtask(item.id); setShowAddSubtaskModal(true); }}>
                       <Text style={[styles.addSubtaskBtnText, { color: colors.accent1 }]}>+ Добавить подзадачу</Text>
                     </TouchableOpacity>
@@ -449,6 +454,9 @@ const TasksScreen = ({ navigation }) => {
   const [showAddSubtaskModal, setShowAddSubtaskModal] = useState(false);
   const [currentTaskForSubtask, setCurrentTaskForSubtask] = useState(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [showEditSubtaskModal, setShowEditSubtaskModal] = useState(false);
+  const [editingSubtask, setEditingSubtask] = useState(null);
+  const [editSubtaskTitle, setEditSubtaskTitle] = useState('');
   const [showOverdueCleanupModal, setShowOverdueCleanupModal] = useState(false);
   const [overdueTasksList, setOverdueTasksList] = useState([]);
 
@@ -901,6 +909,33 @@ const TasksScreen = ({ navigation }) => {
         setTasks(pt => pt.map(t => t.id === taskId ? { ...t, subtasks_count: list.length } : t));
         return { ...prev, [taskId]: list };
       });
+    } catch {}
+  };
+
+  const editSubtask = (subtask, taskId) => {
+    setEditingSubtask({ ...subtask, taskId });
+    setEditSubtaskTitle(subtask.title || '');
+    setShowEditSubtaskModal(true);
+  };
+
+  const updateSubtask = async () => {
+    if (!editSubtaskTitle.trim() || !editingSubtask) return;
+    try {
+      await api.put(`/tasks/${editingSubtask.taskId}/subtasks/${editingSubtask.id}`, {
+        title: editSubtaskTitle,
+        completed: editingSubtask.completed
+      });
+      
+      setSubtasks(prev => ({
+        ...prev,
+        [editingSubtask.taskId]: prev[editingSubtask.taskId].map(st =>
+          st.id === editingSubtask.id ? { ...st, title: editSubtaskTitle } : st
+        )
+      }));
+      
+      setEditSubtaskTitle('');
+      setEditingSubtask(null);
+      setShowEditSubtaskModal(false);
     } catch {}
   };
 
@@ -1492,6 +1527,14 @@ const TasksScreen = ({ navigation }) => {
         <Modal visible onClose={() => { setShowAddSubtaskModal(false); setNewSubtaskTitle(''); setCurrentTaskForSubtask(null); }} title="Новая подзадача">
           <Input label="Название" placeholder="Например: Купить молоко" value={newSubtaskTitle} onChangeText={setNewSubtaskTitle} />
           <Button title="Добавить" onPress={addSubtask} />
+        </Modal>
+      )}
+
+      {/* МОДАЛ РЕДАКТИРОВАНИЯ ПОДЗАДАЧИ */}
+      {showEditSubtaskModal && (
+        <Modal visible onClose={() => { setShowEditSubtaskModal(false); setEditSubtaskTitle(''); setEditingSubtask(null); }} title="Редактировать подзадачу">
+          <Input label="Название" placeholder="Например: Купить молоко" value={editSubtaskTitle} onChangeText={setEditSubtaskTitle} />
+          <Button title="Сохранить" onPress={updateSubtask} />
         </Modal>
       )}
 

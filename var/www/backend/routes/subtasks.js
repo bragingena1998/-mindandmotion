@@ -32,4 +32,43 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/tasks/:taskId/subtasks/:subtaskId
+router.put('/:subtaskId', authenticateToken, async (req, res) => {
+  try {
+    const { subtaskId } = req.params;
+    const { title, completed } = req.body;
+    
+    await pool.query(
+      'UPDATE subtasks SET title = ?, completed = ? WHERE id = ? AND task_id = ?',
+      [title, completed ? 1 : 0, subtaskId, req.params.taskId]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update subtask error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/tasks/:taskId/subtasks/:subtaskId
+router.delete('/:subtaskId', authenticateToken, async (req, res) => {
+  try {
+    const { subtaskId } = req.params;
+    
+    const [result] = await pool.query(
+      'DELETE FROM subtasks WHERE id = ? AND task_id = ?',
+      [subtaskId, req.params.taskId]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Subtask not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete subtask error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
