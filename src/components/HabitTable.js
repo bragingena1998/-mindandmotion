@@ -451,9 +451,9 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
           )}
 
           <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
-            <Button title="Отмена" variant="outline" style={{ flex: 1 }} onPress={() => setShowTimerModal(false)} />
-            <Button title="Очистить" variant="danger" style={{ flex: 1 }} onPress={clearCell} />
-            <Button title="Сохранить" style={{ flex: 1 }} textStyle={{ fontSize: 14 }} onPress={saveTimer} />
+            <Button title="✖" variant="outline" style={{ flex: 1 }} onPress={() => setShowTimerModal(false)} />
+            <Button title="🗑️" variant="danger" style={{ flex: 1 }} onPress={clearCell} />
+            <Button title="✓" style={{ flex: 1 }} textStyle={{ fontSize: 14 }} onPress={saveTimer} />
           </View>
         </View>
       </Modal>
