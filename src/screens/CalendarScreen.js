@@ -781,7 +781,13 @@ const CalendarScreen = ({ navigation }) => {
                 <Feather name="grid" size={14} color={viewMode === 'month' ? '#020617' : colors.textMuted} />
                 <Text style={[styles.toggleLabel, { color: viewMode === 'month' ? '#020617' : colors.textMuted }]}>Месяц</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setViewMode('week'); setWeekStart(getWeekStart(new Date())); }}
+              <TouchableOpacity onPress={() => { 
+                setViewMode('week'); 
+                setWeekStart(getWeekStart(new Date()));
+                // Автоматически выбираем сегодняшний день
+                const today = new Date();
+                setSelectedDay({ d: today.getDate(), m: today.getMonth(), y: today.getFullYear() });
+              }}
                 style={[styles.toggleBtn, viewMode === 'week' && { backgroundColor: colors.accent1 }]}>
                 <Feather name="list" size={14} color={viewMode === 'week' ? '#020617' : colors.textMuted} />
                 <Text style={[styles.toggleLabel, { color: viewMode === 'week' ? '#020617' : colors.textMuted }]}>Неделя</Text>

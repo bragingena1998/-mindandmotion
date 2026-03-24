@@ -201,7 +201,7 @@ const AppLockScreen = ({ onUnlock }) => {
         {bioAvailable && bioEnabled && (
           <TouchableOpacity onPress={tryBiometric} style={{ marginTop: 16 }}>
             <Text style={{ color: colors.accent1, fontWeight: '600' }}>
-              Войти по отпечатку / Face ID
+              🔐 Войти по отпечатку / Face ID
             </Text>
           </TouchableOpacity>
         )}

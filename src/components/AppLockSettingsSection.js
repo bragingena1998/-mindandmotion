@@ -19,6 +19,8 @@ import {
   disableAppLock,
   setBiometricEnabled,
   verifyPin,
+  setGracePeriod,
+  getGracePeriod,
 } from '../services/appLock';
 
 const PinModalBody = ({
@@ -62,17 +64,22 @@ const AppLockSettingsSection = () => {
   const [newPin2, setNewPin2] = useState('');
   const [disablePin, setDisablePin] = useState('');
   const [error, setError] = useState('');
+  const [gracePeriod, setGracePeriodState] = useState(0);
+  const [showGracePeriodModal, setShowGracePeriodModal] = useState(false);
+  const [tempGracePeriod, setTempGracePeriod] = useState('');
 
   const refresh = useCallback(async () => {
-    const [le, bio, hw, enrolled] = await Promise.all([
+    const [le, bio, hw, enrolled, gp] = await Promise.all([
       isAppLockEnabled(),
       isBiometricUnlockEnabled(),
       LocalAuthentication.hasHardwareAsync(),
       LocalAuthentication.isEnrolledAsync(),
+      getGracePeriod(),
     ]);
     setLockEnabled(le);
     setBioEnabledState(bio);
     setBioHardware(hw && enrolled);
+    setGracePeriodState(gp);
   }, []);
 
   useEffect(() => {
@@ -162,6 +169,19 @@ const AppLockSettingsSection = () => {
     setBioEnabledState(value);
   };
 
+  const saveGracePeriod = async () => {
+    const minutes = parseInt(tempGracePeriod, 10);
+    if (isNaN(minutes) || minutes < 0) {
+      setError('Введите корректное количество минут');
+      return;
+    }
+    await setGracePeriod(minutes);
+    setGracePeriodState(minutes);
+    setShowGracePeriodModal(false);
+    setTempGracePeriod('');
+    setError('');
+  };
+
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>ЗАЩИТА ПРИЛОЖЕНИЯ</Text>
@@ -200,6 +220,23 @@ const AppLockSettingsSection = () => {
               thumbColor={bioEnabled ? colors.accent1 : '#888'}
             />
           </View>
+
+          <TouchableOpacity
+            style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
+            onPress={() => {
+              setTempGracePeriod(String(gracePeriod));
+              setShowGracePeriodModal(true);
+            }}
+          >
+            <Text style={{ fontSize: 20 }}>⏰</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.menuItemText, { color: colors.textMain }]}>Период без PIN</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+                {gracePeriod === 0 ? 'Всегда запрашивать PIN' : `${gracePeriod} минут без PIN`}
+              </Text>
+            </View>
+            <Text style={{ color: colors.textMuted, fontSize: 18 }}>{'\u203a'}</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
@@ -298,6 +335,24 @@ const AppLockSettingsSection = () => {
             value={disablePin}
             onChangeText={(t) => setDisablePin(t.replace(/\D/g, '').slice(0, 6))}
             maxLength={6}
+          />
+        </PinModalBody>
+      </Modal>
+
+      <Modal visible={showGracePeriodModal} onClose={() => setShowGracePeriodModal(false)} title="Период без PIN">
+        <PinModalBody
+          title="Укажите время в минутах (0 = всегда запрашивать PIN)"
+          error={error}
+          confirmLabel="Сохранить"
+          onConfirm={saveGracePeriod}
+          onClose={() => setShowGracePeriodModal(false)}
+        >
+          <Input
+            label="Минуты"
+            keyboardType="number-pad"
+            value={tempGracePeriod}
+            onChangeText={(t) => setTempGracePeriod(t.replace(/\D/g, ''))}
+            placeholder="0"
           />
         </PinModalBody>
       </Modal>

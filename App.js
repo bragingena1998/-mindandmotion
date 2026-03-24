@@ -9,7 +9,8 @@ import { DataSyncProvider } from './src/contexts/DataSyncContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getToken } from './src/services/storage';
 import { initNotifications, rescheduleRepeatingNotifications } from './src/services/notifications';
-import { isAppLockEnabled } from './src/services/appLock';
+import { isAppLockEnabled, shouldRequirePin, setBackgroundTime, isBiometricUnlockEnabled } from './src/services/appLock';
+import * as LocalAuthentication from 'expo-local-authentication';
 import BrandedSplash from './src/components/BrandedSplash';
 import AppLockScreen from './src/screens/AppLockScreen';
 
@@ -182,17 +183,54 @@ const AppContent = () => {
   // Блокировка при уходе в фон (если PIN включён)
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (next) => {
-      if (next !== 'background') return;
-      if (!isAuthenticated) return;
-      try {
-        const lock = await isAppLockEnabled();
-        if (lock) setAppUnlocked(false);
-      } catch (e) {
-        /* ignore */
+      if (next === 'background') {
+        // Сохраняем время сворачивания
+        await setBackgroundTime();
+        if (!isAuthenticated) return;
+        try {
+          const lock = await isAppLockEnabled();
+          if (lock) setAppUnlocked(false);
+        } catch (e) {
+          /* ignore */
+        }
+      } else if (next === 'active') {
+        // Возвращаемся из фона
+        if (!isAuthenticated || !appUnlocked) return;
+        
+        try {
+          const lock = await isAppLockEnabled();
+          if (!lock) return;
+          
+          const requirePin = await shouldRequirePin();
+          if (!requirePin) {
+            // PIN не нужен, проверяем биометрию
+            const bioEnabled = await isBiometricUnlockEnabled();
+            if (bioEnabled) {
+              const hardware = await LocalAuthentication.hasHardwareAsync();
+              const enrolled = await LocalAuthentication.isEnrolledAsync();
+              if (hardware && enrolled) {
+                const result = await LocalAuthentication.authenticateAsync({
+                  promptMessage: 'Вход в Mind&Motion',
+                  cancelLabel: 'Отмена',
+                  disableDeviceFallback: false,
+                });
+                if (!result.success) {
+                  setAppUnlocked(false);
+                }
+              }
+            }
+          } else {
+            // Нужен PIN
+            setAppUnlocked(false);
+          }
+        } catch (e) {
+          // При ошибке запрашиваем PIN
+          setAppUnlocked(false);
+        }
       }
     });
     return () => sub.remove();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, appUnlocked]);
 
   const handleLoginSuccess = async () => {
     setIsAuthenticated(true);

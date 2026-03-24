@@ -9,6 +9,8 @@ import { Platform } from 'react-native';
 
 const K_ENABLED = '@mm_app_lock_enabled';
 const K_BIOMETRIC = '@mm_app_lock_biometric';
+const K_GRACE_PERIOD = '@mm_app_lock_grace_period'; // в минутах
+const K_LAST_BACKGROUND = '@mm_app_last_background_time';
 const SEC_HASH = 'mm_app_pin_hash_v1';
 const SEC_SALT = 'mm_app_pin_salt_v1';
 
@@ -113,4 +115,34 @@ export async function disableAppLock() {
   await secureDelete(SEC_SALT);
   await AsyncStorage.setItem(K_ENABLED, 'false');
   await AsyncStorage.setItem(K_BIOMETRIC, 'false');
+}
+
+/** Установить период без PIN-кода после сворачивания */
+export async function setGracePeriod(minutes) {
+  await AsyncStorage.setItem(K_GRACE_PERIOD, String(minutes));
+}
+
+/** Получить период без PIN-кода */
+export async function getGracePeriod() {
+  const value = await AsyncStorage.getItem(K_GRACE_PERIOD);
+  return value ? parseInt(value, 10) : 0; // 0 = всегда запрашивать PIN
+}
+
+/** Сохранить время сворачивания приложения */
+export async function setBackgroundTime() {
+  await AsyncStorage.setItem(K_LAST_BACKGROUND, Date.now().toString());
+}
+
+/** Проверить нужно ли запрашивать PIN-код */
+export async function shouldRequirePin() {
+  const gracePeriod = await getGracePeriod();
+  if (gracePeriod === 0) return true; // Всегда запрашивать
+  
+  const lastBackground = await AsyncStorage.getItem(K_LAST_BACKGROUND);
+  if (!lastBackground) return true;
+  
+  const timeDiff = Date.now() - parseInt(lastBackground, 10);
+  const gracePeriodMs = gracePeriod * 60 * 1000; // Конвертируем минуты в миллисекунды
+  
+  return timeDiff > gracePeriodMs;
 }

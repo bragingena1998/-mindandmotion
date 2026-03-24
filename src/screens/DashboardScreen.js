@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -7,7 +7,11 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Animated,
+  PanGestureHandler,
+  Alert,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Background from '../components/Background';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
@@ -20,6 +24,7 @@ import {
 } from '../utils/habitDay';
 import { countTodayPlanTotal, countCompletedToday } from '../utils/taskDayStats';
 import { useDataSync } from '../contexts/DataSyncContext';
+import Toast from '../components/Toast';
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -102,6 +107,7 @@ const DashboardScreen = ({ navigation }) => {
   const [habitRecords, setHabitRecords] = useState([]);
   const [birthdays, setBirthdays] = useState([]);
   const [focusTick, setFocusTick] = useState(Date.now());
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -220,9 +226,14 @@ const DashboardScreen = ({ navigation }) => {
         folderId: task.folderId ?? task.folder_id ?? null,
       });
       bumpAll();
+      setToast({
+        visible: true,
+        message: done ? '✅ Задача выполнена!' : '↩ Задача возвращена в работу',
+        type: done ? 'success' : 'warning'
+      });
     } catch (e) {
-      console.error('toggle task error:', e);
-      loadDashboard();
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, completed: wasDone, done: wasDone } : t)));
+      Alert.alert('Ошибка', 'Не удалось обновить задачу');
     }
   };
 
@@ -303,6 +314,105 @@ const DashboardScreen = ({ navigation }) => {
       const v = getHabitRecordValue(habitRecords, h.id, todayDay);
       return isHabitDoneForValue(h, v);
     });
+
+  const AnimatedTaskCard = ({ task, stripColor, colors, onToggle }) => {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [isSwiped, setIsSwiped] = useState(false);
+
+  const handleGestureEvent = Animated.event(
+    [{ nativeEvent: { translationX: translateX } }],
+    { useNativeDriver: true }
+  );
+
+  const handleGestureEnd = (event) => {
+    const { translationX } = event.nativeEvent;
+    
+    if (Math.abs(translationX) > 80) {
+      // Свайп достаточно далеко - выполняем действие
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: translationX > 0 ? 150 : -150,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // Выполняем действие
+        onToggle(task);
+        
+        // Возвращаем в исходное состояние
+        Animated.parallel([
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 100,
+            friction: 8,
+          }),
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            tension: 100,
+            friction: 8,
+          }),
+        ]).start();
+      });
+    } else {
+      // Возвращаем обратно
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start();
+    }
+  };
+
+  const pri = normPriority(task.priority);
+  const strip = pri === 'high' ? colors.danger1 : pri === 'medium' ? colors.accent1 : 'transparent';
+  const folderLbl = task.folderId ? `📁 ${task.folderId}` : null;
+
+  return (
+    <PanGestureHandler
+      onGestureEvent={handleGestureEvent}
+      onHandlerStateChange={handleGestureEnd}
+    >
+      <Animated.View
+        style={[
+          { transform: [{ translateX }, { scale: scaleAnim }] }
+        ]}
+      >
+        <TouchableOpacity
+          style={[styles.taskRow, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
+          onPress={() => onToggle(task)}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.priorityStrip, { backgroundColor: stripColor || strip }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.taskTitle, { color: colors.textMain }]} numberOfLines={2}>
+              {task.title}
+            </Text>
+            <Text style={[styles.taskMeta, { color: colors.textMuted }]}>
+              {task.time || 'Без времени'}
+            </Text>
+            {!!folderLbl && (
+              <View style={[styles.folderChip, { borderColor: colors.borderSubtle }]}>
+                <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{folderLbl}</Text>
+              </View>
+            )}
+          </View>
+          <View style={[styles.checkbox, { borderColor: colors.accent1, backgroundColor: task.completed ? colors.accent1 : 'transparent' }]}>
+            {task.completed ? <Text style={{ color: '#020617', fontWeight: '800' }}>✓</Text> : null}
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    </PanGestureHandler>
+  );
+};
 
   const renderTaskCard = (task, stripColor) => {
     const pri = normPriority(task.priority);
@@ -477,19 +587,43 @@ const DashboardScreen = ({ navigation }) => {
             {overdueList.length > 0 && (
               <>
                 <Text style={[styles.subLabel, { color: colors.danger1 }]}>ПРОСРОЧЕННЫЕ</Text>
-                {overdueList.map((t) => renderTaskCard(t, colors.danger1))}
+                {overdueList.map((t) => (
+                  <AnimatedTaskCard 
+                    key={t.id} 
+                    task={t} 
+                    stripColor={colors.danger1} 
+                    colors={colors} 
+                    onToggle={toggleTask} 
+                  />
+                ))}
               </>
             )}
             {todayList.length > 0 && (
               <>
                 <Text style={[styles.subLabel, { color: colors.accent1 }]}>СЕГОДНЯ</Text>
-                {todayList.map((t) => renderTaskCard(t))}
+                {todayList.map((t) => (
+                  <AnimatedTaskCard 
+                    key={t.id} 
+                    task={t} 
+                    stripColor={null} 
+                    colors={colors} 
+                    onToggle={toggleTask} 
+                  />
+                ))}
               </>
             )}
             {tomorrowList.length > 0 && (
               <>
-                <Text style={[styles.subLabel, { color: '#60a5fa' }]}>ЗАВТРА</Text>
-                {tomorrowList.map((t) => renderTaskCard(t))}
+                <Text style={[styles.subLabel, { color: colors.textMuted }]}>ЗАВТРА</Text>
+                {tomorrowList.map((t) => (
+                  <AnimatedTaskCard 
+                    key={t.id} 
+                    task={t} 
+                    stripColor={null} 
+                    colors={colors} 
+                    onToggle={toggleTask} 
+                  />
+                ))}
               </>
             )}
           </>
@@ -499,6 +633,14 @@ const DashboardScreen = ({ navigation }) => {
           <Text style={[styles.link, { color: colors.accentText }]}>Все задачи →</Text>
         </TouchableOpacity>
       </ScrollView>
+      
+      <View style={{ height: 40 }} />
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={() => setToast(prev => ({ ...prev, visible: false }))}
+      />
     </Background>
   );
 };
