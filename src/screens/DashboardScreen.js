@@ -96,6 +96,114 @@ const formatHabitCellValue = (habit, v) => {
   return String(v);
 };
 
+// Вынесен за пределы компонента чтобы избежать ре-рендеров
+const AnimatedTaskCard = ({ task, stripColor, colors, onToggle, getFolderLabel, onOpenSubtasks }) => {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [isSwiped, setIsSwiped] = useState(false);
+
+  const handleGestureEvent = Animated.event(
+    [{ nativeEvent: { translationX: translateX } }],
+    { useNativeDriver: true }
+  );
+
+  const handleGestureEnd = (event) => {
+    const { translationX } = event.nativeEvent;
+    
+    if (Math.abs(translationX) > 80) {
+      // Свайп достаточно далеко - выполняем действие
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: translationX > 0 ? 150 : -150,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // Выполняем действие
+        onToggle(task);
+        
+        // Возвращаем в исходное состояние
+        Animated.parallel([
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 100,
+            friction: 8,
+          }),
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            tension: 100,
+            friction: 8,
+          }),
+        ]).start();
+      });
+    } else {
+      // Возвращаем обратно
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start();
+    }
+  };
+
+  const pri = normPriority(task.priority);
+  const strip = pri === 'high' ? colors.danger1 : pri === 'medium' ? colors.accent1 : 'transparent';
+  const folderLbl = getFolderLabel(task.folderId);
+  const hasSubtasks = task.has_subtasks || false;
+
+  return (
+    <PanGestureHandler
+      onGestureEvent={handleGestureEvent}
+      onHandlerStateChange={handleGestureEnd}
+    >
+      <Animated.View
+        style={[
+          { transform: [{ translateX }, { scale: scaleAnim }] }
+        ]}
+      >
+        <TouchableOpacity
+          style={[styles.taskRow, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
+          onPress={() => hasSubtasks ? onOpenSubtasks(task) : onToggle(task)}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.priorityStrip, { backgroundColor: stripColor || strip }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.taskTitle, { color: colors.textMain }]} numberOfLines={2}>
+              {task.title}
+            </Text>
+            <Text style={[styles.taskMeta, { color: colors.textMuted }]}>
+              {task.time || 'Без времени'}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {!!folderLbl && (
+                <View style={[styles.folderChip, { borderColor: colors.borderSubtle }]}>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{folderLbl}</Text>
+                </View>
+              )}
+              {hasSubtasks && (
+                <View style={[styles.folderChip, { backgroundColor: colors.accent1 + '20', borderColor: colors.accent1 }]}>
+                  <Text style={{ fontSize: 11, color: colors.accent1, fontWeight: '600' }}>📋 Подзадачи</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <View style={[styles.checkbox, { borderColor: colors.accent1, backgroundColor: task.completed ? colors.accent1 : 'transparent' }]}>
+            {task.completed ? <Text style={{ color: '#020617', fontWeight: '800' }}>✓</Text> : null}
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    </PanGestureHandler>
+  );
+};
+
 const DashboardScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const { tick, bumpAll } = useDataSync();
@@ -339,118 +447,6 @@ const DashboardScreen = ({ navigation }) => {
       return isHabitDoneForValue(h, v);
     });
 
-  const AnimatedTaskCard = ({ task, stripColor, colors, onToggle }) => {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const [isSwiped, setIsSwiped] = useState(false);
-
-  const handleGestureEvent = Animated.event(
-    [{ nativeEvent: { translationX: translateX } }],
-    { useNativeDriver: true }
-  );
-
-  const handleGestureEnd = (event) => {
-    const { translationX } = event.nativeEvent;
-    
-    if (Math.abs(translationX) > 80) {
-      // Свайп достаточно далеко - выполняем действие
-      Animated.parallel([
-        Animated.timing(translateX, {
-          toValue: translationX > 0 ? 150 : -150,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 0.95,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        // Выполняем действие
-        onToggle(task);
-        
-        // Возвращаем в исходное состояние
-        Animated.parallel([
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 100,
-            friction: 8,
-          }),
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            useNativeDriver: true,
-            tension: 100,
-            friction: 8,
-          }),
-        ]).start();
-      });
-    } else {
-      // Возвращаем обратно
-      Animated.spring(translateX, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 100,
-        friction: 8,
-      }).start();
-    }
-  };
-
-  const pri = normPriority(task.priority);
-  const strip = pri === 'high' ? colors.danger1 : pri === 'medium' ? colors.accent1 : 'transparent';
-  const folderLbl = getFolderLabel(task.folderId);
-  const hasSubtasks = task.has_subtasks || false;
-  
-  // Для отладки
-  if (__DEV__ && task.has_subtasks) {
-    console.log('🔍 Task with subtasks:', task.title, task.has_subtasks);
-  }
-
-  return (
-    <PanGestureHandler
-      onGestureEvent={handleGestureEvent}
-      onHandlerStateChange={handleGestureEnd}
-    >
-      <Animated.View
-        style={[
-          { transform: [{ translateX }, { scale: scaleAnim }] }
-        ]}
-      >
-        <TouchableOpacity
-          style={[styles.taskRow, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
-          onPress={() => hasSubtasks ? openSubtasksModal(task) : onToggle(task)}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.priorityStrip, { backgroundColor: stripColor || strip }]} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.taskTitle, { color: colors.textMain }]} numberOfLines={2}>
-              {task.title}
-            </Text>
-            <Text style={[styles.taskMeta, { color: colors.textMuted }]}>
-              {task.time || 'Без времени'}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {!!folderLbl && (
-                <View style={[styles.folderChip, { borderColor: colors.borderSubtle }]}>
-                  <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{folderLbl}</Text>
-                </View>
-              )}
-              {hasSubtasks && (
-                <View style={[styles.folderChip, { backgroundColor: colors.accent1 + '20', borderColor: colors.accent1 }]}>
-                  <Text style={{ fontSize: 11, color: colors.accent1, fontWeight: '600' }}>📋 Подзадачи</Text>
-                </View>
-              )}
-            </View>
-          </View>
-          <View style={[styles.checkbox, { borderColor: colors.accent1, backgroundColor: task.completed ? colors.accent1 : 'transparent' }]}>
-            {task.completed ? <Text style={{ color: '#020617', fontWeight: '800' }}>✓</Text> : null}
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
-    </PanGestureHandler>
-  );
-};
-
   const renderTaskCard = (task, stripColor) => {
     const pri = normPriority(task.priority);
     const strip =
@@ -633,7 +629,9 @@ const DashboardScreen = ({ navigation }) => {
                     task={t} 
                     stripColor={colors.danger1} 
                     colors={colors} 
-                    onToggle={toggleTask} 
+                    onToggle={toggleTask}
+                    getFolderLabel={getFolderLabel}
+                    onOpenSubtasks={openSubtasksModal}
                   />
                 ))}
               </>
@@ -647,7 +645,9 @@ const DashboardScreen = ({ navigation }) => {
                     task={t} 
                     stripColor={null} 
                     colors={colors} 
-                    onToggle={toggleTask} 
+                    onToggle={toggleTask}
+                    getFolderLabel={getFolderLabel}
+                    onOpenSubtasks={openSubtasksModal}
                   />
                 ))}
               </>
@@ -661,7 +661,9 @@ const DashboardScreen = ({ navigation }) => {
                     task={t} 
                     stripColor={null} 
                     colors={colors} 
-                    onToggle={toggleTask} 
+                    onToggle={toggleTask}
+                    getFolderLabel={getFolderLabel}
+                    onOpenSubtasks={openSubtasksModal}
                   />
                 ))}
               </>
