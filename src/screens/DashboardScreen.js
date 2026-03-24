@@ -14,6 +14,8 @@ import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-
 import Background from '../components/Background';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
+import Modal from '../components/Modal';
+import Button from '../components/Button';
 import { clearFocusSession, getFocusSession, hasFocusSession } from '../components/FocusSessionModal';
 import {
   isHabitDayActive,
@@ -398,6 +400,11 @@ const DashboardScreen = ({ navigation }) => {
   const strip = pri === 'high' ? colors.danger1 : pri === 'medium' ? colors.accent1 : 'transparent';
   const folderLbl = getFolderLabel(task.folderId);
   const hasSubtasks = task.has_subtasks || false;
+  
+  // Для отладки
+  if (__DEV__ && task.has_subtasks) {
+    console.log('🔍 Task with subtasks:', task.title, task.has_subtasks);
+  }
 
   return (
     <PanGestureHandler

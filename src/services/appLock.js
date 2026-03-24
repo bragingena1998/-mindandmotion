@@ -136,13 +136,30 @@ export async function setBackgroundTime() {
 /** Проверить нужно ли запрашивать PIN-код */
 export async function shouldRequirePin() {
   const gracePeriod = await getGracePeriod();
+  if (__DEV__) {
+    console.log('🔐 Grace period:', gracePeriod, 'minutes');
+  }
+  
   if (gracePeriod === 0) return true; // Всегда запрашивать
   
   const lastBackground = await AsyncStorage.getItem(K_LAST_BACKGROUND);
+  if (__DEV__) {
+    console.log('🔐 Last background time:', lastBackground);
+  }
+  
   if (!lastBackground) return true;
   
   const timeDiff = Date.now() - parseInt(lastBackground, 10);
   const gracePeriodMs = gracePeriod * 60 * 1000; // Конвертируем минуты в миллисекунды
   
-  return timeDiff > gracePeriodMs;
+  if (__DEV__) {
+    console.log('🔐 Time diff:', timeDiff, 'ms, Grace period ms:', gracePeriodMs);
+  }
+  
+  const shouldRequire = timeDiff > gracePeriodMs;
+  if (__DEV__) {
+    console.log('🔐 Should require PIN:', shouldRequire);
+  }
+  
+  return shouldRequire;
 }
