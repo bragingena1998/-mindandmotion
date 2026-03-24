@@ -125,7 +125,7 @@ export async function setGracePeriod(minutes) {
 /** Получить период без PIN-кода */
 export async function getGracePeriod() {
   const value = await AsyncStorage.getItem(K_GRACE_PERIOD);
-  return value ? parseInt(value, 10) : 0; // 0 = всегда запрашивать PIN
+  return value ? parseInt(value, 10) : 5; // 5 минут по умолчанию
 }
 
 /** Сохранить время сворачивания приложения */

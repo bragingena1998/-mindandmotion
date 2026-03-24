@@ -107,6 +107,10 @@ const DashboardScreen = ({ navigation }) => {
   const [birthdays, setBirthdays] = useState([]);
   const [focusTick, setFocusTick] = useState(Date.now());
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+  const [showSubtasksModal, setShowSubtasksModal] = useState(false);
+  const [selectedTaskForSubtasks, setSelectedTaskForSubtasks] = useState(null);
+  const [taskSubtasks, setTaskSubtasks] = useState([]);
+  const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -175,6 +179,25 @@ const DashboardScreen = ({ navigation }) => {
     },
     [folders]
   );
+
+  const loadTaskSubtasks = useCallback(async (taskId) => {
+    setIsLoadingSubtasks(true);
+    try {
+      const res = await api.get(`/tasks/${taskId}/subtasks`);
+      setTaskSubtasks(res.data || []);
+    } catch (e) {
+      console.error('Failed to load subtasks:', e);
+      setTaskSubtasks([]);
+    } finally {
+      setIsLoadingSubtasks(false);
+    }
+  }, []);
+
+  const openSubtasksModal = useCallback(async (task) => {
+    setSelectedTaskForSubtasks(task);
+    setShowSubtasksModal(true);
+    await loadTaskSubtasks(task.id);
+  }, [loadTaskSubtasks]);
 
   const formatTaskMeta = useCallback(
     (task) => {
@@ -374,6 +397,7 @@ const DashboardScreen = ({ navigation }) => {
   const pri = normPriority(task.priority);
   const strip = pri === 'high' ? colors.danger1 : pri === 'medium' ? colors.accent1 : 'transparent';
   const folderLbl = getFolderLabel(task.folderId);
+  const hasSubtasks = task.has_subtasks || false;
 
   return (
     <PanGestureHandler
@@ -387,7 +411,7 @@ const DashboardScreen = ({ navigation }) => {
       >
         <TouchableOpacity
           style={[styles.taskRow, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
-          onPress={() => onToggle(task)}
+          onPress={() => hasSubtasks ? openSubtasksModal(task) : onToggle(task)}
           activeOpacity={0.85}
         >
           <View style={[styles.priorityStrip, { backgroundColor: stripColor || strip }]} />
@@ -398,11 +422,18 @@ const DashboardScreen = ({ navigation }) => {
             <Text style={[styles.taskMeta, { color: colors.textMuted }]}>
               {task.time || 'Без времени'}
             </Text>
-            {!!folderLbl && (
-              <View style={[styles.folderChip, { borderColor: colors.borderSubtle }]}>
-                <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{folderLbl}</Text>
-              </View>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {!!folderLbl && (
+                <View style={[styles.folderChip, { borderColor: colors.borderSubtle }]}>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{folderLbl}</Text>
+                </View>
+              )}
+              {hasSubtasks && (
+                <View style={[styles.folderChip, { backgroundColor: colors.accent1 + '20', borderColor: colors.accent1 }]}>
+                  <Text style={{ fontSize: 11, color: colors.accent1, fontWeight: '600' }}>📋 Подзадачи</Text>
+                </View>
+              )}
+            </View>
           </View>
           <View style={[styles.checkbox, { borderColor: colors.accent1, backgroundColor: task.completed ? colors.accent1 : 'transparent' }]}>
             {task.completed ? <Text style={{ color: '#020617', fontWeight: '800' }}>✓</Text> : null}
@@ -643,6 +674,79 @@ const DashboardScreen = ({ navigation }) => {
         type={toast.type}
         onHide={() => setToast(prev => ({ ...prev, visible: false }))}
       />
+      
+      {/* МОДАЛКА ПОДЗАДАЧ */}
+      {showSubtasksModal && selectedTaskForSubtasks && (
+        <Modal 
+          visible={showSubtasksModal} 
+          onClose={() => { setShowSubtasksModal(false); setSelectedTaskForSubtasks(null); setTaskSubtasks([]); }}
+          title={selectedTaskForSubtasks.title}
+        >
+          <View style={{ padding: 10 }}>
+            <Text style={{ color: colors.textMuted, marginBottom: 16, textAlign: 'center' }}>
+              Подзадачи для задачи: {selectedTaskForSubtasks.title}
+            </Text>
+            
+            {isLoadingSubtasks ? (
+              <View style={{ alignItems: 'center', padding: 20 }}>
+                <ActivityIndicator size="small" color={colors.accent1} />
+              </View>
+            ) : (
+              <>
+                {taskSubtasks.length === 0 ? (
+                  <Text style={{ color: colors.textMuted, textAlign: 'center', padding: 20 }}>
+                    Нет подзадач
+                  </Text>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    {taskSubtasks.map(st => (
+                      <View key={st.id} style={{ 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        padding: 12, 
+                        backgroundColor: colors.surface, 
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: colors.borderSubtle
+                      }}>
+                        <View style={{ 
+                          width: 20, 
+                          height: 20, 
+                          borderRadius: 10, 
+                          borderWidth: 2, 
+                          borderColor: colors.accent1, 
+                          backgroundColor: st.completed ? colors.accent1 : 'transparent',
+                          marginRight: 12,
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}>
+                          {st.completed && <Text style={{ color: '#020617', fontSize: 12, fontWeight: 'bold' }}>✓</Text>}
+                        </View>
+                        <Text style={{ 
+                          flex: 1, 
+                          color: colors.textMain,
+                          textDecorationLine: st.completed ? 'line-through' : 'none',
+                          opacity: st.completed ? 0.6 : 1
+                        }}>
+                          {st.title}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+            
+            <View style={{ marginTop: 20 }}>
+              <Button 
+                title="Закрыть" 
+                variant="outline" 
+                onPress={() => { setShowSubtasksModal(false); setSelectedTaskForSubtasks(null); setTaskSubtasks([]); }} 
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
       </Background>
     </GestureHandlerRootView>
   );
