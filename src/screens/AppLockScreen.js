@@ -34,7 +34,6 @@ const AppLockScreen = ({ onUnlock }) => {
   const triedAutoBio = useRef(false);
 
   useEffect(() => {
-    checkBiometric();
     loadPinLength();
   }, []);
 
