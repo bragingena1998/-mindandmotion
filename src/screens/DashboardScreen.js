@@ -163,6 +163,8 @@ const AnimatedTaskCard = ({ task, stripColor, colors, onToggle, getFolderLabel, 
     <PanGestureHandler
       onGestureEvent={handleGestureEvent}
       onHandlerStateChange={handleGestureEnd}
+      activeOffsetX={[-10, 10]}
+      failOffsetY={[-5, 5]}
     >
       <Animated.View
         style={[

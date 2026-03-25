@@ -956,7 +956,7 @@ const TasksScreen = ({ navigation }) => {
       folderId: task.folderId ?? null,
     });
     setEditingTask(task);
-    setShowAdvancedSettings(!!(task.time || task.isRecurring || task.recurrenceType || effectiveDeadline || task.folderId));
+    setShowAdvancedSettings(false);
     setShowAddModal(true);
   };
 
