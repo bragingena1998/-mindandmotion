@@ -779,7 +779,7 @@ const TasksScreen = ({ navigation }) => {
     try {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      const oneWeekAgoStr = isoToday(); // Используем сегодня вместо недели назад для отладки
+      const oneWeekAgoStr = `${oneWeekAgo.getFullYear()}-${String(oneWeekAgo.getMonth()+1).padStart(2,'0')}-${String(oneWeekAgo.getDate()).padStart(2,'0')}`;
       const old = allTasks.filter(t => {
         if (t.completed) return false;
         const d = t.deadline ? t.deadline.split('T')[0] : t.date ? t.date.split('T')[0] : null;
@@ -1335,12 +1335,12 @@ const TasksScreen = ({ navigation }) => {
         <Modal visible onClose={() => setShowOverdueCleanupModal(false)} title="🔥 Старые задачи">
           <Text style={[styles.deleteModalText, { color: colors.textMain, textAlign: 'left', marginBottom: 4 }]}>Просроченные задачи (более 7 дней). Всего: {overdueTasksList.length}</Text>
           <View style={{ maxHeight: 200, marginBottom: 16 }}>
-            <FlatList data={overdueTasksList} keyExtractor={i => i.id.toString()} renderItem={({ item: i }) => (
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+            {overdueTasksList.map(i => (
+              <View key={i.id.toString()} style={{ flexDirection: 'row', gap: 8, marginBottom: 8, alignItems: 'center' }}>
                 <Text style={{ color: colors.danger1 }}>•</Text>
                 <Text style={{ color: colors.textMain, fontSize: 14 }} numberOfLines={1}>{i.title}</Text>
               </View>
-            )} />
+            ))}
           </View>
           <View style={styles.deleteModalButtons}>
             <TouchableOpacity style={[styles.deleteModalButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]} onPress={() => setShowOverdueCleanupModal(false)}>
