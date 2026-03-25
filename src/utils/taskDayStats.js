@@ -26,8 +26,10 @@ export function countUnfinishedPlanForToday(tasks) {
 }
 
 /**
- * Всего задач на сегодня (план): сегодня ∈ [start, end] ИЛИ просрочена (незавершённая).
- * Выполненные задачи прошлых дней НЕ считаются.
+ * Всего задач на сегодня (план):
+ * — незавершённые у которых сегодня в диапазоне [start, end]
+ * — незавершённые просроченные
+ * — выполненные сегодня (doneDate = today)
  */
 export function countTodayPlanTotal(tasks) {
   const today = getLocalToday();
@@ -36,10 +38,20 @@ export function countTodayPlanTotal(tasks) {
     const start = isoDate(t.date);
     if (!start) continue;
     const end = isoDate(t.deadline || t.date);
-    const inRange = today >= start && today <= end;
-    // Просроченная считается только если НЕ выполнена
-    const overdue = end < today && !(t.done || t.completed);
-    if (inRange || overdue) n += 1;
+    const isDone = !!(t.done || t.completed);
+    const doneDate = isoDate(t.doneDate || t.done_date);
+    const donedToday = isDone && doneDate === today;
+
+    if (donedToday) {
+      // выполнена сегодня — считаем
+      n += 1;
+    } else if (!isDone) {
+      // незавершённая — сегодня в диапазоне или просрочена
+      const inRange = today >= start && today <= end;
+      const overdue = end < today;
+      if (inRange || overdue) n += 1;
+    }
+    // выполненная в другой день — НЕ считаем
   }
   return n;
 }
