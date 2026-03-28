@@ -122,8 +122,8 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
       await saveHabitTimerSession(
         editingCell.habitId,
         habit.name,
-        Date.now() - timerSeconds * 1000, // startedAt минус прошедшее время
-        0 // accumulated пока 0
+        Date.now() - timerSeconds * 1000, // startedAt - когда таймер был запущен
+        timerSeconds // accumulated - сколько секунд уже прошло
       );
     }
     

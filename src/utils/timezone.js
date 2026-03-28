@@ -5,7 +5,7 @@ import * as Localization from 'expo-localization';
  * Возвращает timezone устройства (например 'Asia/Tashkent')
  */
 export const getUserTimezone = () => {
-  return Localization.timezone || 'UTC';
+  return Localization.getLocales?.()?.[0]?.timezone || Localization.timezone || 'UTC';
 };
 
 /**
