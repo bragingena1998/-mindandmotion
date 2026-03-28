@@ -67,7 +67,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password required' });
     }
 
-    const [users] = await pool.query('SELECT id, password FROM users WHERE email = ?', [email]);
+    const [users] = await pool.query('SELECT id, password, privacy_accepted, terms_accepted, email_marketing_accepted FROM users WHERE email = ?', [email]);
     if (users.length === 0) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
@@ -83,7 +83,17 @@ router.post('/login', async (req, res) => {
       process.env.JWT_SECRET || 'your-secret-key-12345',
       { expiresIn: '30d' }
     );
-    res.json({ token, userId: user.id });
+    
+    res.json({ 
+      token, 
+      userId: user.id,
+      user: {
+        id: user.id,
+        privacy_accepted: user.privacy_accepted,
+        terms_accepted: user.terms_accepted,
+        email_marketing_accepted: user.email_marketing_accepted
+      }
+    });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: err.message });
@@ -218,7 +228,20 @@ router.post('/verify-code', async (req, res) => {
       console.log('ℹ️ Создание демо-данных отключено пользователем:', userId);
     }
 
-    res.json({ success: true, message: 'Регистрация успешна', token, userId, email, name });
+    res.json({ 
+      success: true, 
+      message: 'Регистрация успешна', 
+      token, 
+      userId, 
+      email, 
+      name,
+      user: {
+        id: userId,
+        privacy_accepted: 1, // Только что приняли
+        terms_accepted: 1,   // Только что приняли
+        email_marketing_accepted: req.body.emailMarketing ? 1 : 0
+      }
+    });
   } catch (error) {
     console.error('❌ Ошибка verify-code:', error);
     res.status(500).json({ error: 'Ошибка сервера: ' + error.message });

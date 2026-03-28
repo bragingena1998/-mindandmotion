@@ -10,7 +10,11 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+<<<<<<< HEAD
   timezone: '+00:00'  // Гарантирует UTC интерпретацию TIMESTAMP
+=======
+  timezone: '+00:00'
+>>>>>>> b97d4b836e263e5445df81510b9bc9a57500631e
 });
 
 pool.getConnection()
