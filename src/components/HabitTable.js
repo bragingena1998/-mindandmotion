@@ -1,6 +1,7 @@
 // src/components/HabitTable.js
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import Modal from './Modal';
 import Input from './Input';
@@ -104,6 +105,31 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     setEditingCell(null);
     setTimerSeconds(0);
     setManualInput('');
+  };
+
+  const saveHabitTimerSession = async (habitId, habitName, startedAt, accumulated) => {
+    await AsyncStorage.setItem('@mm_habit_timer', JSON.stringify({
+      habitId, habitName, startedAt, accumulated, isRunning: true
+    }));
+  };
+
+  const minimizeTimer = async () => {
+    if (!editingCell) return;
+    
+    // Сохраняем сессию
+    const habit = habits.find(h => h.id === editingCell.habitId);
+    if (habit) {
+      await saveHabitTimerSession(
+        editingCell.habitId,
+        habit.name,
+        Date.now() - timerSeconds * 1000, // startedAt минус прошедшее время
+        0 // accumulated пока 0
+      );
+    }
+    
+    setIsTimerRunning(false);
+    setShowTimerModal(false);
+    setShowManualInput(false);
   };
 
   const clearCell = () => {
@@ -394,7 +420,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
       </Modal>
 
       {/* TIMER MODAL */}
-      <Modal visible={showTimerModal} onClose={() => setShowTimerModal(false)} title="Таймер">
+      <Modal visible={showTimerModal} onClose={() => setShowTimerModal(false)} title="Таймер" keyboardShouldPersistTaps="handled">
         <View style={{ padding: 20, alignItems: 'center' }}>
           {!showManualInput ? (
             <>
@@ -416,7 +442,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
-                  onPress={() => { setIsTimerRunning(false); setTimerSeconds(0); }} 
+                  onPress={clearCell} 
                   style={{ backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 30, borderWidth: 1, borderColor: colors.borderSubtle }}
                 >
                   <Text style={{ color: colors.textMain, fontWeight: 'bold', fontSize: 16 }}>СБРОС</Text>
@@ -438,6 +464,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
                 onChangeText={setManualInput}
                 placeholder="0.5"
                 keyboardType="numeric"
+                autoFocus={false}
                 style={{ marginBottom: 20, textAlign: 'center' }}
               />
               
@@ -455,6 +482,13 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
             <Button title="🗑️" variant="danger" style={{ flex: 1 }} onPress={clearCell} />
             <Button title="✓" style={{ flex: 1 }} textStyle={{ fontSize: 14 }} onPress={saveTimer} />
           </View>
+          
+          <TouchableOpacity 
+            onPress={minimizeTimer}
+            style={{ backgroundColor: colors.ok1, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.ok1, marginTop: 10 }}
+          >
+            <Text style={{ color: '#020617', fontSize: 14, fontWeight: '600' }}>Свернуть</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
 

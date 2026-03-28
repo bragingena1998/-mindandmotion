@@ -50,6 +50,33 @@ const LAST_VISIT_KEY = '@mm_last_visit';
 const TASK_NOTIF_PREFIX = '@mm_task_notif_';
 const BIRTHDAY_NOTIF_PREFIX = '@mm_bday_notif_';
 
+function pluralTasks(n) {
+  const abs = Math.abs(n) % 100;
+  const mod10 = abs % 10;
+  if (abs > 10 && abs < 20) return `${n} задач`;
+  if (mod10 === 1) return `${n} задача`;
+  if (mod10 >= 2 && mod10 <= 4) return `${n} задачи`;
+  return `${n} задач`;
+}
+
+function pluralOverdue(n) {
+  const abs = Math.abs(n) % 100;
+  const mod10 = abs % 10;
+  if (abs > 10 && abs < 20) return `${n} просроченных`;
+  if (mod10 === 1) return `${n} просроченная`;
+  if (mod10 >= 2 && mod10 <= 4) return `${n} просроченные`;
+  return `${n} просроченных`;
+}
+
+function pluralDeadlines(n) {
+  const abs = Math.abs(n) % 100;
+  const mod10 = abs % 10;
+  if (abs > 10 && abs < 20) return `${n} дедлайнов`;
+  if (mod10 === 1) return `${n} дедлайн`;
+  if (mod10 >= 2 && mod10 <= 4) return `${n} дедлайна`;
+  return `${n} дедлайнов`;
+}
+
 // Настройка поведения уведомлений при получении
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -88,6 +115,7 @@ export async function registerForPushNotificationsAsync() {
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#7C3AED',
+      sound: 'default',
     });
   }
 
@@ -203,14 +231,14 @@ export async function scheduleDailyNotifications() {
     const { totalToday, overdueToday, tomorrowDeadlines } = await getTasksSummary();
     
     // Формируем текст уведомления
-    let body = `На сегодня ${totalToday} задач${totalToday === 0 ? '' : totalToday === 1 ? 'а' : 'и'}`;
+    let body = `На сегодня ${pluralTasks(totalToday)}`;
     
     if (overdueToday > 0) {
-      body += `, ${overdueToday} просроченн${overdueToday === 1 ? 'ая' : overdueToday <= 4 ? 'ые' : 'ых'}`;
+      body += `, ${pluralOverdue(overdueToday)}`;
     }
     
     if (tomorrowDeadlines > 0) {
-      body += `. На завтра ${tomorrowDeadlines} дедлайн${tomorrowDeadlines === 1 ? '' : 'ов'}`;
+      body += `. На завтра ${pluralDeadlines(tomorrowDeadlines)}`;
     }
     
     body += '. Хороший день начинается с плана!';
@@ -221,6 +249,7 @@ export async function scheduleDailyNotifications() {
         title: 'Доброе утро! 🌅',
         body,
         sound: true,
+        android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
       },
       trigger: scheduledTime,
     });
@@ -244,7 +273,7 @@ export async function scheduleDailyNotifications() {
     let body = 'День почти завершён — внеси отметки и подведи итог дня!';
     
     if (tomorrowDeadlines > 0) {
-      body = `На завтра ${tomorrowDeadlines} дедлайн${tomorrowDeadlines === 1 ? '' : 'ов'}. ${body}`;
+      body = `На завтра ${pluralDeadlines(tomorrowDeadlines)}. ${body}`;
     }
     
     await Notifications.scheduleNotificationAsync({
@@ -253,6 +282,7 @@ export async function scheduleDailyNotifications() {
         title: 'Вечерний итог 🌙',
         body,
         sound: true,
+        android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
       },
       trigger: scheduledTime,
     });
@@ -300,6 +330,7 @@ export async function scheduleWeeklyNotification() {
       title: 'Недельный итог 📅',
       body: `За эту неделю выполнено ${completedThisWeek} задач${completedThisWeek === 1 ? 'а' : completedThisWeek <= 4 ? 'и' : ''}. Загляни в Mind&Motion и подведи итог!`,
       sound: true,
+      android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
     },
     trigger: scheduledTime,
   });
@@ -338,6 +369,7 @@ export async function scheduleTaskReminders(task) {
         title: `Напоминание ⏰`,
         body: `«${task.title}» начнётся через ${minsBefore} мин`,
         sound: true,
+        android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
       },
       trigger: triggerDate,
     });
@@ -394,6 +426,7 @@ export async function scheduleBirthdayNotification(event) {
         ? `У ${event.name} через ${notifyBefore === 1 ? 'завтра' : `${notifyBefore} дн.`} день рождения!`
         : `«${event.name}» через ${notifyBefore === 1 ? 'завтра' : `${notifyBefore} дн.`}`,
       sound: true,
+      android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
     },
     trigger: triggerDate,
   });
@@ -431,6 +464,7 @@ export async function scheduleSessionEndNotification(durationMinutes, taskTitle)
         ? `${durationMinutes} мин концентрации на «${taskTitle}». Отличная работа!`
         : `${durationMinutes} мин концентрации позади! Отличная работа!`,
       sound: true,
+      android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
     },
     trigger: triggerDate,
   });
@@ -465,6 +499,7 @@ export async function checkInactivityNotification() {
           title: 'Давно не заходил 💪',
           body: `Уже ${diffDays} ${diffDays === 2 ? 'дня' : 'дней'} без захода. Тебя ждут задачи и привычки!`,
           sound: true,
+          android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
         },
         trigger: { seconds: 3 }, // через 3 секунды после запуска
       });

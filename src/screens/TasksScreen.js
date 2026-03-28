@@ -36,6 +36,7 @@ import DatePicker from '../components/DatePicker';
 import TimePicker from '../components/TimePicker';
 import FocusSessionModal, { hasFocusSession, getFocusSession } from '../components/FocusSessionModal';
 import { scheduleTaskReminders, cancelTaskReminders } from '../services/notifications';
+import { utcTimeToLocal, localTimeToUtc } from '../utils/timezone';
 import TutorialOverlay from '../components/TutorialOverlay';
 import TutorialButton from '../components/TutorialButton';
 import { useTutorial } from '../hooks/useTutorial';
@@ -948,7 +949,7 @@ const TasksScreen = ({ navigation }) => {
       title: task.title,
       date: dateStr || isoToday(),
       deadline: effectiveDeadline,
-      time: task.time || null,
+      time: task.time ? utcTimeToLocal(task.time, task.date) : null,
       priority: task.priority === 'high' ? 1 : task.priority === 'low' ? 3 : 2,
       comment: task.comment || '',
       isRecurring: task.isRecurring ?? 0,
@@ -979,7 +980,7 @@ const TasksScreen = ({ navigation }) => {
         result = `${fmt(dateStr)} - ${fmt(deadlineStr)}`;
       }
     }
-    if (task.time) result += ` • ${task.time}`;
+    if (task.time) result += ` • ${utcTimeToLocal(task.time, task.date) || task.time}`;
     if (task.isRecurring) result += ` 🔄`;
     if (task.focusSessions > 0) result += ` 🎯${task.focusSessions}`;
     return result;
@@ -1463,7 +1464,7 @@ const TasksScreen = ({ navigation }) => {
                     title: newTask.title,
                     date: newTask.date,
                     deadline: newTask.deadline || null,
-                    time: newTask.time,
+                    time: newTask.time ? localTimeToUtc(newTask.time, newTask.date) : null,
                     priority: newTask.priority,
                     comment: newTask.comment || '',
                     done: false,

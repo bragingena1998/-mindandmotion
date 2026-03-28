@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -17,6 +18,7 @@ import api from '../services/api';
 import Modal from '../components/Modal';
 import Button from '../components/Button';
 import { clearFocusSession, getFocusSession, hasFocusSession } from '../components/FocusSessionModal';
+import { utcTimeToLocal } from '../utils/timezone';
 import {
   isHabitDayActive,
   getHabitRecordValue,
@@ -182,7 +184,7 @@ const AnimatedTaskCard = ({ task, stripColor, colors, onToggle, getFolderLabel, 
               {task.title}
             </Text>
             <Text style={[styles.taskMeta, { color: colors.textMuted }]}>
-              {task.time || 'Без времени'}
+              {task.time ? (utcTimeToLocal(task.time, task.date) || task.time) : 'Без времени'}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               {!!folderLbl && (
@@ -461,6 +463,21 @@ const DashboardScreen = ({ navigation }) => {
   const focusMm = String(Math.floor(focusSeconds / 60)).padStart(2, '0');
   const focusSs = String(focusSeconds % 60).padStart(2, '0');
 
+  const [habitTimer, setHabitTimer] = useState(null);
+
+  useEffect(() => {
+    const checkHabitTimer = async () => {
+      try {
+        const raw = await AsyncStorage.getItem('@mm_habit_timer');
+        if (raw) setHabitTimer(JSON.parse(raw));
+        else setHabitTimer(null);
+      } catch {}
+    };
+    checkHabitTimer();
+    const interval = setInterval(checkHabitTimer, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const allActiveDone =
     activeHabitsToday.length > 0 &&
     activeHabitsToday.every((h) => {
@@ -556,6 +573,60 @@ const DashboardScreen = ({ navigation }) => {
             </View>
           </View>
         )}
+
+        {!!habitTimer && habitTimer.isRunning && (() => {
+          const elapsed = Math.floor((Date.now() - habitTimer.startedAt) / 1000) + (habitTimer.accumulated || 0);
+          const hh = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+          const mm = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+          const ss = String(elapsed % 60).padStart(2, '0');
+          return (
+            <View style={[styles.focusBanner, { backgroundColor: colors.surface, borderColor: colors.ok1 }]}>
+              <View style={styles.focusRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.focusTitle, { color: colors.ok1 }]}>⏱ Таймер привычки</Text>
+                  <Text style={[styles.focusTask, { color: colors.textMain }]} numberOfLines={1}>
+                    {habitTimer.habitName}
+                  </Text>
+                  <Text style={[styles.focusTimer, { color: colors.ok1 }]}>{hh}:{mm}:{ss}</Text>
+                </View>
+                <View style={{ gap: 8 }}>
+                  <TouchableOpacity
+                    style={[styles.stopBtn, { borderColor: colors.danger1 }]}
+                    onPress={async () => {
+                      await AsyncStorage.removeItem('@mm_habit_timer');
+                      setHabitTimer(null);
+                    }}
+                  >
+                    <Text style={{ color: colors.danger1, fontWeight: '700' }}>Стоп</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.stopBtn, { borderColor: colors.ok1 }]}
+                    onPress={async () => {
+                      // Сохраняем результат в запись привычки
+                      const elapsed = Math.floor((Date.now() - habitTimer.startedAt) / 1000) + (habitTimer.accumulated || 0);
+                      const hours = Math.round((elapsed / 3600) * 10) / 10; // округление до 0.1ч
+                      try {
+                        const today = new Date();
+                        await api.post('/habits/records', {
+                          habit_id: habitTimer.habitId,
+                          year: today.getFullYear(),
+                          month: today.getMonth() + 1,
+                          day: today.getDate(),
+                          value: hours,
+                        });
+                        bumpAll();
+                      } catch {}
+                      await AsyncStorage.removeItem('@mm_habit_timer');
+                      setHabitTimer(null);
+                    }}
+                  >
+                    <Text style={{ color: colors.ok1, fontWeight: '700' }}>Сохранить</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
 
         <View style={[styles.progressCard, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
           <Text style={[styles.progressTitle, { color: colors.textMain }]}>
