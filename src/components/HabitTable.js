@@ -3,7 +3,6 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
-import { useDataSync } from '../contexts/DataSyncContext';
 import Modal from './Modal';
 import Input from './Input';
 import Button from './Button';
@@ -26,7 +25,6 @@ const HOLIDAYS_2026 = {
 
 const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete, onHabitEdit }) => {
   const { colors } = useTheme();
-  const { bumpAll } = useDataSync();
   const horizontalScrollRef = useRef(null);
   
   // Modals state
@@ -87,17 +85,37 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Debounce функция для оптимизации сохранения
+  let _saveTimer = null;
+
+  const debouncedSave = (immediate = false) => {
+    if (_saveTimer) {
+      clearTimeout(_saveTimer);  // только clearTimeout, никакого .bumpAll
+      _saveTimer = null;
+    }
+    if (immediate) {
+      // Вызываем onCellChange напрямую если нужно немедленное сохранение
+      return;
+    }
+    _saveTimer = setTimeout(() => {
+      _saveTimer = null;
+      // Для отложенного сохранения ничего не делаем - onCellChange уже вызвался
+    }, 600);
+  };
+
   const saveTimer = () => {
     setIsTimerRunning(false);
     if (!editingCell) return;
 
-    // ШАГ 1: Сохраняем координаты в локальные переменные ДО любых сбросов
-    const { habitId, day } = editingCell;
+    // ШАГ 1: сохраняем координаты в локальные const ДО любых setState
+    const habitId = editingCell.habitId;
+    const day = editingCell.day;
 
-    // ШАГ 2: Читаем текущее значение ячейки ДО сброса editingCell
+    // ШАГ 2: читаем текущее значение ячейки
+    // Используем getValue если она есть, иначе ищем в records
     const currentValue = parseFloat(getValue(habitId, day)) || 0;
 
-    // ШАГ 3: Вычисляем добавляемое значение
+    // ШАГ 3: вычисляем добавляемое значение
     let addedValue = 0;
     if (showManualInput && manualInput) {
       addedValue = parseFloat(manualInput) || 0;
@@ -105,22 +123,21 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
       addedValue = timerSeconds / 3600; // секунды → часы
     }
 
-    // ШАГ 4: ПРИБАВЛЯЕМ к существующему значению
+    // ШАГ 4: ПРИБАВЛЯЕМ к существующему, не заменяем
     const newValue = parseFloat((currentValue + addedValue).toFixed(4));
 
-    // ШАГ 5: Записываем результат
+    // ШАГ 5: записываем результат
     onCellChange(habitId, year, month, day, newValue);
 
-    // ШАГ 6: Сбрасываем состояние ТОЛЬКО ПОСЛЕ записи
+    // ШАГ 6: сбрасываем состояние ТОЛЬКО ПОСЛЕ onCellChange
     setEditingCell(null);
     setTimerSeconds(0);
     setManualInput('');
     setShowTimerModal(false);
     setShowManualInput(false);
 
-    // ШАГ 7: Немедленный save (не debounce!) чтобы избежать race condition
-    // с другими pending debouncedSave вызовами
-    bumpAll(); // Немедленный вызов для сохранения
+    // ШАГ 7: немедленный save чтобы избежать race condition
+    debouncedSave(true);
   };
 
   const saveHabitTimerSession = async (habitId, habitName, startedAt, accumulated) => {
