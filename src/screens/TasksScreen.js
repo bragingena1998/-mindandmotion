@@ -45,7 +45,7 @@ import { countTodayPlanTotal, countCompletedToday } from '../utils/taskDayStats'
 
 // Debounce функция для оптимизации сохранения задач
 let _saveTimer = null;
-const debouncedSave = (immediate = false) => {
+const debouncedSave = (bumpAll, immediate = false) => {
   if (_saveTimer) clearTimeout(_saveTimer);
   if (immediate) {
     bumpAll();
@@ -780,7 +780,7 @@ const TasksScreen = ({ navigation }) => {
       if (loading) checkOverdueTasks(formatted);
       setLoading(false);
       // Загрузка задач - immediate save
-      debouncedSave(true);
+      debouncedSave(bumpAll, true);
     } catch (err) {
       console.error('❌ Загрузка задач:', err);
       setError('Ошибка загрузки задач');
@@ -845,7 +845,7 @@ const TasksScreen = ({ navigation }) => {
         return next;
       });
       // Изменение статуса задачи - используем debounce
-      debouncedSave();
+      debouncedSave(bumpAll);
     } catch (err) { loadTasks(); }
   }, [tasks, bumpAll]);
 
@@ -855,7 +855,7 @@ const TasksScreen = ({ navigation }) => {
       await tasksAPI.deleteTask(taskId);
       await cancelTaskReminders(taskId); // Отменяем уведомления
       showToast('🗑️ Задача удалена');
-      debouncedSave(true); // immediate save для удаления
+      debouncedSave(bumpAll, true); // immediate save для удаления
     } catch { loadTasks(); Alert.alert('Ошибка', 'Не удалось удалить задачу'); }
   }, [bumpAll]);
 
@@ -1501,7 +1501,7 @@ const TasksScreen = ({ navigation }) => {
                   showToast(editingTask ? '✏️ Задача обновлена' : '✅ Задача добавлена');
                   setShowAddModal(false);
                   // Создание/обновление задачи - immediate save
-                  debouncedSave(true);
+                  debouncedSave(bumpAll, true);
                   setTimeout(() => {
                     loadTasks();
                   }, 300);

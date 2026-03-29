@@ -607,12 +607,29 @@ const DashboardScreen = ({ navigation }) => {
                       const hours = Math.round((elapsed / 3600) * 10) / 10; // округление до 0.1ч
                       try {
                         const today = new Date();
+                        const y = today.getFullYear();
+                        const m = today.getMonth() + 1;
+                        const d = today.getDate();
+
+                        // Получаем текущее значение ячейки через API
+                        const existingRecords = await api.get('/habits/records', {
+                          params: { habit_id: habitTimer.habitId, year: y, month: m, day: d }
+                        });
+                        
+                        const existing = existingRecords.data && existingRecords.data.length > 0 
+                          ? existingRecords.data[0] 
+                          : null;
+                        const existingValue = existing ? parseFloat(existing.value) || 0 : 0;
+                        
+                        // Суммируем существующее значение с результатом таймера
+                        const newValue = Math.round((existingValue + hours) * 10) / 10;
+
                         await api.post('/habits/records', {
                           habit_id: habitTimer.habitId,
-                          year: today.getFullYear(),
-                          month: today.getMonth() + 1,
-                          day: today.getDate(),
-                          value: hours,
+                          year: y,
+                          month: m,
+                          day: d,
+                          value: newValue,
                         });
                         bumpAll();
                       } catch {}

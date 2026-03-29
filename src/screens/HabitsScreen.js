@@ -410,13 +410,32 @@ const HabitsScreen = ({ route }) => {
                     const hours = Math.round((elapsed / 3600) * 10) / 10; // округление до 0.1ч
                     try {
                       const today = new Date();
+                      const y = today.getFullYear();
+                      const m = today.getMonth() + 1;
+                      const d = today.getDate();
+
+                      // Найти существующее значение в ячейке
+                      const existing = records.find(
+                        r => r.habitid === habitTimer.habitId && r.year === y && r.month === m && r.day === d
+                      );
+                      const existingValue = existing ? parseFloat(existing.value) || 0 : 0;
+                      const newValue = Math.round((existingValue + hours) * 10) / 10;
+
+                      // Отправить сумму, а не просто hours
                       await api.post('/habits/records', {
                         habit_id: habitTimer.habitId,
-                        year: today.getFullYear(),
-                        month: today.getMonth() + 1,
-                        day: today.getDate(),
-                        value: hours,
+                        year: y, month: m, day: d,
+                        value: newValue,
                       });
+
+                      // Обновить локальный state
+                      setRecords(prev => {
+                        const filtered = prev.filter(
+                          r => !(r.habitid === habitTimer.habitId && r.year === y && r.month === m && r.day === d)
+                        );
+                        return [...filtered, { habitid: habitTimer.habitId, year: y, month: m, day: d, value: newValue }];
+                      });
+
                       bumpAll();
                     } catch {}
                     await AsyncStorage.removeItem('@mm_habit_timer');
