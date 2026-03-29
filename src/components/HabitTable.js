@@ -101,7 +101,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
       valueToSave = timerSeconds / 3600; // Convert seconds to hours
     }
     
-    onCellChange(editingCell.habitId, editingCell.day, valueToSave);
+    onCellChange(editingCell.habitId, year, month, editingCell.day, valueToSave);
     setEditingCell(null);
     setTimerSeconds(0);
     setManualInput('');
@@ -138,7 +138,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     setShowManualInput(false);
     if (!editingCell) return;
     
-    onCellChange(editingCell.habitId, editingCell.day, 0);
+    onCellChange(editingCell.habitId, year, month, editingCell.day, 0);
     setEditingCell(null);
     setTimerSeconds(0);
     setManualInput('');

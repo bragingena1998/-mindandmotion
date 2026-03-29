@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
 import HabitTable from '../components/HabitTable';
@@ -96,6 +97,7 @@ const HabitsScreen = ({ route }) => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [records, setRecords] = useState([]);
+  const [habitTimer, setHabitTimer] = useState(null);
 
   const [showDateModal, setShowDateModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
@@ -145,6 +147,20 @@ const HabitsScreen = ({ route }) => {
   useEffect(() => { loadProfile(); }, []);
   useEffect(() => { loadHabits(); }, [year, month]);
   useEffect(() => { if (habits.length > 0) loadRecords(); }, [habits, year, month]);
+
+  // Проверка таймера привычки
+  useEffect(() => {
+    const checkHabitTimer = async () => {
+      try {
+        const raw = await AsyncStorage.getItem('@mm_habit_timer');
+        if (raw) setHabitTimer(JSON.parse(raw));
+        else setHabitTimer(null);
+      } catch {}
+    };
+    checkHabitTimer();
+    const interval = setInterval(checkHabitTimer, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Не подписываемся на tick: bumpAll после ячейки обновляет дашборд/другие экраны,
   // а полный loadHabits+loadRecords здесь давал «перезагрузку страницы» при каждом вводе.
@@ -210,14 +226,16 @@ const HabitsScreen = ({ route }) => {
   };
 
   const handleCellChange = async (habitId, year, month, day, value) => {
+    const numValue = parseFloat(value) || 0;
+    
     setRecords((prev) => {
       const filtered = prev.filter((r) => !(r.habitid === habitId && r.day === day));
-      if (value && value > 0) return [...filtered, { habitid: habitId, year, month, day, value }];
+      if (numValue > 0) return [...filtered, { habitid: habitId, year, month, day, value: numValue }];
       return filtered;
     });
     try {
-      if (value && value > 0) {
-        await api.post('/habits/records', { habit_id: habitId, year, month, day, value });
+      if (numValue > 0) {
+        await api.post('/habits/records', { habit_id: habitId, year, month, day, value: numValue });
       } else {
         await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
       }
@@ -357,6 +375,61 @@ const HabitsScreen = ({ route }) => {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
+
+      {/* Баннер таймера привычки */}
+      {!!habitTimer && habitTimer.isRunning && (() => {
+        const elapsed = Math.floor((Date.now() - habitTimer.startedAt) / 1000) + (habitTimer.accumulated || 0);
+        const hh = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+        const ss = String(elapsed % 60).padStart(2, '0');
+        return (
+          <View style={[{ borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 12 }, { backgroundColor: colors.surface, borderColor: colors.ok1 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[{ fontSize: 12, fontWeight: '700', textTransform: 'uppercase' }, { color: colors.ok1 }]}>⏱ Таймер привычки</Text>
+                <Text style={[{ marginTop: 4, fontWeight: '600' }, { color: colors.textMain }]} numberOfLines={1}>
+                  {habitTimer.habitName}
+                </Text>
+                <Text style={[{ fontSize: 20, fontWeight: '700' }, { color: colors.ok1 }]}>{hh}:{mm}:{ss}</Text>
+              </View>
+              <View style={{ gap: 8 }}>
+                <TouchableOpacity
+                  style={[{ borderWidth: 1, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 }, { borderColor: colors.danger1 }]}
+                  onPress={async () => {
+                    await AsyncStorage.removeItem('@mm_habit_timer');
+                    setHabitTimer(null);
+                  }}
+                >
+                  <Text style={{ color: colors.danger1, fontWeight: '700' }}>Стоп</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[{ borderWidth: 1, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 }, { borderColor: colors.ok1 }]}
+                  onPress={async () => {
+                    // Сохраняем результат в запись привычки
+                    const elapsed = Math.floor((Date.now() - habitTimer.startedAt) / 1000) + (habitTimer.accumulated || 0);
+                    const hours = Math.round((elapsed / 3600) * 10) / 10; // округление до 0.1ч
+                    try {
+                      const today = new Date();
+                      await api.post('/habits/records', {
+                        habit_id: habitTimer.habitId,
+                        year: today.getFullYear(),
+                        month: today.getMonth() + 1,
+                        day: today.getDate(),
+                        value: hours,
+                      });
+                      bumpAll();
+                    } catch {}
+                    await AsyncStorage.removeItem('@mm_habit_timer');
+                    setHabitTimer(null);
+                  }}
+                >
+                  <Text style={{ color: colors.ok1, fontWeight: '700' }}>Сохранить</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        );
+      })()}
 
       {/* ===== ЦИТАТА + СТАТИСТИКА ===== */}
       <View style={styles.section}>
