@@ -18,6 +18,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  AppState,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Background from '../components/Background';
@@ -42,6 +43,7 @@ import TutorialButton from '../components/TutorialButton';
 import { useTutorial } from '../hooks/useTutorial';
 import { useDataSync } from '../contexts/DataSyncContext';
 import { countTodayPlanTotal, countCompletedToday } from '../utils/taskDayStats';
+import { tasksCache, foldersCache, syncUtils } from '../utils/tasksCache';
 
 // Debounce функция для оптимизации сохранения задач
 let _saveTimer = null;
@@ -541,6 +543,24 @@ const TasksScreen = ({ navigation }) => {
     loadTasks();
   }, [tick]);
 
+  // Синхронизация при активации приложения
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === 'active') {
+        // При возврате в приложение проверяем нужна ли синхронизация
+        if (syncUtils.needsSync()) {
+          loadTasks(undefined, false); // Не forceRefresh, просто проверяем
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
   useEffect(() => {
     if (!focusVisible && hasFocusSession()) {
       const session = getFocusSession();
@@ -729,16 +749,49 @@ const TasksScreen = ({ navigation }) => {
 
   // ==================== STATS & TASKS ====================
 
-  const loadTasks = async (date = selectedDate) => {
+  const loadTasks = async (date = selectedDate, forceRefresh = false) => {
     try {
       setError('');
-      const token = await getToken();
-      if (!token) return;
       const now = new Date();
       const isCurrentMonth = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      
+      // 1. Сначала загружаем из кеша - мгновенно!
+      if (!forceRefresh) {
+        const cachedTasks = tasksCache.getTasks();
+        if (cachedTasks) {
+          const formatted = cachedTasks.map(task => ({
+            ...task,
+            priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
+            dueDate: task.deadline || task.date,
+            completed: task.done || false,
+            doneDate: task.doneDate || task.done_date || null,
+            time: task.time || null,
+            isRecurring: task.isRecurring ?? task.is_recurring ?? task.isrecurring ?? 0,
+            recurrenceType: task.recurrenceType ?? task.recurrence_type ?? task.recurrencetype ?? null,
+            focusSessions: task.focusSessions || 0,
+            folderId: task.folderId ?? task.folder_id ?? null,
+          }));
+          setTasks(formatted);
+          
+          if (isCurrentMonth) {
+            setStats((prev) => ({
+              ...prev,
+              today: countCompletedToday(formatted),
+              todayPlan: countTodayPlanTotal(formatted),
+            }));
+          }
+          setLoading(false);
+        }
+      }
+      
+      // 2. Затем синхронизируем с сервером в фоне
+      const token = await getToken();
+      if (!token) return;
+      
       const params = isCurrentMonth ? {} : { month: date.getMonth(), year: date.getFullYear() };
       let tasksData;
       let statsApi;
+      
       if (isCurrentMonth) {
         const [res, resStats] = await Promise.all([tasksAPI.getTasks(params), api.get('/tasks/stats')]);
         tasksData = res;
@@ -746,6 +799,7 @@ const TasksScreen = ({ navigation }) => {
       } else {
         tasksData = await tasksAPI.getTasks(params);
       }
+      
       const formatted = tasksData.map(task => ({
         ...task,
         priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
@@ -758,7 +812,11 @@ const TasksScreen = ({ navigation }) => {
         focusSessions: task.focusSessions || 0,
         folderId: task.folderId ?? task.folder_id ?? null,
       }));
+      
+      // Обновляем состояние и кеш
       setTasks(formatted);
+      tasksCache.setTasks(formatted); // Сохраняем в кеш
+      
       if (isCurrentMonth && statsApi) {
         setStats({
           today: countCompletedToday(formatted),
@@ -774,15 +832,37 @@ const TasksScreen = ({ navigation }) => {
           todayPlan: countTodayPlanTotal(formatted),
         }));
       }
+      
       if (loading) checkOverdueTasks(formatted);
       setLoading(false);
-      // Загрузка задач - immediate save
-      debouncedSave(bumpAll, true);
+      
+      // Обновляем время синхронизации
+      syncUtils.setLastSyncTime();
+      
     } catch (err) {
       console.error('❌ Загрузка задач:', err);
-      setError('Ошибка загрузки задач');
-      setTasks([]);
-      setLoading(false);
+      // Если сервер недоступен, пробуем загрузить из кеша
+      const cachedTasks = tasksCache.getTasks();
+      if (cachedTasks && !forceRefresh) {
+        const formatted = cachedTasks.map(task => ({
+          ...task,
+          priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
+          dueDate: task.deadline || task.date,
+          completed: task.done || false,
+          doneDate: task.doneDate || task.done_date || null,
+          time: task.time || null,
+          isRecurring: task.isRecurring ?? task.is_recurring ?? task.isrecurring ?? 0,
+          recurrenceType: task.recurrenceType ?? task.recurrence_type ?? task.recurrencetype ?? null,
+          focusSessions: task.focusSessions || 0,
+          folderId: task.folderId ?? task.folder_id ?? null,
+        }));
+        setTasks(formatted);
+        setLoading(false);
+      } else {
+        setError('Ошибка загрузки задач');
+        setTasks([]);
+        setLoading(false);
+      }
     }
   };
 
@@ -810,7 +890,11 @@ const TasksScreen = ({ navigation }) => {
     } catch { Alert.alert('Ошибка', 'Не удалось удалить все задачи'); setLoading(false); }
   };
 
-  const onRefresh = async () => { setRefreshing(true); await loadTasks(); setRefreshing(false); };
+  const onRefresh = async () => { 
+  setRefreshing(true); 
+  await loadTasks(undefined, true); // forceRefresh при pull-to-refresh
+  setRefreshing(false); 
+};
 
   const toggleTask = useCallback(async (taskId) => {
     try {
@@ -819,42 +903,70 @@ const TasksScreen = ({ navigation }) => {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       const wasDone = !!(t.completed ?? t.done);
       const done = !wasDone;
-      setTasks(prev => prev.map(x => x.id === taskId ? { ...x, completed: done, done } : x));
-      await tasksAPI.updateTask(taskId, {
-        title: t.title, date: t.date, deadline: t.deadline,
-        priority: normPriority(t.priority) === 'high' ? 1 : normPriority(t.priority) === 'low' ? 3 : 2,
-        comment: t.comment || '', done, doneDate: done ? toMysqlFormat(new Date()) : null,
-        time: t.time, isRecurring: t.isRecurring, recurrenceType: t.recurrenceType,
-        folderId: t.folderId || null,
-      });
-      if (done) showToast('✅ Задача выполнена!');
-      else showToast('↩ Задача снова в работе');
-      // Для recurring задач создаем новую задачу в фоне, не блокируя UI
-      if (done && t.isRecurring) {
-        setTimeout(async () => {
-          try {
-            await loadTasks();
-          } catch (err) {
-            console.error('Failed to load recurring task:', err);
-          }
-        }, 1000);
-      }
-      setTasks((prev) => {
-        const next = prev.map((x) =>
-          x.id === taskId ? { ...x, doneDate: done ? toMysqlFormat(new Date()) : null } : x
-        );
+      
+      // 1. Optimistic update - мгновенное обновление UI
+      const updatedTasks = tasks.map(x => x.id === taskId ? { ...x, completed: done, done } : x);
+      setTasks(updatedTasks);
+      
+      // 2. Сохраняем в кеш локально
+      tasksCache.setTasks(updatedTasks);
+      
+      // 3. Обновляем статистику
+      const next = updatedTasks.map((x) =>
+        x.id === taskId ? { ...x, doneDate: done ? toMysqlFormat(new Date()) : null } : x
+      );
+      setStats((s) => ({
+        ...s,
+        today: countCompletedToday(next),
+        todayPlan: countTodayPlanTotal(next),
+      }));
+      
+      // 4. Сервер в фоне - не блокирует UI
+      try {
+        await tasksAPI.updateTask(taskId, {
+          title: t.title, date: t.date, deadline: t.deadline,
+          priority: normPriority(t.priority) === 'high' ? 1 : normPriority(t.priority) === 'low' ? 3 : 2,
+          comment: t.comment || '', done, doneDate: done ? toMysqlFormat(new Date()) : null,
+          time: t.time, isRecurring: t.isRecurring, recurrenceType: t.recurrenceType,
+          folderId: t.folderId || null,
+        });
+        
+        if (done) showToast('✅ Задача выполнена!');
+        else showToast('↩ Задача снова в работе');
+        
+        // Для recurring задач создаем новую задачу в фоне
+        if (done && t.isRecurring) {
+          setTimeout(async () => {
+            try {
+              await loadTasks(undefined, true); // forceRefresh для recurring
+            } catch (err) {
+              console.error('Failed to load recurring task:', err);
+            }
+          }, 1000);
+        }
+        
+        // Успешная синхронизация - вызываем bumpAll
+        debouncedSave(bumpAll);
+        
+      } catch (serverError) {
+        // Откат optimistic update если ошибка сервера
+        console.error('Server error:', serverError);
+        setTasks(tasks);
+        tasksCache.setTasks(tasks);
+        
+        // Восстанавливаем статистику
         setStats((s) => ({
           ...s,
-          today: countCompletedToday(next),
-          todayPlan: countTodayPlanTotal(next),
+          today: countCompletedToday(tasks),
+          todayPlan: countTodayPlanTotal(tasks),
         }));
-        return next;
-      });
-      // Изменение статуса задачи - используем debounce
-      debouncedSave(bumpAll);
+        
+        showToast('❌ Ошибка сервера, изменения отменены');
+      }
+      
     } catch (err) {
-      // Откат optimistic update если ошибка
-      setTasks(prev => prev.map(x => x.id === taskId ? { ...x, completed: !x.completed, done: !x.done } : x));
+      console.error('Toggle task error:', err);
+      showToast('❌ Не удалось изменить задачу');
     }
   }, [tasks, bumpAll]);
 
@@ -863,20 +975,48 @@ const TasksScreen = ({ navigation }) => {
       // 1. Сохраняем оригинальную задачу до изменений
       const originalTask = tasks.find(t => t.id === taskId);
       
-      // 2. Сразу обновляем UI - мгновенно
-      setTasks(prev => prev.filter(t => t.id !== taskId));
+      // 2. Optimistic update - мгновенное обновление UI
+      const updatedTasks = tasks.filter(t => t.id !== taskId);
+      setTasks(updatedTasks);
       
-      // 3. Сервер в фоне, не блокирует UI
-      await tasksAPI.deleteTask(taskId);
-      await cancelTaskReminders(taskId); // Отменяем уведомления
-      showToast('🗑️ Задача удалена');
-      debouncedSave(bumpAll, true); // immediate save для удаления
-    } catch (err) { 
-      // Откат optimistic update если ошибка
-      if (originalTask) {
+      // 3. Сохраняем в кеш локально
+      tasksCache.setTasks(updatedTasks);
+      
+      // 4. Обновляем статистику
+      setStats((s) => ({
+        ...s,
+        today: countCompletedToday(updatedTasks),
+        todayPlan: countTodayPlanTotal(updatedTasks),
+      }));
+      
+      // 5. Сервер в фоне - не блокирует UI
+      try {
+        await tasksAPI.deleteTask(taskId);
+        await cancelTaskReminders(taskId); // Отменяем уведомления
+        showToast('🗑️ Задача удалена');
+        
+        // Успешная синхронизация - вызываем bumpAll
+        debouncedSave(bumpAll, true);
+        
+      } catch (serverError) {
+        // Откат optimistic update если ошибка сервера
+        console.error('Delete server error:', serverError);
         setTasks(prev => [...prev, originalTask]);
+        tasksCache.setTasks([...tasks, originalTask]);
+        
+        // Восстанавливаем статистику
+        setStats((s) => ({
+          ...s,
+          today: countCompletedToday(tasks),
+          todayPlan: countTodayPlanTotal(tasks),
+        }));
+        
+        Alert.alert('Ошибка', 'Не удалось удалить задачу');
       }
-      Alert.alert('Ошибка', 'Не удалось удалить задачу'); 
+      
+    } catch (err) {
+      console.error('Delete task error:', err);
+      Alert.alert('Ошибка', 'Не удалось удалить задачу');
     }
   }, [bumpAll, tasks]);
 
