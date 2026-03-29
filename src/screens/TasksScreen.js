@@ -45,13 +45,10 @@ import { countTodayPlanTotal, countCompletedToday } from '../utils/taskDayStats'
 
 // Debounce функция для оптимизации сохранения задач
 let _saveTimer = null;
-const debouncedSave = (bumpAll, immediate = false) => {
+const debouncedSave = (bumpFn, immediate = false) => {
   if (_saveTimer) clearTimeout(_saveTimer);
-  if (immediate) {
-    bumpAll();
-    return;
-  }
-  _saveTimer = setTimeout(() => bumpAll(), 600);
+  if (immediate) { bumpFn(); return; }
+  _saveTimer = setTimeout(() => bumpFn(), 600);
 };
 
 const toMysqlFormat = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
@@ -846,18 +843,33 @@ const TasksScreen = ({ navigation }) => {
       });
       // Изменение статуса задачи - используем debounce
       debouncedSave(bumpAll);
-    } catch (err) { loadTasks(); }
+    } catch (err) {
+      // Откат optimistic update если ошибка
+      setTasks(prev => prev.map(x => x.id === taskId ? { ...x, completed: !x.completed, done: !x.done } : x));
+    }
   }, [tasks, bumpAll]);
 
   const deleteTask = useCallback(async (taskId) => {
     try {
+      // 1. Сохраняем оригинальную задачу до изменений
+      const originalTask = tasks.find(t => t.id === taskId);
+      
+      // 2. Сразу обновляем UI - мгновенно
       setTasks(prev => prev.filter(t => t.id !== taskId));
+      
+      // 3. Сервер в фоне, не блокирует UI
       await tasksAPI.deleteTask(taskId);
       await cancelTaskReminders(taskId); // Отменяем уведомления
       showToast('🗑️ Задача удалена');
       debouncedSave(bumpAll, true); // immediate save для удаления
-    } catch { loadTasks(); Alert.alert('Ошибка', 'Не удалось удалить задачу'); }
-  }, [bumpAll]);
+    } catch (err) { 
+      // Откат optimistic update если ошибка
+      if (originalTask) {
+        setTasks(prev => [...prev, originalTask]);
+      }
+      Alert.alert('Ошибка', 'Не удалось удалить задачу'); 
+    }
+  }, [bumpAll, tasks]);
 
   const stopRecurring = async (taskId) => {
     try {
@@ -1282,6 +1294,10 @@ const TasksScreen = ({ navigation }) => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent1} />}
             scrollEnabled={!dragTask}
             stickySectionHeadersEnabled={false}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={[styles.emptyText, { color: colors.textMuted }]}>
