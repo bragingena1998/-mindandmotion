@@ -829,7 +829,16 @@ const TasksScreen = ({ navigation }) => {
       });
       if (done) showToast('✅ Задача выполнена!');
       else showToast('↩ Задача снова в работе');
-      if (done && t.isRecurring) setTimeout(() => loadTasks(), 1000);
+      // Для recurring задач создаем новую задачу в фоне, не блокируя UI
+      if (done && t.isRecurring) {
+        setTimeout(async () => {
+          try {
+            await loadTasks();
+          } catch (err) {
+            console.error('Failed to load recurring task:', err);
+          }
+        }, 1000);
+      }
       setTasks((prev) => {
         const next = prev.map((x) =>
           x.id === taskId ? { ...x, doneDate: done ? toMysqlFormat(new Date()) : null } : x
@@ -1518,9 +1527,7 @@ const TasksScreen = ({ navigation }) => {
                   setShowAddModal(false);
                   // Создание/обновление задачи - immediate save
                   debouncedSave(bumpAll, true);
-                  setTimeout(() => {
-                    loadTasks();
-                  }, 300);
+                  // Для обновления списка используем bumpAll вместо loadTasks
                 } catch (err) {
                   Alert.alert('Ошибка', 'Не удалось сохранить: ' + err.message);
                   setLoading(false);
