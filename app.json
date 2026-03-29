@@ -18,7 +18,8 @@
           "androidCollapsedTitle": "Mind & Motion"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-localization"
     ],
     "name": "Mind & Motion",
     "slug": "mindandmotion-mobile",
