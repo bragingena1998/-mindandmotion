@@ -1,22 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { authenticateToken } = require('../middleware/auth');
+const authenticateToken = require('../middleware/auth');
 
 // POST /api/policies/accept - принять политики
 router.post('/policies/accept', authenticateToken, async (req, res) => {
   try {
     const { privacy, terms, emailMarketing } = req.body;
-    const userId = req.user.id;
+    const userId = req.userId;
 
-    // Валидация: privacy и terms обязательны
     if (privacy !== true || terms !== true) {
       return res.status(400).json({ 
         error: 'Privacy policy and terms of service are required' 
       });
     }
 
-    // Обновляем пользователя
     await db.execute(
       `UPDATE users SET 
        privacy_accepted = 1, 
@@ -37,7 +35,7 @@ router.post('/policies/accept', authenticateToken, async (req, res) => {
 // GET /api/announcements - получить непрочитанные анонсы
 router.get('/announcements', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.userId;
 
     const [announcements] = await db.execute(`
       SELECT a.* 
@@ -62,9 +60,8 @@ router.get('/announcements', authenticateToken, async (req, res) => {
 router.post('/announcements/:id/read', authenticateToken, async (req, res) => {
   try {
     const announcementId = req.params.id;
-    const userId = req.user.id;
+    const userId = req.userId;
 
-    // INSERT IGNORE чтобы избежать дубликатов
     await db.execute(
       'INSERT IGNORE INTO announcement_reads (user_id, announcement_id, read_at) VALUES (?, ?, NOW())',
       [userId, announcementId]
