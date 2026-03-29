@@ -91,17 +91,22 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     setShowManualInput(false);
     if (!editingCell) return;
     
-    let valueToSave = 0;
-    
+    // Получаем текущее значение ячейки
+    const currentValue = getValue(editingCell.habitId, editingCell.day);
+
+    let addedValue = 0;
     if (showManualInput && manualInput) {
       // Ручной ввод
-      valueToSave = parseFloat(manualInput) || 0;
+      addedValue = parseFloat(manualInput) || 0;
     } else {
       // Таймер
-      valueToSave = timerSeconds / 3600; // Convert seconds to hours
+      addedValue = timerSeconds / 3600; // Convert seconds to hours
     }
     
-    onCellChange(editingCell.habitId, year, month, editingCell.day, valueToSave);
+    // ПРИБАВЛЯЕМ к существующему значению
+    const newValue = currentValue + addedValue;
+    
+    onCellChange(editingCell.habitId, year, month, editingCell.day, newValue);
     setEditingCell(null);
     setTimerSeconds(0);
     setManualInput('');
@@ -399,8 +404,8 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
       {/* INPUT MODAL */}
       <Modal visible={showInputModal} onClose={() => setShowInputModal(false)} title="Значение">
         {editingCell && (
-          <View style={{ padding: 20 }}>
-            <Input value={inputValue} onChangeText={setInputValue} keyboardType="numeric" autoFocus />
+          <ScrollView keyboardShouldPersistTaps="always" contentContainerStyle={{ padding: 20 }}>
+            <Input value={inputValue} onChangeText={setInputValue} keyboardType="numeric" autoFocus={false} />
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                 <Button 
                     title="Очистить" 
@@ -415,12 +420,12 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
                     onPress={() => { onCellChange(editingCell.habitId, year, month, editingCell.day, parseFloat(inputValue)||0); setShowInputModal(false); }} 
                 />
             </View>
-          </View>
+          </ScrollView>
         )}
       </Modal>
 
       {/* TIMER MODAL */}
-      <Modal visible={showTimerModal} onClose={() => setShowTimerModal(false)} title="Таймер" keyboardShouldPersistTaps="handled">
+      <Modal visible={showTimerModal} onClose={minimizeTimer} title="Таймер" keyboardShouldPersistTaps="handled">
         <View style={{ padding: 20, alignItems: 'center' }}>
           {!showManualInput ? (
             <>
