@@ -43,6 +43,17 @@ import { useTutorial } from '../hooks/useTutorial';
 import { useDataSync } from '../contexts/DataSyncContext';
 import { countTodayPlanTotal, countCompletedToday } from '../utils/taskDayStats';
 
+// Debounce функция для оптимизации сохранения задач
+let _saveTimer = null;
+const debouncedSave = (immediate = false) => {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  if (immediate) {
+    bumpAll();
+    return;
+  }
+  _saveTimer = setTimeout(() => bumpAll(), 600);
+};
+
 const toMysqlFormat = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
 
 // Локальные функции дат вместо UTC
@@ -768,6 +779,8 @@ const TasksScreen = ({ navigation }) => {
       }
       if (loading) checkOverdueTasks(formatted);
       setLoading(false);
+      // Загрузка задач - immediate save
+      debouncedSave(true);
     } catch (err) {
       console.error('❌ Загрузка задач:', err);
       setError('Ошибка загрузки задач');
@@ -831,8 +844,9 @@ const TasksScreen = ({ navigation }) => {
         }));
         return next;
       });
-      bumpAll();
-    } catch { loadTasks(); }
+      // Изменение статуса задачи - используем debounce
+      debouncedSave();
+    } catch (err) { loadTasks(); }
   }, [tasks, bumpAll]);
 
   const deleteTask = useCallback(async (taskId) => {
@@ -841,7 +855,7 @@ const TasksScreen = ({ navigation }) => {
       await tasksAPI.deleteTask(taskId);
       await cancelTaskReminders(taskId); // Отменяем уведомления
       showToast('🗑️ Задача удалена');
-      bumpAll();
+      debouncedSave(true); // immediate save для удаления
     } catch { loadTasks(); Alert.alert('Ошибка', 'Не удалось удалить задачу'); }
   }, [bumpAll]);
 
@@ -1486,9 +1500,10 @@ const TasksScreen = ({ navigation }) => {
                   
                   showToast(editingTask ? '✏️ Задача обновлена' : '✅ Задача добавлена');
                   setShowAddModal(false);
+                  // Создание/обновление задачи - immediate save
+                  debouncedSave(true);
                   setTimeout(() => {
                     loadTasks();
-                    bumpAll();
                   }, 300);
                 } catch (err) {
                   Alert.alert('Ошибка', 'Не удалось сохранить: ' + err.message);
