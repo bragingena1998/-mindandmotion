@@ -3,6 +3,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
+import { useDataSync } from '../contexts/DataSyncContext';
 import Modal from './Modal';
 import Input from './Input';
 import Button from './Button';
@@ -25,6 +26,7 @@ const HOLIDAYS_2026 = {
 
 const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete, onHabitEdit }) => {
   const { colors } = useTheme();
+  const { bumpAll } = useDataSync();
   const horizontalScrollRef = useRef(null);
   
   // Modals state
@@ -87,29 +89,38 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
 
   const saveTimer = () => {
     setIsTimerRunning(false);
-    setShowTimerModal(false);
-    setShowManualInput(false);
     if (!editingCell) return;
-    
-    // Получаем текущее значение ячейки
-    const currentValue = getValue(editingCell.habitId, editingCell.day);
 
+    // ШАГ 1: Сохраняем координаты в локальные переменные ДО любых сбросов
+    const { habitId, day } = editingCell;
+
+    // ШАГ 2: Читаем текущее значение ячейки ДО сброса editingCell
+    const currentValue = parseFloat(getValue(habitId, day)) || 0;
+
+    // ШАГ 3: Вычисляем добавляемое значение
     let addedValue = 0;
     if (showManualInput && manualInput) {
-      // Ручной ввод
       addedValue = parseFloat(manualInput) || 0;
     } else {
-      // Таймер
-      addedValue = timerSeconds / 3600; // Convert seconds to hours
+      addedValue = timerSeconds / 3600; // секунды → часы
     }
-    
-    // ПРИБАВЛЯЕМ к существующему значению
-    const newValue = currentValue + addedValue;
-    
-    onCellChange(editingCell.habitId, year, month, editingCell.day, newValue);
+
+    // ШАГ 4: ПРИБАВЛЯЕМ к существующему значению
+    const newValue = parseFloat((currentValue + addedValue).toFixed(4));
+
+    // ШАГ 5: Записываем результат
+    onCellChange(habitId, year, month, day, newValue);
+
+    // ШАГ 6: Сбрасываем состояние ТОЛЬКО ПОСЛЕ записи
     setEditingCell(null);
     setTimerSeconds(0);
     setManualInput('');
+    setShowTimerModal(false);
+    setShowManualInput(false);
+
+    // ШАГ 7: Немедленный save (не debounce!) чтобы избежать race condition
+    // с другими pending debouncedSave вызовами
+    bumpAll(); // Немедленный вызов для сохранения
   };
 
   const saveHabitTimerSession = async (habitId, habitName, startedAt, accumulated) => {
