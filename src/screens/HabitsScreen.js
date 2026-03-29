@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
@@ -25,6 +26,7 @@ import TutorialButton from '../components/TutorialButton';
 import HabitsTutorial from '../components/HabitsTutorial';
 import { useTutorial } from '../hooks/useTutorial';
 import { useDataSync } from '../contexts/DataSyncContext';
+import { useLocalFirst } from '../hooks/useLocalFirst';
 
 const formatDateISO = (date) => {
   if (!date) return null;
@@ -89,15 +91,63 @@ const LifeProgressBar = ({ label, value, color }) => {
 const HabitsScreen = ({ route }) => {
   const { colors } = useTheme();
   const { bumpAll } = useDataSync();
-  const [loading, setLoading] = useState(true);
-  const [habits, setHabits] = useState([]);
+  
+  // 🚀 Local-first хуки для мгновенной загрузки
+  const {
+    data: habitsData,
+    loading: habitsLoading,
+    error: habitsError,
+    loadData: loadHabits,
+    onRefresh: refreshHabits,
+    optimisticUpdate: optimisticUpdateHabits,
+    rollbackUpdate: rollbackHabits,
+  } = useLocalFirst({
+    type: 'habits',
+    fetchFunction: async () => {
+      const response = await api.get(`/habits?year=${year}&month=${month}`);
+      return response.data;
+    },
+    dependencies: [year, month],
+  });
+
+  const {
+    data: recordsData,
+    loading: recordsLoading,
+    loadData: loadRecords,
+    onRefresh: refreshRecords,
+    optimisticUpdate: optimisticUpdateRecords,
+    rollbackUpdate: rollbackRecords,
+  } = useLocalFirst({
+    type: 'habit-records',
+    fetchFunction: async () => {
+      const response = await api.get(`/habits/records/${year}/${month}`);
+      return response.data;
+    },
+    dependencies: [habitsData, year, month],
+  });
+
+  const [loading, setLoading] = useState(habitsLoading || recordsLoading);
+  const [habits, setHabits] = useState(habitsData || []);
+  const [records, setRecords] = useState(recordsData || []);
   const [profile, setProfile] = useState(null);
   const [lifeProgress, setLifeProgress] = useState({ percent: 0, yearsLived: 0, yearsLeft: 64 });
   const [yearProgress, setYearProgress] = useState({ percent: 0, daysPassed: 0, daysLeft: 365 });
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [records, setRecords] = useState([]);
   const [habitTimer, setHabitTimer] = useState(null);
+
+  // 🔄 Синхронизация состояния с хуками
+  useEffect(() => {
+    setHabits(habitsData || []);
+  }, [habitsData]);
+
+  useEffect(() => {
+    setRecords(recordsData || []);
+  }, [recordsData]);
+
+  useEffect(() => {
+    setLoading(habitsLoading || recordsLoading);
+  }, [habitsLoading, recordsLoading]);
 
   const [showDateModal, setShowDateModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
@@ -145,8 +195,6 @@ const HabitsScreen = ({ route }) => {
   }, [route?.params]);
 
   useEffect(() => { loadProfile(); }, []);
-  useEffect(() => { loadHabits(); }, [year, month]);
-  useEffect(() => { if (habits.length > 0) loadRecords(); }, [habits, year, month]);
 
   // Проверка таймера привычки
   useEffect(() => {
@@ -168,8 +216,11 @@ const HabitsScreen = ({ route }) => {
   // После отметок на дашборде — при возврате на вкладку подтягиваем записи
   useFocusEffect(
     useCallback(() => {
-      loadRecords();
-    }, [year, month])
+      // Используем тихую синхронизацию вместо полной загрузки
+      if (loadRecords) {
+        loadRecords();
+      }
+    }, [year, month, loadRecords])
   );
 
   const loadProfile = async () => {
@@ -208,52 +259,76 @@ const HabitsScreen = ({ route }) => {
     return { ...h, days_of_week: days };
   };
 
-  const loadHabits = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/habits?year=${year}&month=${month}`);
-      const parsedHabits = response.data.map(parseHabitData).filter(h => h.shouldShow !== false);
-      setHabits(parsedHabits);
-    } catch (error) { console.error('Ошибка загрузки привычек:', error); }
-    finally { setLoading(false); }
-  };
-
-  const loadRecords = async () => {
-    try {
-      const response = await api.get(`/habits/records/${year}/${month}`);
-      setRecords(response.data);
-    } catch (error) { console.error('Ошибка загрузки записей:', error); }
-  };
-
   const handleCellChange = async (habitId, year, month, day, value) => {
     const numValue = parseFloat(value) || 0;
     
-    setRecords((prev) => {
-      const filtered = prev.filter((r) => !(r.habitid === habitId && r.day === day));
+    // 🚀 Optimistic update - мгновенное обновление UI
+    const result = optimisticUpdateRecords(currentRecords => {
+      const filtered = currentRecords.filter((r) => !(r.habitid === habitId && r.day === day));
       if (numValue > 0) return [...filtered, { habitid: habitId, year, month, day, value: numValue }];
       return filtered;
     });
+
+    if (!result.success) {
+      console.error('Optimistic update failed:', result.error);
+      return;
+    }
+
     try {
+      // Сервер в фоне - не блокирует UI
       if (numValue > 0) {
         await api.post('/habits/records', { habit_id: habitId, year, month, day, value: numValue });
       } else {
         await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
       }
+      
+      // Успешная синхронизация
       bumpAll();
-    } catch (error) { console.error('Ошибка сохранения записи:', error); loadRecords(); }
+      
+    } catch (error) {
+      console.error('Ошибка сохранения записи:', error);
+      
+      // Откат optimistic update при ошибке
+      rollbackRecords(result.originalData);
+      
+      // Показываем уведомление об ошибке
+      Alert.alert('Ошибка', 'Не удалось сохранить изменение. Проверьте подключение к интернету.');
+    }
   };
 
   const executeDelete = async () => {
     if (!habitToDelete) return;
     const habitId = habitToDelete.id;
+    
+    // 🚀 Optimistic update - мгновенное удаление
+    const habitsResult = optimisticUpdateHabits(currentHabits => 
+      currentHabits.filter(h => h.id !== habitId)
+    );
+    
+    const recordsResult = optimisticUpdateRecords(currentRecords => 
+      currentRecords.filter(r => r.habitid !== habitId)
+    );
+
+    if (!habitsResult.success || !recordsResult.success) {
+      Alert.alert('Ошибка', 'Не удалось удалить привычку локально');
+      return;
+    }
+
     try {
-      // Без year/month — полное удаление (с query сервер только архивирует месяц)
+      // Сервер в фоне - не блокирует UI
       await api.delete(`/habits/${habitId}`);
-      setHabits(habits.filter(h => h.id !== habitId));
-      setRecords(records.filter(r => r.habitid !== habitId));
+      
+      // Успешная синхронизация
       bumpAll();
+      
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось удалить привычку.');
+      console.error('Ошибка удаления привычки:', error);
+      
+      // Откат optimistic update при ошибке
+      rollbackHabits(habitsResult.originalData);
+      rollbackRecords(recordsResult.originalData);
+      
+      Alert.alert('Ошибка', 'Не удалось удалить привычку. Проверьте подключение к интернету.');
     } finally {
       setHabitToDelete(null);
     }
@@ -300,17 +375,75 @@ const HabitsScreen = ({ route }) => {
       end_date: habitForm.endDate || null,
       days_of_week: habitForm.daysOfWeek || [],
     };
+
     try {
       if (editingHabitId) {
-        await api.put(`/habits/${editingHabitId}`, payload);
+        // 🚀 Optimistic update для редактирования
+        const result = optimisticUpdateHabits(currentHabits => 
+          currentHabits.map(h => h.id === editingHabitId 
+            ? { ...h, ...payload, shouldShow: true }
+            : h
+          )
+        );
+
+        if (!result.success) {
+          Alert.alert('Ошибка', 'Не удалось обновить привычку локально');
+          return;
+        }
+
+        try {
+          // Сервер в фоне
+          await api.put(`/habits/${editingHabitId}`, payload);
+          bumpAll();
+        } catch (serverError) {
+          // Откат при ошибке
+          rollbackHabits(result.originalData);
+          Alert.alert('Ошибка', 'Не удалось обновить привычку. Проверьте подключение к интернету.');
+          return;
+        }
       } else {
-        await api.post('/habits', payload);
+        // 🚀 Optimistic update для создания
+        const tempId = `temp-${Date.now()}`;
+        const newHabit = { 
+          id: tempId, 
+          ...payload, 
+          shouldShow: true,
+          days_of_week: habitForm.daysOfWeek || []
+        };
+        
+        const result = optimisticUpdateHabits(currentHabits => [...currentHabits, newHabit]);
+
+        if (!result.success) {
+          Alert.alert('Ошибка', 'Не удалось создать привычку локально');
+          return;
+        }
+
+        try {
+          // Сервер в фоне
+          const response = await api.post('/habits', payload);
+          
+          // Обновляем временный ID на реальный
+          optimisticUpdateHabits(currentHabits => 
+            currentHabits.map(h => h.id === tempId 
+              ? { ...h, id: response.data.id, ...response.data }
+              : h
+            )
+          );
+          
+          bumpAll();
+        } catch (serverError) {
+          // Откат при ошибке
+          rollbackHabits(result.originalData);
+          Alert.alert('Ошибка', 'Не удалось создать привычку. Проверьте подключение к интернету.');
+          return;
+        }
       }
-      await loadHabits();
-      bumpAll();
+
+      // Закрываем модал и сбрасываем форму
       setShowHabitModal(false);
       setShowCustomUnit(false);
       setShowAdvanced(false);
+      
     } catch (e) {
       console.error(e);
       if (e.response && e.response.status === 500) {
@@ -374,7 +507,21 @@ const HabitsScreen = ({ route }) => {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]} 
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={habitsLoading || recordsLoading}
+          onRefresh={() => {
+            refreshHabits();
+            refreshRecords();
+          }}
+          tintColor={colors.accent1}
+          colors={[colors.accent1]}
+        />
+      }
+    >
 
       {/* Баннер таймера привычки */}
       {!!habitTimer && habitTimer.isRunning && (() => {

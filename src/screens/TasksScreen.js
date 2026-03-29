@@ -43,7 +43,8 @@ import TutorialButton from '../components/TutorialButton';
 import { useTutorial } from '../hooks/useTutorial';
 import { useDataSync } from '../contexts/DataSyncContext';
 import { countTodayPlanTotal, countCompletedToday } from '../utils/taskDayStats';
-import { tasksCache, foldersCache, syncUtils } from '../utils/tasksCache';
+import { useLocalFirstTasks, useLocalFirstFolders } from '../hooks/useLocalFirst';
+import cacheManager from '../utils/cacheManager';
 
 // Debounce функция для оптимизации сохранения задач
 let _saveTimer = null;
