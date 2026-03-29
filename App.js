@@ -19,6 +19,7 @@ import {
 import * as LocalAuthentication from 'expo-local-authentication';
 import BrandedSplash from './src/components/BrandedSplash';
 import AppLockScreen from './src/screens/AppLockScreen';
+import PoliciesModal from './src/components/PoliciesModal';
 
 // Screens
 import HabitsScreen from './src/screens/HabitsScreen';
@@ -145,6 +146,8 @@ const AppContent = () => {
   const [loading, setLoading] = useState(true);
   const [currentScreen, setCurrentScreen] = useState('login');
   const [appUnlocked, setAppUnlocked] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showPoliciesModal, setShowPoliciesModal] = useState(false);
 
   // Старт: брендированный splash (этап 10) + проверка сессии и PIN (этап 9)
   useEffect(() => {
@@ -270,13 +273,27 @@ const AppContent = () => {
     return () => sub.remove();
   }, [isAuthenticated, appUnlocked]);
 
-  const handleLoginSuccess = async () => {
+  const handleLoginSuccess = async (userData = null) => {
     setIsAuthenticated(true);
     setCurrentScreen('main');
     const lock = await isAppLockEnabled();
     setAppUnlocked(!lock);
     initNotifications();
     rescheduleRepeatingNotifications();
+    
+    // Если переданы данные пользователя, используем их
+    if (userData) {
+      setCurrentUser(userData);
+      // Проверяем приняты ли политики
+      if (!userData.privacy_accepted || userData.privacy_accepted !== 1) {
+        setShowPoliciesModal(true);
+      }
+    }
+  };
+
+  const handlePoliciesAccept = (updatedUser) => {
+    setCurrentUser(updatedUser);
+    setShowPoliciesModal(false);
   };
 
   if (loading) {
@@ -318,10 +335,20 @@ const AppContent = () => {
             setIsAuthenticated(false);
             setCurrentScreen('login');
             setAppUnlocked(true);
+            setCurrentUser(null);
+            setShowPoliciesModal(false);
           }}
           onOpenSecret={() => setCurrentScreen('secret')}
         />
       </NavigationContainer>
+      
+      {/* Модалка политик для существующих пользователей */}
+      <PoliciesModal
+        visible={showPoliciesModal}
+        onClose={() => {}} // Не закрываем по нажатию вне
+        onAccept={handlePoliciesAccept}
+        user={currentUser}
+      />
     </SafeAreaView>
   );
 };

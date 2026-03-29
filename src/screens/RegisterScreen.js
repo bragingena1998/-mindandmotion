@@ -8,7 +8,8 @@ import {
   KeyboardAvoidingView, 
   Platform,
   TouchableWithoutFeedback,
-  Keyboard
+  Keyboard,
+  Linking
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Button from '../components/Button';
@@ -26,6 +27,40 @@ const formatDateDisplay = (dateStr) => {
   return `${d}.${m}.${y}`;
 };
 
+const CustomCheckbox = ({ checked, onToggle, children, style }) => {
+  const { colors } = useTheme();
+  
+  return (
+    <TouchableOpacity
+      onPress={onToggle}
+      style={[{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 16, marginBottom: 8 }, style]}
+      activeOpacity={0.8}
+    >
+      <View
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: 4,
+          borderWidth: 2,
+          borderColor: checked ? colors.accent1 : colors.borderSubtle,
+          backgroundColor: checked ? colors.accent1 : 'transparent',
+          marginRight: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: 2,
+        }}
+      >
+        {checked && (
+          <Text style={{ color: '#020617', fontSize: 12, fontWeight: '700' }}>✓</Text>
+        )}
+      </View>
+      <Text style={{ color: colors.textMain, fontSize: 14, lineHeight: 20, flex: 1 }}>
+        {children}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
 const RegisterScreen = ({ onNavigate, onLoginSuccess }) => {
   const { colors } = useTheme();
   
@@ -37,6 +72,9 @@ const RegisterScreen = ({ onNavigate, onLoginSuccess }) => {
     birthdate: '',
     code: '',
     createDemoData: true,
+    privacyAccepted: false,
+    termsAccepted: false,
+    emailMarketingAccepted: false,
   });
   const [loading, setLoading] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
@@ -67,7 +105,20 @@ const RegisterScreen = ({ onNavigate, onLoginSuccess }) => {
       const res = await api.post('/verify-code', formData);
       await saveToken(res.data.token, res.data.userId);
       await saveUserEmail(res.data.email);
-      onLoginSuccess();
+      
+      // Отправляем принятые политики
+      try {
+        await api.post('/policies/accept', {
+          privacy: formData.privacyAccepted,
+          terms: formData.termsAccepted,
+          emailMarketing: formData.emailMarketingAccepted
+        });
+      } catch (policyErr) {
+        console.error('Error accepting policies:', policyErr);
+        // Не прерываем регистрацию если политики не отправились
+      }
+      
+      onLoginSuccess(res.data.user);
     } catch (err) { showAlert('Ошибка', err.response?.data?.error || 'Неверный код', 'error'); } 
     finally { setLoading(false); }
   };
@@ -150,7 +201,49 @@ const RegisterScreen = ({ onNavigate, onLoginSuccess }) => {
                     Добавить базовые демо-данные (задачи/привычки/события)
                   </Text>
                 </TouchableOpacity>
-                <Button title="Получить код" onPress={handleSendCode} loading={loading} style={{ marginTop: 24 }} />
+
+                {/* Чекбоксы политик */}
+                <CustomCheckbox
+                  checked={formData.privacyAccepted}
+                  onToggle={() => setFormData(prev => ({ ...prev, privacyAccepted: !prev.privacyAccepted }))}
+                >
+                  Я принимаю{' '}
+                  <Text 
+                    style={{ color: colors.accent1, textDecorationLine: 'underline' }}
+                    onPress={() => Linking.openURL('https://mindandmotion.ru/privacy.html')}
+                  >
+                    Политику конфиденциальности
+                  </Text>
+                </CustomCheckbox>
+
+                <CustomCheckbox
+                  checked={formData.termsAccepted}
+                  onToggle={() => setFormData(prev => ({ ...prev, termsAccepted: !prev.termsAccepted }))}
+                >
+                  Я принимаю{' '}
+                  <Text 
+                    style={{ color: colors.accent1, textDecorationLine: 'underline' }}
+                    onPress={() => Linking.openURL('https://mindandmotion.ru/terms.html')}
+                  >
+                    Пользовательское соглашение
+                  </Text>
+                </CustomCheckbox>
+
+                <CustomCheckbox
+                  checked={formData.emailMarketingAccepted}
+                  onToggle={() => setFormData(prev => ({ ...prev, emailMarketingAccepted: !prev.emailMarketingAccepted }))}
+                >
+                  Я согласен на получение новостей и обновлений на email
+                </CustomCheckbox>
+
+                <Button 
+                  title="Получить код" 
+                  onPress={handleSendCode} 
+                  loading={loading} 
+                  style={{ marginTop: 24 }}
+                  disabled={!formData.privacyAccepted || !formData.termsAccepted}
+                  textStyle={{ opacity: (!formData.privacyAccepted || !formData.termsAccepted) ? 0.5 : 1 }}
+                />
               </>
             ) : (
               <>

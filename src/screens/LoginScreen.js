@@ -70,13 +70,13 @@ const LoginScreen = ({ onLoginSuccess, onNavigate }) => {
         password,
       });
 
-      const { token, userId } = response.data;
+      const { token, userId, user } = response.data;
 
       if (token) {
         await saveToken(token, userId);
         await saveUserEmail(email);
         console.log('✅ Логин успешен');
-        if (onLoginSuccess) onLoginSuccess();
+        if (onLoginSuccess) onLoginSuccess(user);
       } else {
         setError('Сервер не вернул токен');
       }
