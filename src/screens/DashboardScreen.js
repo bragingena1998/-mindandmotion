@@ -259,6 +259,11 @@ const DashboardScreen = ({ navigation }) => {
   const [habitRecords, setHabitRecords] = useState(dashboardData?.habitRecords || []);
   const [birthdays, setBirthdays] = useState(dashboardData?.birthdays || []);
 
+  // 🔄 Синхронизация loading с хуком useLocalFirst
+  React.useEffect(() => {
+    setLoading(dashboardLoading);
+  }, [dashboardLoading]);
+
   // 🔄 Синхронизация состояния с хуком
   React.useEffect(() => {
     if (dashboardData) {

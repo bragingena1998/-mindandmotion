@@ -14,6 +14,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
+import cacheManager from '../utils/cacheManager';
 import HabitTable from '../components/HabitTable';
 import Modal from '../components/Modal';
 import Input from '../components/Input';
