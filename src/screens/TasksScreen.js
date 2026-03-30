@@ -546,10 +546,11 @@ const TasksScreen = ({ navigation }) => {
 
   // Синхронизация при активации приложения
   useEffect(() => {
-    const handleAppStateChange = (nextAppState) => {
+    const handleAppStateChange = async (nextAppState) => {
       if (nextAppState === 'active') {
         // При возврате в приложение проверяем нужна ли синхронизация
-        if (await cacheManager.needsSync('tasks')) {
+        const needsSync = await cacheManager.needsSync('tasks');
+        if (needsSync) {
           loadTasks(undefined, false); // Не forceRefresh, просто проверяем
         }
       }
