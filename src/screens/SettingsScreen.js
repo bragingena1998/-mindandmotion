@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, ActivityIndicator
+  TouchableOpacity, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
@@ -13,6 +13,7 @@ import DatePickerModal from '../components/DatePickerModal';
 import Background from '../components/Background';
 import NotificationSettingsScreen from './NotificationSettingsScreen';
 import AppLockSettingsSection from '../components/AppLockSettingsSection';
+import { useLocalFirst } from '../hooks/useLocalFirst';
 
 const formatDateDisplay = (dateStr) => {
   if (!dateStr) return '';
@@ -23,12 +24,46 @@ const formatDateDisplay = (dateStr) => {
 
 const SettingsScreen = ({ onBack, user: initialUser, onUserUpdate }) => {
   const { colors } = useTheme();
-  const [user, setUser] = useState(initialUser || {});
+  
+  // 🚀 Local-first хук для профиля пользователя
+  const {
+    data: userData,
+    loading: userLoading,
+    error: userError,
+    loadData: loadUserProfile,
+    onRefresh: refreshUserProfile,
+    optimisticUpdate: optimisticUpdateProfile,
+    rollbackUpdate: rollbackProfile,
+  } = useLocalFirst({
+    type: 'user',
+    fetchFunction: async () => {
+      const response = await api.get('/user/profile');
+      return response.data;
+    },
+    dependencies: [], // Загружаем один раз при монтировании
+  });
+
+  const [user, setUser] = useState(userData || initialUser || {});
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'success' });
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // 🔄 Синхронизация состояния с хуком
+  React.useEffect(() => {
+    if (userData) {
+      setUser(userData);
+      onUserUpdate?.(userData);
+    }
+  }, [userData, onUserUpdate]);
+
+  // Если передан initialUser и нет данных в кеше, используем его
+  React.useEffect(() => {
+    if (!userData && initialUser) {
+      setUser(initialUser);
+    }
+  }, [userData, initialUser]);
 
   const showAlert = (title, message, type = 'success') =>
     setAlertConfig({ visible: true, title, message, type });
@@ -38,12 +73,35 @@ const SettingsScreen = ({ onBack, user: initialUser, onUserUpdate }) => {
   }
 
   const handleUpdateProfile = async (updates) => {
+    // 🚀 Optimistic update - мгновенное обновление UI
+    const result = optimisticUpdateProfile(currentUser => ({
+      ...currentUser,
+      ...updates
+    }));
+
+    if (!result.success) {
+      console.error('Optimistic update failed:', result.error);
+      showAlert('Ошибка', 'Не удалось обновить профиль локально', 'error');
+      return;
+    }
+
     try {
+      // Сервер в фоне - не блокирует UI
       const res = await api.put('/user/profile', updates);
+      
+      // Обновляем локальное состояние данными с сервера
       setUser(res.data);
       onUserUpdate?.(res.data);
-    } catch {
-      showAlert('Ошибка', 'Не удалось обновить профиль', 'error');
+      
+      showAlert('Готово', 'Профиль обновлён');
+      
+    } catch (error) {
+      console.error('Update profile error:', error);
+      
+      // Откат optimistic update при ошибке
+      rollbackProfile(result.originalData);
+      
+      showAlert('Ошибка', 'Не удалось обновить профиль. Проверьте подключение к интернету.', 'error');
     }
   };
 
@@ -80,7 +138,17 @@ const SettingsScreen = ({ onBack, user: initialUser, onUserUpdate }) => {
           <Text style={[styles.headerTitle, { color: colors.textMain }]}>Настройки</Text>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView 
+  showsVerticalScrollIndicator={false}
+  refreshControl={
+    <RefreshControl
+      refreshing={userLoading}
+      onRefresh={refreshUserProfile}
+      tintColor={colors.accent1}
+      colors={[colors.accent1]}
+    />
+  }
+>
 
           {/* ПРОФИЛЬ */}
           <View style={styles.section}>
