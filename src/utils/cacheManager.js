@@ -22,7 +22,7 @@ class CacheManager {
   async set(type, key, data) {
     try {
       const cacheKey = `${type}.${key}`;
-      console.log(`📦 Caching ${cacheKey}:`, data ? 'success' : 'null');
+      // Отладка только для ошибок
       return await sqliteCacheManager.set(cacheKey, data, type);
     } catch (error) {
       console.error(`Failed to cache ${type}.${key}:`, error);
@@ -33,9 +33,7 @@ class CacheManager {
   async get(type, key) {
     try {
       const cacheKey = `${type}.${key}`;
-      const result = await sqliteCacheManager.get(cacheKey);
-      console.log(`📦 Getting ${cacheKey}:`, result ? 'found' : 'not found');
-      return result;
+      return await sqliteCacheManager.get(cacheKey);
     } catch (error) {
       console.error(`Failed to get cached ${type}.${key}:`, error);
       return null;

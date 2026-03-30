@@ -217,16 +217,24 @@ const HabitsScreen = ({ route }) => {
   // После отметок на дашборде — при возврате на вкладку подтягиваем записи
   useFocusEffect(
     useCallback(() => {
-      // Используем тихую синхронизацию вместо полной загрузки
+      // Просто загружаем записи без очистки кеша
       if (loadRecords) {
-        // 🧹 Принудительно очищаем кеш habit-records при смене месяца
-        cacheManager.clear('habit-records').then(() => {
-          console.log(`🧹 Cleared habit-records cache for ${year}-${month}`);
-          loadRecords();
-        });
+        loadRecords();
       }
-    }, [year, month, loadRecords])
+    }, [loadRecords])
   );
+
+  // 🧹 Очищаем кеш только при реальном изменении месяца/года
+  useEffect(() => {
+    const clearAndReload = async () => {
+      console.log(`🧹 Month changed to ${year}-${month}, clearing habit-records cache`);
+      await cacheManager.clear('habit-records');
+      if (loadRecords) {
+        loadRecords();
+      }
+    };
+    clearAndReload();
+  }, [year, month]);
 
   const loadProfile = async () => {
     try {
