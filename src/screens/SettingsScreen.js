@@ -74,7 +74,7 @@ const SettingsScreen = ({ onBack, user: initialUser, onUserUpdate }) => {
 
   const handleUpdateProfile = async (updates) => {
     // 🚀 Optimistic update - мгновенное обновление UI
-    const result = optimisticUpdateProfile(currentUser => ({
+    const result = await optimisticUpdateProfile(currentUser => ({
       ...currentUser,
       ...updates
     }));

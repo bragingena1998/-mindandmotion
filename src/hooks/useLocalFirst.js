@@ -22,7 +22,7 @@ export const useLocalFirst = ({
       
       // 1. Сначала загружаем из кеша (мгновенно)
       if (!forceRefresh) {
-        const cachedData = cacheManager[`get${type.charAt(0).toUpperCase() + type.slice(1)}`]();
+        const cachedData = await cacheManager[`get${type.charAt(0).toUpperCase() + type.slice(1)}`]();
         if (cachedData) {
           setData(cachedData);
           setLoading(false);
@@ -34,8 +34,8 @@ export const useLocalFirst = ({
       setData(freshData);
       
       // 3. Сохраняем в кеш
-      cacheManager[`set${type.charAt(0).toUpperCase() + type.slice(1)}`](freshData);
-      cacheManager[`set${type.charAt(0).toUpperCase() + type.slice(1)}SyncTime`]();
+      await cacheManager[`set${type.charAt(0).toUpperCase() + type.slice(1)}`](freshData);
+      await cacheManager.setSyncTime(type);
       
       setLoading(false);
       return freshData;
@@ -45,7 +45,7 @@ export const useLocalFirst = ({
       
       // Если сервер недоступен, пробуем загрузить из кеша
       if (!forceRefresh) {
-        const cachedData = cacheManager[`get${type.charAt(0).toUpperCase() + type.slice(1)}`]();
+        const cachedData = await cacheManager[`get${type.charAt(0).toUpperCase() + type.slice(1)}`]();
         if (cachedData) {
           setData(cachedData);
           setLoading(false);
@@ -61,7 +61,7 @@ export const useLocalFirst = ({
   }, [fetchFunction, type]);
 
   // Optimistic update
-  const optimisticUpdate = useCallback((updaterFn) => {
+  const optimisticUpdate = useCallback(async (updaterFn) => {
     const currentData = data;
     try {
       // 1. Применяем обновление локально
@@ -69,7 +69,7 @@ export const useLocalFirst = ({
       setData(updatedData);
       
       // 2. Сохраняем в кеш
-      cacheManager[`set${type.charAt(0).toUpperCase() + type.slice(1)}`](updatedData);
+      await cacheManager[`set${type.charAt(0).toUpperCase() + type.slice(1)}`](updatedData);
       
       return { success: true, data: updatedData, originalData: currentData };
     } catch (error) {
@@ -79,9 +79,9 @@ export const useLocalFirst = ({
   }, [data, type]);
 
   // Откат optimistic update
-  const rollbackUpdate = useCallback((originalData) => {
+  const rollbackUpdate = useCallback(async (originalData) => {
     setData(originalData);
-    cacheManager[`set${type.charAt(0).toUpperCase() + type.slice(1)}`](originalData);
+    await cacheManager[`set${type.charAt(0).toUpperCase() + type.slice(1)}`](originalData);
   }, [type]);
 
   // Pull-to-refresh

@@ -263,7 +263,7 @@ const HabitsScreen = ({ route }) => {
     const numValue = parseFloat(value) || 0;
     
     // 🚀 Optimistic update - мгновенное обновление UI
-    const result = optimisticUpdateRecords(currentRecords => {
+    const result = await optimisticUpdateRecords(currentRecords => {
       const filtered = currentRecords.filter((r) => !(r.habitid === habitId && r.day === day));
       if (numValue > 0) return [...filtered, { habitid: habitId, year, month, day, value: numValue }];
       return filtered;
@@ -301,11 +301,11 @@ const HabitsScreen = ({ route }) => {
     const habitId = habitToDelete.id;
     
     // 🚀 Optimistic update - мгновенное удаление
-    const habitsResult = optimisticUpdateHabits(currentHabits => 
+    const habitsResult = await optimisticUpdateHabits(currentHabits => 
       currentHabits.filter(h => h.id !== habitId)
     );
     
-    const recordsResult = optimisticUpdateRecords(currentRecords => 
+    const recordsResult = await optimisticUpdateRecords(currentRecords => 
       currentRecords.filter(r => r.habitid !== habitId)
     );
 
@@ -379,7 +379,7 @@ const HabitsScreen = ({ route }) => {
     try {
       if (editingHabitId) {
         // 🚀 Optimistic update для редактирования
-        const result = optimisticUpdateHabits(currentHabits => 
+        const result = await optimisticUpdateHabits(currentHabits => 
           currentHabits.map(h => h.id === editingHabitId 
             ? { ...h, ...payload, shouldShow: true }
             : h
@@ -411,7 +411,7 @@ const HabitsScreen = ({ route }) => {
           days_of_week: habitForm.daysOfWeek || []
         };
         
-        const result = optimisticUpdateHabits(currentHabits => [...currentHabits, newHabit]);
+        const result = await optimisticUpdateHabits(currentHabits => [...currentHabits, newHabit]);
 
         if (!result.success) {
           Alert.alert('Ошибка', 'Не удалось создать привычку локально');
@@ -423,7 +423,7 @@ const HabitsScreen = ({ route }) => {
           const response = await api.post('/habits', payload);
           
           // Обновляем временный ID на реальный
-          optimisticUpdateHabits(currentHabits => 
+          await optimisticUpdateHabits(currentHabits => 
             currentHabits.map(h => h.id === tempId 
               ? { ...h, id: response.data.id, ...response.data }
               : h

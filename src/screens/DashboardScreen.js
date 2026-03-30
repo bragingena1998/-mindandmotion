@@ -365,7 +365,7 @@ const DashboardScreen = ({ navigation }) => {
     const done = !wasDone;
     
     // 🚀 Optimistic update - мгновенное обновление UI
-    const result = optimisticUpdateDashboard(currentData => ({
+    const result = await optimisticUpdateDashboard(currentData => ({
       ...currentData,
       tasks: currentData.tasks.map((t) => (t.id === task.id ? { ...t, completed: done, done } : t))
     }));
@@ -423,7 +423,7 @@ const DashboardScreen = ({ navigation }) => {
     const nextVal = getNextValueAfterTap(habit, current);
 
     // 🚀 Optimistic update - мгновенное обновление UI
-    const result = optimisticUpdateDashboard(currentData => ({
+    const result = await optimisticUpdateDashboard(currentData => ({
       ...currentData,
       habitRecords: (() => {
         const filtered = currentData.habitRecords.filter((r) => !(Number(r.habitid) === Number(habit.id) && Number(r.day) === todayDay));
