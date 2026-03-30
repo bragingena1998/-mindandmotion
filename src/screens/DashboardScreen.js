@@ -27,6 +27,7 @@ import {
 } from '../utils/habitDay';
 import { countTodayPlanTotal, countCompletedToday } from '../utils/taskDayStats';
 import { useDataSync } from '../contexts/DataSyncContext';
+import { useLocalFirst } from '../hooks/useLocalFirst';
 import Toast from '../components/Toast';
 
 const getGreeting = () => {
@@ -211,26 +212,23 @@ const AnimatedTaskCard = ({ task, stripColor, colors, onToggle, getFolderLabel, 
 const DashboardScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const { tick, bumpAll } = useDataSync();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [profile, setProfile] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [folders, setFolders] = useState([]);
-  const [habits, setHabits] = useState([]);
-  const [habitRecords, setHabitRecords] = useState([]);
-  const [birthdays, setBirthdays] = useState([]);
-  const [focusTick, setFocusTick] = useState(Date.now());
-  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
-  const [showSubtasksModal, setShowSubtasksModal] = useState(false);
-  const [selectedTaskForSubtasks, setSelectedTaskForSubtasks] = useState(null);
-  const [taskSubtasks, setTaskSubtasks] = useState([]);
-  const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
-
-  const loadDashboard = useCallback(async () => {
-    try {
+  
+  // 🚀 Local-first хуки для мгновенной загрузки данных дашборда
+  const {
+    data: dashboardData,
+    loading: dashboardLoading,
+    error: dashboardError,
+    loadData: loadDashboard,
+    onRefresh: refreshDashboard,
+    optimisticUpdate: optimisticUpdateDashboard,
+    rollbackUpdate: rollbackDashboard,
+  } = useLocalFirst({
+    type: 'dashboard',
+    fetchFunction: async () => {
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
+      
       const [profileRes, tasksRes, habitsRes, recordsRes, birthdaysRes, foldersRes] = await Promise.all([
         api.get('/user/profile'),
         api.get('/tasks'),
@@ -240,29 +238,44 @@ const DashboardScreen = ({ navigation }) => {
         api.get('/folders').catch(() => ({ data: [] })),
       ]);
 
-      setProfile(profileRes.data || null);
-      const raw = Array.isArray(tasksRes.data) ? tasksRes.data : [];
-      setTasks(raw.map(normalizeTask));
-      const parsedHabits = (Array.isArray(habitsRes.data) ? habitsRes.data : []).map(parseHabitData).filter((h) => h.shouldShow !== false);
-      setHabits(parsedHabits);
-      setHabitRecords(Array.isArray(recordsRes.data) ? recordsRes.data : []);
-      setBirthdays(Array.isArray(birthdaysRes.data) ? birthdaysRes.data : []);
-      setFolders(Array.isArray(foldersRes.data) ? foldersRes.data : []);
+      return {
+        profile: profileRes.data || null,
+        tasks: (Array.isArray(tasksRes.data) ? tasksRes.data : []).map(normalizeTask),
+        habits: (Array.isArray(habitsRes.data) ? habitsRes.data : []).map(parseHabitData).filter((h) => h.shouldShow !== false),
+        habitRecords: Array.isArray(recordsRes.data) ? recordsRes.data : [],
+        birthdays: Array.isArray(birthdaysRes.data) ? birthdaysRes.data : [],
+        folders: Array.isArray(foldersRes.data) ? foldersRes.data : [],
+      };
+    },
+    dependencies: [tick], // Обновляем при изменении tick
+  });
+
+  const [loading, setLoading] = useState(dashboardLoading);
+  const [profile, setProfile] = useState(dashboardData?.profile || null);
+  const [tasks, setTasks] = useState(dashboardData?.tasks || []);
+  const [folders, setFolders] = useState(dashboardData?.folders || []);
+  const [habits, setHabits] = useState(dashboardData?.habits || []);
+  const [habitRecords, setHabitRecords] = useState(dashboardData?.habitRecords || []);
+  const [birthdays, setBirthdays] = useState(dashboardData?.birthdays || []);
+  const [focusTick, setFocusTick] = useState(Date.now());
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+  const [showSubtasksModal, setShowSubtasksModal] = useState(false);
+  const [selectedTaskForSubtasks, setSelectedTaskForSubtasks] = useState(null);
+  const [taskSubtasks, setTaskSubtasks] = useState([]);
+  const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
+
+  const loadTaskSubtasks = useCallback(async (taskId) => {
+    setIsLoadingSubtasks(true);
+    try {
+      const res = await api.get(`/tasks/${taskId}/subtasks`);
+      setTaskSubtasks(res.data || []);
     } catch (e) {
-      console.error('Dashboard load error:', e);
+      console.error('Failed to load subtasks:', e);
+      setTaskSubtasks([]);
     } finally {
-      setLoading(false);
+      setIsLoadingSubtasks(false);
     }
   }, []);
-
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
-
-  useEffect(() => {
-    if (tick === 0) return;
-    loadDashboard();
-  }, [tick, loadDashboard]);
 
   useEffect(() => {
     const timer = setInterval(() => setFocusTick(Date.now()), 1000);
@@ -270,9 +283,7 @@ const DashboardScreen = ({ navigation }) => {
   }, []);
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    await loadDashboard();
-    setRefreshing(false);
+    await refreshDashboard();
   };
 
   const today = isoToday();
@@ -293,19 +304,6 @@ const DashboardScreen = ({ navigation }) => {
     },
     [folders]
   );
-
-  const loadTaskSubtasks = useCallback(async (taskId) => {
-    setIsLoadingSubtasks(true);
-    try {
-      const res = await api.get(`/tasks/${taskId}/subtasks`);
-      setTaskSubtasks(res.data || []);
-    } catch (e) {
-      console.error('Failed to load subtasks:', e);
-      setTaskSubtasks([]);
-    } finally {
-      setIsLoadingSubtasks(false);
-    }
-  }, []);
 
   const openSubtasksModal = useCallback(async (task) => {
     setSelectedTaskForSubtasks(task);
@@ -365,8 +363,20 @@ const DashboardScreen = ({ navigation }) => {
   const toggleTask = async (task) => {
     const wasDone = !!task.completed;
     const done = !wasDone;
-    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, completed: done, done } : t)));
+    
+    // 🚀 Optimistic update - мгновенное обновление UI
+    const result = optimisticUpdateDashboard(currentData => ({
+      ...currentData,
+      tasks: currentData.tasks.map((t) => (t.id === task.id ? { ...t, completed: done, done } : t))
+    }));
+
+    if (!result.success) {
+      console.error('Optimistic update failed:', result.error);
+      return;
+    }
+
     try {
+      // Сервер в фоне - не блокирует UI
       await api.put(`/tasks/${task.id}`, {
         title: task.title,
         date: task.date,
@@ -380,15 +390,22 @@ const DashboardScreen = ({ navigation }) => {
         recurrenceType: task.recurrenceType ?? task.recurrence_type ?? null,
         folderId: task.folderId ?? task.folder_id ?? null,
       });
+      
+      // Успешная синхронизация
       bumpAll();
       setToast({
         visible: true,
         message: done ? '✅ Задача выполнена!' : '↩ Задача возвращена в работу',
         type: done ? 'success' : 'warning'
       });
+      
     } catch (e) {
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, completed: wasDone, done: wasDone } : t)));
-      Alert.alert('Ошибка', 'Не удалось обновить задачу');
+      console.error('Toggle task error:', e);
+      
+      // Откат optimistic update при ошибке
+      rollbackDashboard(result.originalData);
+      
+      Alert.alert('Ошибка', 'Не удалось обновить задачу. Проверьте подключение к интернету.');
     }
   };
 
@@ -405,13 +422,23 @@ const DashboardScreen = ({ navigation }) => {
     const current = getHabitRecordValue(habitRecords, habit.id, todayDay);
     const nextVal = getNextValueAfterTap(habit, current);
 
-    setHabitRecords((prev) => {
-      const filtered = prev.filter((r) => !(Number(r.habitid) === Number(habit.id) && Number(r.day) === todayDay));
-      if (!nextVal || nextVal <= 0) return filtered;
-      return [...filtered, { habitid: habit.id, day: todayDay, value: nextVal }];
-    });
+    // 🚀 Optimistic update - мгновенное обновление UI
+    const result = optimisticUpdateDashboard(currentData => ({
+      ...currentData,
+      habitRecords: (() => {
+        const filtered = currentData.habitRecords.filter((r) => !(Number(r.habitid) === Number(habit.id) && Number(r.day) === todayDay));
+        if (!nextVal || nextVal <= 0) return filtered;
+        return [...filtered, { habitid: habit.id, day: todayDay, value: nextVal }];
+      })()
+    }));
+
+    if (!result.success) {
+      console.error('Optimistic update failed:', result.error);
+      return;
+    }
 
     try {
+      // Сервер в фоне - не блокирует UI
       if (!nextVal || nextVal <= 0) {
         await api.delete(`/habits/records/${habit.id}/${year}/${month}/${todayDay}`);
       } else {
@@ -423,12 +450,17 @@ const DashboardScreen = ({ navigation }) => {
           value: nextVal,
         });
       }
-      await reloadHabitRecords();
+      
+      // Успешная синхронизация
       bumpAll();
+      
     } catch (e) {
-      console.error('toggle habit error:', e);
-      await reloadHabitRecords();
-      loadDashboard();
+      console.error('Toggle habit error:', e);
+      
+      // Откат optimistic update при ошибке
+      rollbackDashboard(result.originalData);
+      
+      Alert.alert('Ошибка', 'Не удалось сохранить привычку. Проверьте подключение к интернету.');
     }
   };
 
@@ -535,7 +567,7 @@ const DashboardScreen = ({ navigation }) => {
       <Background>
       <ScrollView
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent1} />}
+        refreshControl={<RefreshControl refreshing={dashboardLoading} onRefresh={refreshDashboard} tintColor={colors.accent1} colors={[colors.accent1]} />}
       >
         <View style={styles.headerRow}>
           <View>
