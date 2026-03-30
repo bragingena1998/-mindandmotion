@@ -218,7 +218,11 @@ const HabitsScreen = ({ route }) => {
     useCallback(() => {
       // Используем тихую синхронизацию вместо полной загрузки
       if (loadRecords) {
-        loadRecords();
+        // 🧹 Принудительно очищаем кеш habit-records при смене месяца
+        cacheManager.clear('habit-records').then(() => {
+          console.log(`🧹 Cleared habit-records cache for ${year}-${month}`);
+          loadRecords();
+        });
       }
     }, [year, month, loadRecords])
   );

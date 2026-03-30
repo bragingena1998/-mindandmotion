@@ -24,7 +24,10 @@ class SQLiteCacheManager {
         CREATE INDEX IF NOT EXISTS idx_cache_timestamp ON cache(timestamp);
       `);
       
-      console.log('✅ SQLite cache initialized');
+      // 🧹 Очищаем старые данные при запуске (старше 1 дня)
+      await this.cleanup(24 * 60 * 60 * 1000); // 1 день
+      
+      console.log('✅ SQLite cache initialized and cleaned');
     } catch (error) {
       console.error('❌ SQLite init error:', error);
       throw error;

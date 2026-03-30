@@ -18,7 +18,8 @@ import api from '../services/api';
 import Modal from '../components/Modal';
 import Button from '../components/Button';
 import { clearFocusSession, getFocusSession, hasFocusSession } from '../components/FocusSessionModal';
-import { utcTimeToLocal } from '../utils/timezone';
+import { utcTimeToLocal, localTimeToUtc } from '../utils/timezone';
+import { resetCache } from '../utils/cacheReset';
 import {
   isHabitDayActive,
   getHabitRecordValue,
@@ -257,6 +258,23 @@ const DashboardScreen = ({ navigation }) => {
   const [habits, setHabits] = useState(dashboardData?.habits || []);
   const [habitRecords, setHabitRecords] = useState(dashboardData?.habitRecords || []);
   const [birthdays, setBirthdays] = useState(dashboardData?.birthdays || []);
+
+  // 🔄 Синхронизация состояния с хуком
+  React.useEffect(() => {
+    if (dashboardData) {
+      setProfile(dashboardData.profile);
+      setTasks(dashboardData.tasks || []);
+      setFolders(dashboardData.folders || []);
+      setHabits(dashboardData.habits || []);
+      setHabitRecords(dashboardData.habitRecords || []);
+      setBirthdays(dashboardData.birthdays || []);
+      console.log('📊 Dashboard data loaded:', {
+        tasks: dashboardData.tasks?.length || 0,
+        habits: dashboardData.habits?.length || 0,
+        records: dashboardData.habitRecords?.length || 0
+      });
+    }
+  }, [dashboardData]);
   const [focusTick, setFocusTick] = useState(Date.now());
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
   const [showSubtasksModal, setShowSubtasksModal] = useState(false);
@@ -284,6 +302,32 @@ const DashboardScreen = ({ navigation }) => {
 
   const onRefresh = async () => {
     await refreshDashboard();
+  };
+
+  // 🧹 Функция для принудительного сброса кеша
+  const handleResetCache = async () => {
+    Alert.alert(
+      'Сброс кеша',
+      'Очистить весь кеш и перезагрузить данные? Это может помочь если данные отображаются некорректно.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        { 
+          text: 'Сбросить', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await resetCache();
+              if (success) {
+                await refreshDashboard(); // Перезагружаем данные
+                Alert.alert('Готово', 'Кеш очищен, данные перезагружены');
+              }
+            } catch (error) {
+              Alert.alert('Ошибка', 'Не удалось очистить кеш');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const today = isoToday();
@@ -576,10 +620,18 @@ const DashboardScreen = ({ navigation }) => {
             </Text>
             <Text style={[styles.date, { color: colors.textMuted }]}>{formatDateRu(new Date())}</Text>
           </View>
-          <View style={[styles.avatar, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-            <Text style={{ color: colors.accentText, fontWeight: '700' }}>
-              {(profile?.name || 'MM').slice(0, 2).toUpperCase()}
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity 
+              onPress={handleResetCache}
+              style={{ padding: 8 }}
+            >
+              <Text style={{ fontSize: 20 }}>🧹</Text>
+            </TouchableOpacity>
+            <View style={[styles.avatar, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
+              <Text style={{ color: colors.accentText, fontWeight: '700' }}>
+                {(profile?.name || 'MM').slice(0, 2).toUpperCase()}
+              </Text>
+            </View>
           </View>
         </View>
 
