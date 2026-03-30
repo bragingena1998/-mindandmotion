@@ -549,7 +549,7 @@ const TasksScreen = ({ navigation }) => {
     const handleAppStateChange = (nextAppState) => {
       if (nextAppState === 'active') {
         // При возврате в приложение проверяем нужна ли синхронизация
-        if (syncUtils.needsSync()) {
+        if (await cacheManager.needsSync('tasks')) {
           loadTasks(undefined, false); // Не forceRefresh, просто проверяем
         }
       }
@@ -758,7 +758,7 @@ const TasksScreen = ({ navigation }) => {
       
       // 1. Сначала загружаем из кеша - мгновенно!
       if (!forceRefresh) {
-        const cachedTasks = tasksCache.getTasks();
+        const cachedTasks = await cacheManager.getTasks();
         if (cachedTasks) {
           const formatted = cachedTasks.map(task => ({
             ...task,
@@ -816,7 +816,7 @@ const TasksScreen = ({ navigation }) => {
       
       // Обновляем состояние и кеш
       setTasks(formatted);
-      tasksCache.setTasks(formatted); // Сохраняем в кеш
+      await cacheManager.setTasks(formatted); // Сохраняем в кеш
       
       if (isCurrentMonth && statsApi) {
         setStats({
@@ -838,12 +838,12 @@ const TasksScreen = ({ navigation }) => {
       setLoading(false);
       
       // Обновляем время синхронизации
-      syncUtils.setLastSyncTime();
+      await cacheManager.setSyncTime('tasks');
       
     } catch (err) {
       console.error('❌ Загрузка задач:', err);
       // Если сервер недоступен, пробуем загрузить из кеша
-      const cachedTasks = tasksCache.getTasks();
+      const cachedTasks = await cacheManager.getTasks();
       if (cachedTasks && !forceRefresh) {
         const formatted = cachedTasks.map(task => ({
           ...task,
@@ -910,7 +910,7 @@ const TasksScreen = ({ navigation }) => {
       setTasks(updatedTasks);
       
       // 2. Сохраняем в кеш локально
-      tasksCache.setTasks(updatedTasks);
+      await cacheManager.setTasks(updatedTasks);
       
       // 3. Обновляем статистику
       const next = updatedTasks.map((x) =>
@@ -953,7 +953,7 @@ const TasksScreen = ({ navigation }) => {
         // Откат optimistic update если ошибка сервера
         console.error('Server error:', serverError);
         setTasks(tasks);
-        tasksCache.setTasks(tasks);
+        await cacheManager.setTasks(tasks);
         
         // Восстанавливаем статистику
         setStats((s) => ({
@@ -981,7 +981,7 @@ const TasksScreen = ({ navigation }) => {
       setTasks(updatedTasks);
       
       // 3. Сохраняем в кеш локально
-      tasksCache.setTasks(updatedTasks);
+      await cacheManager.setTasks(updatedTasks);
       
       // 4. Обновляем статистику
       setStats((s) => ({
@@ -1003,7 +1003,7 @@ const TasksScreen = ({ navigation }) => {
         // Откат optimistic update если ошибка сервера
         console.error('Delete server error:', serverError);
         setTasks(prev => [...prev, originalTask]);
-        tasksCache.setTasks([...tasks, originalTask]);
+        await cacheManager.setTasks([...tasks, originalTask]);
         
         // Восстанавливаем статистику
         setStats((s) => ({

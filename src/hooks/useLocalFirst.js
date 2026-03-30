@@ -22,7 +22,23 @@ export const useLocalFirst = ({
       
       // 1. Сначала загружаем из кеша (мгновенно)
       if (!forceRefresh) {
-        const cachedData = await cacheManager[`get${type.charAt(0).toUpperCase() + type.slice(1)}`]();
+        let cachedData = null;
+        
+        // Специальная обработка для разных типов
+        if (type === 'habit-records') {
+          cachedData = await cacheManager.getHabitRecords();
+        } else if (type === 'dashboard') {
+          cachedData = await cacheManager.getDashboard();
+        } else if (type === 'user') {
+          cachedData = await cacheManager.getUser();
+        } else {
+          // Динамический метод для остальных типов
+          const methodName = `get${type.charAt(0).toUpperCase() + type.slice(1)}`;
+          if (typeof cacheManager[methodName] === 'function') {
+            cachedData = await cacheManager[methodName]();
+          }
+        }
+        
         if (cachedData) {
           setData(cachedData);
           setLoading(false);
@@ -34,7 +50,20 @@ export const useLocalFirst = ({
       setData(freshData);
       
       // 3. Сохраняем в кеш
-      await cacheManager[`set${type.charAt(0).toUpperCase() + type.slice(1)}`](freshData);
+      if (type === 'habit-records') {
+        await cacheManager.setHabitRecords(freshData);
+      } else if (type === 'dashboard') {
+        await cacheManager.setDashboard(freshData);
+      } else if (type === 'user') {
+        await cacheManager.setUser(freshData);
+      } else {
+        // Динамический метод для остальных типов
+        const methodName = `set${type.charAt(0).toUpperCase() + type.slice(1)}`;
+        if (typeof cacheManager[methodName] === 'function') {
+          await cacheManager[methodName](freshData);
+        }
+      }
+      
       await cacheManager.setSyncTime(type);
       
       setLoading(false);
@@ -45,7 +74,23 @@ export const useLocalFirst = ({
       
       // Если сервер недоступен, пробуем загрузить из кеша
       if (!forceRefresh) {
-        const cachedData = await cacheManager[`get${type.charAt(0).toUpperCase() + type.slice(1)}`]();
+        let cachedData = null;
+        
+        // Специальная обработка для разных типов
+        if (type === 'habit-records') {
+          cachedData = await cacheManager.getHabitRecords();
+        } else if (type === 'dashboard') {
+          cachedData = await cacheManager.getDashboard();
+        } else if (type === 'user') {
+          cachedData = await cacheManager.getUser();
+        } else {
+          // Динамический метод для остальных типов
+          const methodName = `get${type.charAt(0).toUpperCase() + type.slice(1)}`;
+          if (typeof cacheManager[methodName] === 'function') {
+            cachedData = await cacheManager[methodName]();
+          }
+        }
+        
         if (cachedData) {
           setData(cachedData);
           setLoading(false);
@@ -69,7 +114,19 @@ export const useLocalFirst = ({
       setData(updatedData);
       
       // 2. Сохраняем в кеш
-      await cacheManager[`set${type.charAt(0).toUpperCase() + type.slice(1)}`](updatedData);
+      if (type === 'habit-records') {
+        await cacheManager.setHabitRecords(updatedData);
+      } else if (type === 'dashboard') {
+        await cacheManager.setDashboard(updatedData);
+      } else if (type === 'user') {
+        await cacheManager.setUser(updatedData);
+      } else {
+        // Динамический метод для остальных типов
+        const methodName = `set${type.charAt(0).toUpperCase() + type.slice(1)}`;
+        if (typeof cacheManager[methodName] === 'function') {
+          await cacheManager[methodName](updatedData);
+        }
+      }
       
       return { success: true, data: updatedData, originalData: currentData };
     } catch (error) {
@@ -81,7 +138,20 @@ export const useLocalFirst = ({
   // Откат optimistic update
   const rollbackUpdate = useCallback(async (originalData) => {
     setData(originalData);
-    await cacheManager[`set${type.charAt(0).toUpperCase() + type.slice(1)}`](originalData);
+    
+    if (type === 'habit-records') {
+      await cacheManager.setHabitRecords(originalData);
+    } else if (type === 'dashboard') {
+      await cacheManager.setDashboard(originalData);
+    } else if (type === 'user') {
+      await cacheManager.setUser(originalData);
+    } else {
+      // Динамический метод для остальных типов
+      const methodName = `set${type.charAt(0).toUpperCase() + type.slice(1)}`;
+      if (typeof cacheManager[methodName] === 'function') {
+        await cacheManager[methodName](originalData);
+      }
+    }
   }, [type]);
 
   // Pull-to-refresh
