@@ -5,6 +5,16 @@ class SQLiteCacheManager {
   constructor() {
     this.db = null;
     this.initPromise = this.init();
+    this.operationQueue = Promise.resolve(); // Очередь операций для предотвращения database is locked
+    this.isCleaning = false;
+  }
+
+  // 🔄 Упорядоченное выполнение операций с базой данных
+  async executeOperation(operation) {
+    return this.operationQueue = this.operationQueue.then(operation).catch(err => {
+      console.error('SQLite operation error:', err);
+      throw err;
+    });
   }
 
   async init() {
@@ -42,116 +52,130 @@ class SQLiteCacheManager {
 
   // Установить значение в кеш
   async set(key, value, type = 'default') {
-    await this.ensureDb();
-    try {
-      const serializedValue = JSON.stringify(value);
-      const timestamp = Date.now();
-      
-      await this.db.runAsync(
-        `INSERT OR REPLACE INTO cache (key, value, timestamp, type) VALUES (?, ?, ?, ?)`,
-        [key, serializedValue, timestamp, type]
-      );
-      
-      return true;
-    } catch (error) {
-      console.error(`❌ Cache set error for key ${key}:`, error);
-      return false;
-    }
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        const serializedValue = JSON.stringify(value);
+        const timestamp = Date.now();
+        
+        await this.db.runAsync(
+          `INSERT OR REPLACE INTO cache (key, value, timestamp, type) VALUES (?, ?, ?, ?)`,
+          [key, serializedValue, timestamp, type]
+        );
+        
+        return true;
+      } catch (error) {
+        console.error(`❌ Cache set error for key ${key}:`, error);
+        return false;
+      }
+    });
   }
 
   // Получить значение из кеша
   async get(key) {
-    await this.ensureDb();
-    try {
-      const result = await this.db.getFirstAsync(
-        'SELECT value FROM cache WHERE key = ?',
-        [key]
-      );
-      
-      if (result?.value) {
-        return JSON.parse(result.value);
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        const result = await this.db.getFirstAsync(
+          'SELECT value FROM cache WHERE key = ?',
+          [key]
+        );
+        
+        if (result?.value) {
+          return JSON.parse(result.value);
+        }
+        return null;
+      } catch (error) {
+        console.error(`❌ Cache get error for key ${key}:`, error);
+        return null;
       }
-      return null;
-    } catch (error) {
-      console.error(`❌ Cache get error for key ${key}:`, error);
-      return null;
-    }
+    });
   }
 
   // Получить все значения по типу
   async getByType(type) {
-    await this.ensureDb();
-    try {
-      const results = await this.db.getAllAsync(
-        'SELECT key, value FROM cache WHERE type = ? ORDER BY timestamp DESC',
-        [type]
-      );
-      
-      const data = {};
-      results.forEach(row => {
-        try {
-          data[row.key] = JSON.parse(row.value);
-        } catch (e) {
-          console.error(`❌ Parse error for key ${row.key}:`, e);
-        }
-      });
-      
-      return data;
-    } catch (error) {
-      console.error(`❌ Cache getByType error for type ${type}:`, error);
-      return {};
-    }
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        const results = await this.db.getAllAsync(
+          'SELECT key, value FROM cache WHERE type = ? ORDER BY timestamp DESC',
+          [type]
+        );
+        
+        const data = {};
+        results.forEach(row => {
+          try {
+            data[row.key] = JSON.parse(row.value);
+          } catch (e) {
+            console.error(`❌ Parse error for key ${row.key}:`, e);
+          }
+        });
+        
+        return data;
+      } catch (error) {
+        console.error(`❌ Cache getByType error for type ${type}:`, error);
+        return {};
+      }
+    });
   }
 
   // Удалить значение из кеша
   async remove(key) {
-    await this.ensureDb();
-    try {
-      await this.db.runAsync('DELETE FROM cache WHERE key = ?', [key]);
-      return true;
-    } catch (error) {
-      console.error(`❌ Cache remove error for key ${key}:`, error);
-      return false;
-    }
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        await this.db.runAsync('DELETE FROM cache WHERE key = ?', [key]);
+        return true;
+      } catch (error) {
+        console.error(`❌ Cache remove error for key ${key}:`, error);
+        return false;
+      }
+    });
   }
 
   // Очистить весь кеш
   async clear() {
-    await this.ensureDb();
-    try {
-      await this.db.runAsync('DELETE FROM cache');
-      return true;
-    } catch (error) {
-      console.error('❌ Cache clear error:', error);
-      return false;
-    }
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        await this.db.runAsync('DELETE FROM cache');
+        return true;
+      } catch (error) {
+        console.error('❌ Cache clear error:', error);
+        return false;
+      }
+    });
   }
 
   // Очистить кеш по типу
   async clearByType(type) {
-    await this.ensureDb();
-    try {
-      await this.db.runAsync('DELETE FROM cache WHERE type = ?', [type]);
-      return true;
-    } catch (error) {
-      console.error(`❌ Cache clearByType error for type ${type}:`, error);
-      return false;
-    }
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        await this.db.runAsync('DELETE FROM cache WHERE type = ?', [type]);
+        return true;
+      } catch (error) {
+        console.error(`❌ Cache clearByType error for type ${type}:`, error);
+        return false;
+      }
+    });
   }
 
   // Получить все ключи по типу
   async getKeysByType(type) {
-    await this.ensureDb();
-    try {
-      const results = await this.db.getAllAsync(
-        'SELECT key FROM cache WHERE type = ? ORDER BY timestamp DESC',
-        [type]
-      );
-      return results.map(row => row.key);
-    } catch (error) {
-      console.error(`❌ Cache getKeysByType error for type ${type}:`, error);
-      return [];
-    }
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        const results = await this.db.getAllAsync(
+          'SELECT key FROM cache WHERE type = ? ORDER BY timestamp DESC',
+          [type]
+        );
+        return results.map(row => row.key);
+      } catch (error) {
+        console.error(`❌ Cache getKeysByType error for type ${type}:`, error);
+        return [];
+      }
+    });
   }
 
   // Проверить наличие ключа
@@ -162,32 +186,44 @@ class SQLiteCacheManager {
 
   // Получить размер кеша (количество записей)
   async getSize() {
-    await this.ensureDb();
-    try {
-      const result = await this.db.getFirstAsync('SELECT COUNT(*) as count FROM cache');
-      return result?.count || 0;
-    } catch (error) {
-      console.error('❌ Cache getSize error:', error);
-      return 0;
-    }
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        const result = await this.db.getFirstAsync('SELECT COUNT(*) as count FROM cache');
+        return result?.count || 0;
+      } catch (error) {
+        console.error('❌ Cache getSize error:', error);
+        return 0;
+      }
+    });
   }
 
   // Очистка старых записей (старше N дней)
   async cleanup(maxAge = 7 * 24 * 60 * 60 * 1000) { // 7 дней по умолчанию
-    await this.ensureDb();
-    try {
-      const cutoffTime = Date.now() - maxAge;
-      const result = await this.db.runAsync(
-        'DELETE FROM cache WHERE timestamp < ?',
-        [cutoffTime]
-      );
-      
-      console.log(`🧹 Cleaned ${result.changes} old cache entries`);
-      return result.changes;
-    } catch (error) {
-      console.error('❌ Cache cleanup error:', error);
+    if (this.isCleaning) {
+      console.log('🧹 Cleanup already in progress, skipping');
       return 0;
     }
+    
+    return this.executeOperation(async () => {
+      this.isCleaning = true;
+      await this.ensureDb();
+      try {
+        const cutoffTime = Date.now() - maxAge;
+        const result = await this.db.runAsync(
+          'DELETE FROM cache WHERE timestamp < ?',
+          [cutoffTime]
+        );
+        
+        console.log(`🧹 Cleaned ${result.changes} old cache entries`);
+        return result.changes;
+      } catch (error) {
+        console.error('❌ Cache cleanup error:', error);
+        return 0;
+      } finally {
+        this.isCleaning = false;
+      }
+    });
   }
 
   // Получить статистику кеша
