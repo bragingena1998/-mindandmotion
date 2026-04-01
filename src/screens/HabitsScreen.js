@@ -97,6 +97,7 @@ const HabitsScreen = ({ route }) => {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [habitTimer, setHabitTimer] = useState(null);
   const isUpdatingRef = useRef(false);
+  const lastLoadTimeRef = useRef(0);
 
   // 🚀 Local-first хуки для мгновенной загрузки
   const yearMonthKey = `${year}-${String(month).padStart(2, '0')}`;
@@ -133,7 +134,7 @@ const HabitsScreen = ({ route }) => {
       const response = await api.get(`/habits/records/${year}/${month}`);
       return response.data;
     },
-    dependencies: [habitsData, year, month],
+    dependencies: [year, month],
     yearMonthKey,
   });
 
@@ -222,27 +223,15 @@ const HabitsScreen = ({ route }) => {
   // Не подписываемся на tick: bumpAll после ячейки обновляет дашборд/другие экраны,
   // а полный loadHabits+loadRecords здесь давал «перезагрузку страницы» при каждом вводе.
 
-  // После отметок на дашборде — при возврате на вкладку подтягиваем записи
   useFocusEffect(
     useCallback(() => {
-      // Не перезагружаем если только что сделали изменение (чтобы не было моргания)
-      if (isUpdatingRef.current) {
-        // Не сбрасываем флаг здесь - пусть handleCellChange сам сбросит после timeout
-        console.log('🚫 Skipping reload due to active update');
-        return;
-      }
-      // Перезагружаем только если нет активного обновления
-      if (loadRecords && !isUpdatingRef.current) {
-        loadRecords();
-      }
+      if (isUpdatingRef.current) return; // тихо, без лога
+      const now = Date.now();
+      if (now - lastLoadTimeRef.current < 30000) return; // не чаще раз в 30 сек
+      lastLoadTimeRef.current = now;
+      if (loadRecords) loadRecords();
     }, [loadRecords])
   );
-
-  // 🧹 При смене месяца — делаем force refresh для загрузки данных нового месяца
-  useEffect(() => {
-    if (loadHabits) loadHabits(true);
-    if (loadRecords) loadRecords(true);
-  }, [year, month]);
 
   const loadProfile = async () => {
     try {
