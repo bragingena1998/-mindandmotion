@@ -1,5 +1,5 @@
 // src/screens/HabitsScreen.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -93,7 +93,14 @@ const HabitsScreen = ({ route }) => {
   const { colors } = useTheme();
   const { bumpAll } = useDataSync();
   
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [habitTimer, setHabitTimer] = useState(null);
+  const isUpdatingRef = useRef(false);
+
   // 🚀 Local-first хуки для мгновенной загрузки
+  const yearMonthKey = `${year}-${month}`;
+
   const {
     data: habitsData,
     loading: habitsLoading,
@@ -109,11 +116,13 @@ const HabitsScreen = ({ route }) => {
       return response.data;
     },
     dependencies: [year, month],
+    yearMonthKey,
   });
 
   const {
     data: recordsData,
     loading: recordsLoading,
+    error: recordsError,
     loadData: loadRecords,
     onRefresh: refreshRecords,
     optimisticUpdate: optimisticUpdateRecords,
@@ -125,6 +134,7 @@ const HabitsScreen = ({ route }) => {
       return response.data;
     },
     dependencies: [habitsData, year, month],
+    yearMonthKey,
   });
 
   const [loading, setLoading] = useState(habitsLoading || recordsLoading);
@@ -133,22 +143,20 @@ const HabitsScreen = ({ route }) => {
   const [profile, setProfile] = useState(null);
   const [lifeProgress, setLifeProgress] = useState({ percent: 0, yearsLived: 0, yearsLeft: 64 });
   const [yearProgress, setYearProgress] = useState({ percent: 0, daysPassed: 0, daysLeft: 365 });
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [habitTimer, setHabitTimer] = useState(null);
 
-  // 🔄 Синхронизация состояния с хуками
-  useEffect(() => {
-    setHabits(habitsData || []);
-  }, [habitsData]);
-
-  useEffect(() => {
-    setRecords(recordsData || []);
-  }, [recordsData]);
-
+  // 🔄 Синхронизация loading состояния с хуками useLocalFirst
   useEffect(() => {
     setLoading(habitsLoading || recordsLoading);
   }, [habitsLoading, recordsLoading]);
+
+  // 🔄 Синхронизация данных привычек и записей
+  useEffect(() => {
+    if (habitsData) setHabits(habitsData);
+  }, [habitsData]);
+
+  useEffect(() => {
+    if (recordsData) setRecords(recordsData);
+  }, [recordsData]);
 
   const [showDateModal, setShowDateModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
@@ -217,23 +225,24 @@ const HabitsScreen = ({ route }) => {
   // После отметок на дашборде — при возврате на вкладку подтягиваем записи
   useFocusEffect(
     useCallback(() => {
-      // Просто загружаем записи без очистки кеша
-      if (loadRecords) {
+      // Не перезагружаем если только что сделали изменение (чтобы не было моргания)
+      if (isUpdatingRef.current) {
+        // Не сбрасываем флаг здесь - пусть handleCellChange сам сбросит после timeout
+        console.log('🚫 Skipping reload due to active update');
+        return;
+      }
+      // Перезагружаем только если нет активного обновления
+      if (loadRecords && !isUpdatingRef.current) {
         loadRecords();
       }
     }, [loadRecords])
   );
 
-  // 🧹 Очищаем кеш только при реальном изменении месяца/года
+  // 🧹 Убираем принудительную очистку кеша - теперь кеш по месяцам
   useEffect(() => {
-    const clearAndReload = async () => {
-      console.log(`🧹 Month changed to ${year}-${month}, clearing habit-records cache`);
-      await cacheManager.clear('habit-records');
-      if (loadRecords) {
-        loadRecords();
-      }
-    };
-    clearAndReload();
+    // Просто загружаем данные для нового месяца
+    if (loadHabits) loadHabits();
+    if (loadRecords) loadRecords();
   }, [year, month]);
 
   const loadProfile = async () => {
@@ -275,6 +284,9 @@ const HabitsScreen = ({ route }) => {
   const handleCellChange = async (habitId, year, month, day, value) => {
     const numValue = parseFloat(value) || 0;
     
+    // Помечаем что идет обновление - блокируем перезагрузку при фокусе
+    isUpdatingRef.current = true;
+    
     // 🚀 Optimistic update - мгновенное обновление UI
     const result = await optimisticUpdateRecords(currentRecords => {
       const filtered = currentRecords.filter((r) => !(r.habitid === habitId && r.day === day));
@@ -284,6 +296,7 @@ const HabitsScreen = ({ route }) => {
 
     if (!result.success) {
       console.error('Optimistic update failed:', result.error);
+      isUpdatingRef.current = false;
       return;
     }
 
@@ -295,11 +308,16 @@ const HabitsScreen = ({ route }) => {
         await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
       }
       
-      // Успешная синхронизация
-      bumpAll();
+      // ✅ Успешная синхронизация - через 1500мс снимаем блокировку
+      // Увеличили задержку чтобы точно пережить любые фокус-переключения
+      setTimeout(() => {
+        isUpdatingRef.current = false;
+        // Не вызываем bumpAll - это вызывает лишние перезагрузки
+      }, 1500);
       
     } catch (error) {
       console.error('Ошибка сохранения записи:', error);
+      isUpdatingRef.current = false;
       
       // Откат optimistic update при ошибке
       rollbackRecords(result.originalData);
@@ -323,13 +341,14 @@ const HabitsScreen = ({ route }) => {
     );
 
     if (!habitsResult.success || !recordsResult.success) {
-      Alert.alert('Ошибка', 'Не удалось удалить привычку локально');
+      Alert.alert('Ошибка', 'Не удалось архивировать привычку локально');
       return;
     }
 
     try {
       // Сервер в фоне - не блокирует UI
-      await api.delete(`/habits/${habitId}`);
+      // 🏛️ Архивируем привычку для текущего месяца вместо удаления
+      await api.put(`/habits/${habitId}/archive`, { year, month });
       
       // Успешная синхронизация
       bumpAll();
@@ -341,7 +360,7 @@ const HabitsScreen = ({ route }) => {
       rollbackHabits(habitsResult.originalData);
       rollbackRecords(recordsResult.originalData);
       
-      Alert.alert('Ошибка', 'Не удалось удалить привычку. Проверьте подключение к интернету.');
+      Alert.alert('Ошибка', 'Не удалось архивировать привычку. Проверьте подключение к интернету.');
     } finally {
       setHabitToDelete(null);
     }
@@ -787,16 +806,18 @@ const HabitsScreen = ({ route }) => {
         </View>
       </Modal>
 
-      {/* ===== МОДАЛ УДАЛЕНИЯ ===== */}
-      <Modal visible={!!habitToDelete} onClose={() => setHabitToDelete(null)} title="Удалить привычку?">
+      {/* ===== МОДАЛ АРХИВАЦИИ ===== */}
+      <Modal visible={!!habitToDelete} onClose={() => setHabitToDelete(null)} title="Архивировать привычку?">
         <View style={{ padding: 10 }}>
           <Text style={{ color: colors.textMain, marginBottom: 20, textAlign: 'center' }}>
-            Вы уверены, что хотите удалить "{habitToDelete?.name}"?{'\n'}Все данные будут потеряны.
+            Привычка "{habitToDelete?.name}" будет скрыта из текущего месяца.
+
+            📁 Останется доступна в архиве прошлых месяцев.
           </Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <Button title="Отмена" variant="outline" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
             {/* noBorder убирает зелёную рамку поверх danger-фона */}
-            <Button title="Удалить" variant="danger" noBorder onPress={executeDelete} style={{ flex: 1 }} />
+            <Button title="Архивировать" variant="danger" noBorder onPress={executeDelete} style={{ flex: 1 }} />
           </View>
         </View>
       </Modal>

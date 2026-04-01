@@ -9,6 +9,7 @@ export const useLocalFirst = ({
   dependencies = [], // зависимости для перезагрузки
   syncInterval = 5 * 60 * 1000, // 5 минут
   autoSync = true, // авто-синхронизация при активации
+  yearMonthKey = null, // для кеширования по месяцам (2025-12)
 }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +52,9 @@ export const useLocalFirst = ({
       
       // 3. Сохраняем в кеш
       if (type === 'habit-records') {
-        await cacheManager.setHabitRecords(freshData);
+        await cacheManager.setHabitRecords(freshData, yearMonthKey);
+      } else if (type === 'habits') {
+        await cacheManager.setHabits(freshData, yearMonthKey);
       } else if (type === 'dashboard') {
         await cacheManager.setDashboard(freshData);
       } else if (type === 'user') {
@@ -115,7 +118,9 @@ export const useLocalFirst = ({
       
       // 2. Сохраняем в кеш
       if (type === 'habit-records') {
-        await cacheManager.setHabitRecords(updatedData);
+        await cacheManager.setHabitRecords(updatedData, yearMonthKey);
+      } else if (type === 'habits') {
+        await cacheManager.setHabits(updatedData, yearMonthKey);
       } else if (type === 'dashboard') {
         await cacheManager.setDashboard(updatedData);
       } else if (type === 'user') {
@@ -140,7 +145,9 @@ export const useLocalFirst = ({
     setData(originalData);
     
     if (type === 'habit-records') {
-      await cacheManager.setHabitRecords(originalData);
+      await cacheManager.setHabitRecords(originalData, yearMonthKey);
+    } else if (type === 'habits') {
+      await cacheManager.setHabits(originalData, yearMonthKey);
     } else if (type === 'dashboard') {
       await cacheManager.setDashboard(originalData);
     } else if (type === 'user') {

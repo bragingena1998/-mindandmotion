@@ -244,6 +244,38 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/habits/:id/archive - Archive habit for specific month
+router.put('/:id/archive', authenticateToken, async (req, res) => {
+  try {
+    const habitId = req.params.id;
+    const { year, month } = req.body;
+
+    if (!year || !month) {
+      return res.status(400).json({ error: 'Year and month are required' });
+    }
+
+    // Verify habit belongs to user
+    const [habits] = await pool.query(
+      'SELECT id FROM habits WHERE id = ? AND user_id = ?',
+      [habitId, req.userId]
+    );
+    if (habits.length === 0) return res.status(404).json({ error: 'Habit not found' });
+
+    // Archive habit for this month
+    await pool.query(
+      `INSERT INTO habit_monthly_configs (habit_id, year, month, is_archived) 
+       VALUES (?, ?, ?, TRUE)
+       ON DUPLICATE KEY UPDATE is_archived = TRUE`,
+      [habitId, year, month]
+    );
+
+    res.json({ success: true, message: 'Habit archived for this month' });
+  } catch (err) {
+    console.error('❌ Archive habit error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE /api/habits/:id
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {

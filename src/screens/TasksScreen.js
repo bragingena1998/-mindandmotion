@@ -539,6 +539,11 @@ const TasksScreen = ({ navigation }) => {
 
   useEffect(() => { loadTasks(); loadFolders(); }, []);
 
+  // 🔄 Перезагружаем задачи при смене месяца
+  useEffect(() => {
+    loadTasks(selectedDate);
+  }, [selectedDate]);
+
   useEffect(() => {
     if (tick === 0) return;
     loadTasks();

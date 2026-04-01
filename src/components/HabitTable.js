@@ -49,9 +49,11 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
   const today = new Date().getDate();
   const isCurrentMonth = month === (new Date().getMonth() + 1) && year === new Date().getFullYear();
 
-  // Autoscroll
+  // Autoscroll to today on initial load only, not when habits data changes
+  const hasAutoScrolled = useRef(false);
+  
   useEffect(() => {
-    if (isCurrentMonth && horizontalScrollRef.current && scrollWidth > 0) {
+    if (isCurrentMonth && horizontalScrollRef.current && scrollWidth > 0 && !hasAutoScrolled.current) {
       const todayCenter = ((today - 1) * DAY_CELL_WIDTH) + (DAY_CELL_WIDTH / 2);
       const centerOffset = scrollWidth / 2;
       const scrollX = Math.max(0, todayCenter - centerOffset + (DAY_CELL_WIDTH * 2));
@@ -59,12 +61,13 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
       setTimeout(() => {
         try {
           horizontalScrollRef.current?.scrollTo({ x: scrollX, animated: true });
+          hasAutoScrolled.current = true;
         } catch (e) {
           console.log('Scroll error', e);
         }
       }, 500);
     }
-  }, [month, year, isCurrentMonth, habits.length, scrollWidth]);
+  }, [month, year, isCurrentMonth, scrollWidth]);
 
   // Timer logic
   useEffect(() => {

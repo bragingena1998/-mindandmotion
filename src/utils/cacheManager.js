@@ -71,20 +71,24 @@ class CacheManager {
     return await this.get('tasks', 'list');
   }
 
-  async setHabits(habits) {
-    return await this.set('habits', 'list', habits);
+  async setHabits(habits, yearMonthKey = null) {
+    const key = yearMonthKey ? `list-${yearMonthKey}` : 'list';
+    return await this.set('habits', key, habits);
   }
 
-  async getHabits() {
-    return await this.get('habits', 'list');
+  async getHabits(yearMonthKey = null) {
+    const key = yearMonthKey ? `list-${yearMonthKey}` : 'list';
+    return await this.get('habits', key);
   }
 
-  async setHabitRecords(records) {
-    return await this.set('habit-records', 'list', records);
+  async setHabitRecords(records, yearMonthKey = null) {
+    const key = yearMonthKey ? `list-${yearMonthKey}` : 'list';
+    return await this.set('habit-records', key, records);
   }
 
-  async getHabitRecords() {
-    return await this.get('habit-records', 'list');
+  async getHabitRecords(yearMonthKey = null) {
+    const key = yearMonthKey ? `list-${yearMonthKey}` : 'list';
+    return await this.get('habit-records', key);
   }
 
   async setFolders(folders) {
