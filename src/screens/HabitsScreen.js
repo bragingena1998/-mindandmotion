@@ -99,7 +99,7 @@ const HabitsScreen = ({ route }) => {
   const isUpdatingRef = useRef(false);
 
   // 🚀 Local-first хуки для мгновенной загрузки
-  const yearMonthKey = `${year}-${month}`;
+  const yearMonthKey = `${year}-${String(month).padStart(2, '0')}`;
 
   const {
     data: habitsData,
@@ -238,11 +238,10 @@ const HabitsScreen = ({ route }) => {
     }, [loadRecords])
   );
 
-  // 🧹 Убираем принудительную очистку кеша - теперь кеш по месяцам
+  // 🧹 При смене месяца — делаем force refresh для загрузки данных нового месяца
   useEffect(() => {
-    // Просто загружаем данные для нового месяца
-    if (loadHabits) loadHabits();
-    if (loadRecords) loadRecords();
+    if (loadHabits) loadHabits(true);
+    if (loadRecords) loadRecords(true);
   }, [year, month]);
 
   const loadProfile = async () => {
@@ -284,47 +283,59 @@ const HabitsScreen = ({ route }) => {
   const handleCellChange = async (habitId, year, month, day, value) => {
     const numValue = parseFloat(value) || 0;
     
-    // Помечаем что идет обновление - блокируем перезагрузку при фокусе
     isUpdatingRef.current = true;
     
-    // 🚀 Optimistic update - мгновенное обновление UI
-    const result = await optimisticUpdateRecords(currentRecords => {
-      const filtered = currentRecords.filter((r) => !(r.habitid === habitId && r.day === day));
-      if (numValue > 0) return [...filtered, { habitid: habitId, year, month, day, value: numValue }];
-      return filtered;
-    });
-
-    if (!result.success) {
-      console.error('Optimistic update failed:', result.error);
-      isUpdatingRef.current = false;
-      return;
-    }
+    let originalData = null;
 
     try {
-      // Сервер в фоне - не блокирует UI
+      const result = await optimisticUpdateRecords(currentRecords => {
+        const filtered = currentRecords.filter(
+          (r) => !(r.habitid === habitId && r.day === day)
+        );
+        if (numValue > 0) {
+          return [...filtered, { habitid: habitId, year, month, day, value: numValue }];
+        }
+        return filtered;
+      });
+
+      if (!result.success) {
+        console.error('Optimistic update failed:', result.error);
+        isUpdatingRef.current = false;
+        return;
+      }
+
+      originalData = result.originalData;
+
       if (numValue > 0) {
-        await api.post('/habits/records', { habit_id: habitId, year, month, day, value: numValue });
+        await api.post('/habits/records', {
+          habit_id: habitId, year, month, day, value: numValue,
+        });
       } else {
         await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
       }
-      
-      // ✅ Успешная синхронизация - через 1500мс снимаем блокировку
-      // Увеличили задержку чтобы точно пережить любые фокус-переключения
+
+      // Держим блокировку 1500мс после успешного сохранения
+      // чтобы сервер успел обновить данные до следующего reload
       setTimeout(() => {
         isUpdatingRef.current = false;
-        // Не вызываем bumpAll - это вызывает лишние перезагрузки
       }, 1500);
-      
+
     } catch (error) {
-      console.error('Ошибка сохранения записи:', error);
+      console.error('HabitsScreen update error:', error);
       isUpdatingRef.current = false;
-      
-      // Откат optimistic update при ошибке
-      rollbackRecords(result.originalData);
-      
-      // Показываем уведомление об ошибке
-      Alert.alert('Ошибка', 'Не удалось сохранить изменение. Проверьте подключение к интернету.');
+
+      if (originalData) {
+        rollbackRecords(originalData);
+      }
+
+      Alert.alert(
+        'Ошибка',
+        'Не удалось сохранить изменение. Проверьте подключение к интернету.'
+      );
     }
+    // ← НЕТ finally! Флаг сбрасывается вручную:
+    //   - в catch немедленно
+    //   - в try через setTimeout(1500) после успеха
   };
 
   const executeDelete = async () => {

@@ -6,7 +6,6 @@ class SQLiteCacheManager {
     this.db = null;
     this.initPromise = this.init();
     this.operationQueue = Promise.resolve(); // Очередь операций для предотвращения database is locked
-    this.isCleaning = false;
   }
 
   // 🔄 Упорядоченное выполнение операций с базой данных
@@ -34,10 +33,10 @@ class SQLiteCacheManager {
         CREATE INDEX IF NOT EXISTS idx_cache_timestamp ON cache(timestamp);
       `);
       
-      // 🧹 Очищаем старые данные при запуске (старше 1 дня)
-      await this.cleanup(24 * 60 * 60 * 1000); // 1 день
+      // 🧹 Cleanup через 2 секунды после старта — чтобы не конкурировать с первыми запросами
+      setTimeout(() => this.cleanup(24 * 60 * 60 * 1000), 2000);
       
-      console.log('✅ SQLite cache initialized and cleaned');
+      console.log('✅ SQLite cache initialized');
     } catch (error) {
       console.error('❌ SQLite init error:', error);
       throw error;
@@ -180,8 +179,15 @@ class SQLiteCacheManager {
 
   // Проверить наличие ключа
   async has(key) {
-    const value = await this.get(key);
-    return value !== null;
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        const result = await this.db.getFirstAsync('SELECT key FROM cache WHERE key = ?', [key]);
+        return result !== null;
+      } catch (error) {
+        return false;
+      }
+    });
   }
 
   // Получить размер кеша (количество записей)
@@ -200,13 +206,7 @@ class SQLiteCacheManager {
 
   // Очистка старых записей (старше N дней)
   async cleanup(maxAge = 7 * 24 * 60 * 60 * 1000) { // 7 дней по умолчанию
-    if (this.isCleaning) {
-      console.log('🧹 Cleanup already in progress, skipping');
-      return 0;
-    }
-    
     return this.executeOperation(async () => {
-      this.isCleaning = true;
       await this.ensureDb();
       try {
         const cutoffTime = Date.now() - maxAge;
@@ -220,32 +220,29 @@ class SQLiteCacheManager {
       } catch (error) {
         console.error('❌ Cache cleanup error:', error);
         return 0;
-      } finally {
-        this.isCleaning = false;
       }
     });
   }
 
   // Получить статистику кеша
   async getStats() {
-    await this.ensureDb();
-    try {
-      const [totalResult, typeStats] = await Promise.all([
-        this.db.getFirstAsync('SELECT COUNT(*) as total FROM cache'),
-        this.db.getAllAsync('SELECT type, COUNT(*) as count FROM cache GROUP BY type ORDER BY count DESC')
-      ]);
-
-      return {
-        total: totalResult?.total || 0,
-        byType: typeStats.reduce((acc, row) => {
-          acc[row.type] = row.count;
-          return acc;
-        }, {})
-      };
-    } catch (error) {
-      console.error('❌ Cache getStats error:', error);
-      return { total: 0, byType: {} };
-    }
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        const totalResult = await this.db.getFirstAsync('SELECT COUNT(*) as total FROM cache');
+        const typeStats = await this.db.getAllAsync('SELECT type, COUNT(*) as count FROM cache GROUP BY type ORDER BY count DESC');
+        return {
+          total: totalResult?.total || 0,
+          byType: typeStats.reduce((acc, row) => {
+            acc[row.type] = row.count;
+            return acc;
+          }, {})
+        };
+      } catch (error) {
+        console.error('❌ Cache getStats error:', error);
+        return { total: 0, byType: {} };
+      }
+    });
   }
 }
 

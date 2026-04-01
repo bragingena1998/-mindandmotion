@@ -27,7 +27,9 @@ export const useLocalFirst = ({
         
         // Специальная обработка для разных типов
         if (type === 'habit-records') {
-          cachedData = await cacheManager.getHabitRecords();
+          cachedData = await cacheManager.getHabitRecords(yearMonthKey);
+        } else if (type === 'habits') {
+          cachedData = await cacheManager.getHabits(yearMonthKey);
         } else if (type === 'dashboard') {
           cachedData = await cacheManager.getDashboard();
         } else if (type === 'user') {
@@ -81,7 +83,9 @@ export const useLocalFirst = ({
         
         // Специальная обработка для разных типов
         if (type === 'habit-records') {
-          cachedData = await cacheManager.getHabitRecords();
+          cachedData = await cacheManager.getHabitRecords(yearMonthKey);
+        } else if (type === 'habits') {
+          cachedData = await cacheManager.getHabits(yearMonthKey);
         } else if (type === 'dashboard') {
           cachedData = await cacheManager.getDashboard();
         } else if (type === 'user') {
@@ -106,7 +110,7 @@ export const useLocalFirst = ({
       setLoading(false);
       throw err;
     }
-  }, [fetchFunction, type]);
+  }, [fetchFunction, type, yearMonthKey]);
 
   // Optimistic update
   const optimisticUpdate = useCallback(async (updaterFn) => {
@@ -138,7 +142,7 @@ export const useLocalFirst = ({
       console.error(`Optimistic update failed for ${type}:`, error);
       return { success: false, error, originalData: currentData };
     }
-  }, [data, type]);
+  }, [data, type, yearMonthKey]);
 
   // Откат optimistic update
   const rollbackUpdate = useCallback(async (originalData) => {
@@ -159,7 +163,7 @@ export const useLocalFirst = ({
         await cacheManager[methodName](originalData);
       }
     }
-  }, [type]);
+  }, [type, yearMonthKey]);
 
   // Pull-to-refresh
   const onRefresh = useCallback(async () => {
