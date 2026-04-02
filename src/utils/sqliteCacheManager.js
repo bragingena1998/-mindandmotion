@@ -4,8 +4,11 @@ import * as SQLite from 'expo-sqlite';
 class SQLiteCacheManager {
   constructor() {
     this.db = null;
-    this.initPromise = this.init();
+    this.initPromise = null;
     this.operationQueue = Promise.resolve(); // Очередь операций для предотвращения database is locked
+    
+    // Сразу стартуем инициализацию
+    this.initPromise = this.init();
   }
 
   // 🔄 Упорядоченное выполнение операций с базой данных
@@ -20,18 +23,16 @@ class SQLiteCacheManager {
     try {
       this.db = await SQLite.openDatabaseAsync('app_cache.db');
       
-      // Создаем таблицу для кеша
-      await this.db.execAsync(`
-        CREATE TABLE IF NOT EXISTS cache (
-          key TEXT PRIMARY KEY,
-          value TEXT NOT NULL,
-          timestamp INTEGER NOT NULL,
-          type TEXT NOT NULL
-        );
-        
-        CREATE INDEX IF NOT EXISTS idx_cache_type ON cache(type);
-        CREATE INDEX IF NOT EXISTS idx_cache_timestamp ON cache(timestamp);
-      `);
+      // Создаем таблицу для кеша через runAsync
+      await this.db.runAsync(
+        'CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, timestamp INTEGER NOT NULL, type TEXT NOT NULL)'
+      );
+      await this.db.runAsync(
+        'CREATE INDEX IF NOT EXISTS idx_cache_type ON cache(type)'
+      );
+      await this.db.runAsync(
+        'CREATE INDEX IF NOT EXISTS idx_cache_timestamp ON cache(timestamp)'
+      );
       
       console.log('✅ SQLite cache initialized');
       
@@ -77,50 +78,46 @@ class SQLiteCacheManager {
 
   // Получить значение из кеша
   async get(key) {
-    return this.executeOperation(async () => {
-      await this.ensureDb();
-      try {
-        const result = await this.db.getFirstAsync(
-          'SELECT value FROM cache WHERE key = ?',
-          [key]
-        );
-        
-        if (result?.value) {
-          return JSON.parse(result.value);
-        }
-        return null;
-      } catch (error) {
-        console.error(`❌ Cache get error for key ${key}:`, error);
-        return null;
+    await this.ensureDb();
+    try {
+      const result = await this.db.getFirstAsync(
+        'SELECT value FROM cache WHERE key = ?',
+        [key]
+      );
+      
+      if (result?.value) {
+        return JSON.parse(result.value);
       }
-    });
+      return null;
+    } catch (error) {
+      console.error(`❌ Cache get error for key ${key}:`, error);
+      return null;
+    }
   }
 
   // Получить все значения по типу
   async getByType(type) {
-    return this.executeOperation(async () => {
-      await this.ensureDb();
-      try {
-        const results = await this.db.getAllAsync(
-          'SELECT key, value FROM cache WHERE type = ? ORDER BY timestamp DESC',
-          [type]
-        );
-        
-        const data = {};
-        results.forEach(row => {
-          try {
-            data[row.key] = JSON.parse(row.value);
-          } catch (e) {
-            console.error(`❌ Parse error for key ${row.key}:`, e);
-          }
-        });
-        
-        return data;
-      } catch (error) {
-        console.error(`❌ Cache getByType error for type ${type}:`, error);
-        return {};
-      }
-    });
+    await this.ensureDb();
+    try {
+      const results = await this.db.getAllAsync(
+        'SELECT key, value FROM cache WHERE type = ? ORDER BY timestamp DESC',
+        [type]
+      );
+      
+      const data = {};
+      results.forEach(row => {
+        try {
+          data[row.key] = JSON.parse(row.value);
+        } catch (e) {
+          console.error(`❌ Parse error for key ${row.key}:`, e);
+        }
+      });
+      
+      return data;
+    } catch (error) {
+      console.error(`❌ Cache getByType error for type ${type}:`, error);
+      return {};
+    }
   }
 
   // Удалить значение из кеша
@@ -167,46 +164,40 @@ class SQLiteCacheManager {
 
   // Получить все ключи по типу
   async getKeysByType(type) {
-    return this.executeOperation(async () => {
-      await this.ensureDb();
-      try {
-        const results = await this.db.getAllAsync(
-          'SELECT key FROM cache WHERE type = ? ORDER BY timestamp DESC',
-          [type]
-        );
-        return results.map(row => row.key);
-      } catch (error) {
-        console.error(`❌ Cache getKeysByType error for type ${type}:`, error);
-        return [];
-      }
-    });
+    await this.ensureDb();
+    try {
+      const results = await this.db.getAllAsync(
+        'SELECT key FROM cache WHERE type = ? ORDER BY timestamp DESC',
+        [type]
+      );
+      return results.map(row => row.key);
+    } catch (error) {
+      console.error(`❌ Cache getKeysByType error for type ${type}:`, error);
+      return [];
+    }
   }
 
   // Проверить наличие ключа
   async has(key) {
-    return this.executeOperation(async () => {
-      await this.ensureDb();
-      try {
-        const result = await this.db.getFirstAsync('SELECT key FROM cache WHERE key = ?', [key]);
-        return result !== null;
-      } catch (error) {
-        return false;
-      }
-    });
+    await this.ensureDb();
+    try {
+      const result = await this.db.getFirstAsync('SELECT key FROM cache WHERE key = ?', [key]);
+      return result !== null;
+    } catch (error) {
+      return false;
+    }
   }
 
   // Получить размер кеша (количество записей)
   async getSize() {
-    return this.executeOperation(async () => {
-      await this.ensureDb();
-      try {
-        const result = await this.db.getFirstAsync('SELECT COUNT(*) as count FROM cache');
-        return result?.count || 0;
-      } catch (error) {
-        console.error('❌ Cache getSize error:', error);
-        return 0;
-      }
-    });
+    await this.ensureDb();
+    try {
+      const result = await this.db.getFirstAsync('SELECT COUNT(*) as count FROM cache');
+      return result?.count || 0;
+    } catch (error) {
+      console.error('❌ Cache getSize error:', error);
+      return 0;
+    }
   }
 
   // Очистка старых записей (старше N дней)
@@ -225,23 +216,21 @@ class SQLiteCacheManager {
 
   // Получить статистику кеша
   async getStats() {
-    return this.executeOperation(async () => {
-      await this.ensureDb();
-      try {
-        const totalResult = await this.db.getFirstAsync('SELECT COUNT(*) as total FROM cache');
-        const typeStats = await this.db.getAllAsync('SELECT type, COUNT(*) as count FROM cache GROUP BY type ORDER BY count DESC');
-        return {
-          total: totalResult?.total || 0,
-          byType: typeStats.reduce((acc, row) => {
-            acc[row.type] = row.count;
-            return acc;
-          }, {})
-        };
-      } catch (error) {
-        console.error('❌ Cache getStats error:', error);
-        return { total: 0, byType: {} };
-      }
-    });
+    await this.ensureDb();
+    try {
+      const totalResult = await this.db.getFirstAsync('SELECT COUNT(*) as total FROM cache');
+      const typeStats = await this.db.getAllAsync('SELECT type, COUNT(*) as count FROM cache GROUP BY type ORDER BY count DESC');
+      return {
+        total: totalResult?.total || 0,
+        byType: typeStats.reduce((acc, row) => {
+          acc[row.type] = row.count;
+          return acc;
+        }, {})
+      };
+    } catch (error) {
+      console.error('❌ Cache getStats error:', error);
+      return { total: 0, byType: {} };
+    }
   }
 }
 

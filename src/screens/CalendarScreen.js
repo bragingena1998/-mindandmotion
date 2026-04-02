@@ -27,6 +27,7 @@ import TutorialButton from '../components/TutorialButton';
 import CalendarTutorial from '../components/CalendarTutorial';
 import { useTutorial } from '../hooks/useTutorial';
 import { useDataSync } from '../contexts/DataSyncContext';
+import cacheManager from '../utils/cacheManager';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PADDING_H = 16;
@@ -460,24 +461,67 @@ const CalendarScreen = ({ navigation }) => {
     try {
       setLoading(true);
       const mApi = month + 1;
-      const [tasksRes, recordsRes, habitsRes, eventsRes] = await Promise.all([
-        api.get(`/tasks?year=${year}&month=${mApi}`),
-        api.get(`/habits/records/${year}/${mApi}`),
-        api.get(`/habits?year=${year}&month=${mApi}`),
-        api.get('/birthdays'),
+      const cacheKey = `${year}-${mApi}`;
+      
+      // 1. Сначала показываем из кеша мгновенно
+      const [cachedTasks, cachedRecords, cachedHabits, cachedBirthdays] = await Promise.all([
+        cacheManager.get('tasks', `list.${cacheKey}`),
+        cacheManager.get('habits', `records.${cacheKey}`),
+        cacheManager.get('habits', `list.${cacheKey}`),
+        cacheManager.get('birthdays', 'list'),
       ]);
-      setTasks(tasksRes.data || []);
-      setHabitRecords(recordsRes.data || []);
-      const rawHabits = (habitsRes.data || []).filter(h => h.shouldShow !== false);
-      setHabits(rawHabits.map(h => {
-        let dw = [];
-        try {
-          if (Array.isArray(h.days_of_week)) dw = h.days_of_week;
-          else if (typeof h.days_of_week === 'string') dw = JSON.parse(h.days_of_week);
-        } catch(e) { dw = []; }
-        return { ...h, days_of_week: dw };
-      }));
-      setEvents(eventsRes.data || []);
+      if (cachedTasks) setTasks(cachedTasks);
+      if (cachedRecords) setHabitRecords(cachedRecords);
+      if (cachedHabits) {
+        const rawHabits = cachedHabits.filter(h => h.shouldShow !== false);
+        setHabits(rawHabits.map(h => {
+          let dw = [];
+          try {
+            if (Array.isArray(h.days_of_week)) dw = h.days_of_week;
+            else if (typeof h.days_of_week === 'string') dw = JSON.parse(h.days_of_week);
+          } catch(e) { dw = []; }
+          return { ...h, days_of_week: dw };
+        }));
+      }
+      if (cachedBirthdays) setEvents(cachedBirthdays);
+      
+      // 2. Затем грузим свежее с сервера (если есть сеть)
+      try {
+        const [tasksRes, recordsRes, habitsRes, eventsRes] = await Promise.all([
+          api.get(`/tasks?year=${year}&month=${mApi}`),
+          api.get(`/habits/records/${year}/${mApi}`),
+          api.get(`/habits?year=${year}&month=${mApi}`),
+          api.get('/birthdays'),
+        ]);
+        const tasks = tasksRes.data || [];
+        const records = recordsRes.data || [];
+        const habits = habitsRes.data || [];
+        const birthdays = eventsRes.data || [];
+        
+        setTasks(tasks);
+        setHabitRecords(records);
+        const rawHabits = habits.filter(h => h.shouldShow !== false);
+        setHabits(rawHabits.map(h => {
+          let dw = [];
+          try {
+            if (Array.isArray(h.days_of_week)) dw = h.days_of_week;
+            else if (typeof h.days_of_week === 'string') dw = JSON.parse(h.days_of_week);
+          } catch(e) { dw = []; }
+          return { ...h, days_of_week: dw };
+        }));
+        setEvents(birthdays);
+        
+        // Кешируем свежие данные
+        await Promise.all([
+          cacheManager.set('tasks', `list.${cacheKey}`, tasks),
+          cacheManager.set('habits', `records.${cacheKey}`, records),
+          cacheManager.set('habits', `list.${cacheKey}`, habits),
+          cacheManager.set('birthdays', 'list', birthdays),
+        ]);
+      } catch (networkError) {
+        // Нет сети — используем кеш, уже показан выше
+        console.log('📵 Offline mode — using cached calendar data');
+      }
     } catch (e) {
       console.error('loadData error:', e);
     } finally {
