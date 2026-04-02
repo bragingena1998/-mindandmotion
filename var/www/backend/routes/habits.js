@@ -207,44 +207,7 @@ router.put('/:id/monthly-config', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/habits/:habitId/record/:year/:month/:day  — ВАЖНО: выше /:id
-router.get('/:habitId/record/:year/:month/:day', authenticateToken, async (req, res) => {
-  try {
-    const { habitId, year, month, day } = req.params;
-    const [records] = await pool.query(
-      'SELECT value FROM habit_records WHERE user_id = ? AND habit_id = ? AND year = ? AND month = ? AND day = ?',
-      [req.userId, parseInt(habitId), parseInt(year), parseInt(month), parseInt(day)]
-    );
-    res.json({ value: records.length > 0 ? records[0].value : 0 });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// PUT /api/habits/:id
-router.put('/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, unit, plan, target_type, start_date, end_date, days_of_week } = req.body;
-
-    const daysOfWeekJson = Array.isArray(days_of_week) ? JSON.stringify(days_of_week) : '[]';
-    const startDateDB = parseDateForDB(start_date);
-    const endDateDB = parseDateForDB(end_date);
-
-    const [result] = await pool.query(
-      `UPDATE habits SET name = ?, unit = ?, plan = ?, target_type = ?, start_date = ?, end_date = ?, days_of_week = ?
-       WHERE id = ? AND user_id = ?`,
-      [name, unit, plan, target_type || 'monthly', startDateDB, endDateDB, daysOfWeekJson, id, req.userId]
-    );
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Habit not found or access denied' });
-    res.json({ success: true });
-  } catch (err) {
-    console.error('❌ Update habit error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// PUT /api/habits/:id/archive - Archive habit for specific month
+// PUT /api/habits/:id/archive - Archive habit for specific month  — ВАЖНО: выше /:id
 router.put('/:id/archive', authenticateToken, async (req, res) => {
   try {
     const habitId = req.params.id;
@@ -272,6 +235,29 @@ router.put('/:id/archive', authenticateToken, async (req, res) => {
     res.json({ success: true, message: 'Habit archived for this month' });
   } catch (err) {
     console.error('❌ Archive habit error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/habits/:id
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, unit, plan, target_type, start_date, end_date, days_of_week } = req.body;
+
+    const daysOfWeekJson = Array.isArray(days_of_week) ? JSON.stringify(days_of_week) : '[]';
+    const startDateDB = parseDateForDB(start_date);
+    const endDateDB = parseDateForDB(end_date);
+
+    const [result] = await pool.query(
+      `UPDATE habits SET name = ?, unit = ?, plan = ?, target_type = ?, start_date = ?, end_date = ?, days_of_week = ?
+       WHERE id = ? AND user_id = ?`,
+      [name, unit, plan, target_type || 'monthly', startDateDB, endDateDB, daysOfWeekJson, id, req.userId]
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Habit not found or access denied' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ Update habit error:', err);
     res.status(500).json({ error: err.message });
   }
 });
