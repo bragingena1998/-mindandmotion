@@ -136,6 +136,7 @@ const HabitsScreen = ({ route }) => {
     },
     dependencies: [year, month],
     yearMonthKey,
+    autoSync: false, // Отключаем авто-синхронизацию — она перезаписывает optimistic update
   });
 
   const [loading, setLoading] = useState(habitsLoading || recordsLoading);
@@ -582,7 +583,7 @@ const HabitsScreen = ({ route }) => {
                   <Text style={{ color: colors.danger1, fontWeight: '700' }}>Стоп</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[{ borderWidth: 1, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 }, { borderColor: colors.ok1 }]}
+                  style={[{ borderWidth: 1, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 }, { borderColor: colors.ok1 }]}  
                   onPress={async () => {
                     // Сохраняем результат в запись привычки
                     const elapsed = Math.floor((Date.now() - habitTimer.startedAt) / 1000) + (habitTimer.accumulated || 0);
@@ -593,14 +594,19 @@ const HabitsScreen = ({ route }) => {
                       const m = today.getMonth() + 1;
                       const d = today.getDate();
 
-                      // Найти существующее значение в ячейке
-                      const existing = records.find(
-                        r => r.habitid === habitTimer.habitId && r.year === y && r.month === m && r.day === d
-                      );
-                      const existingValue = existing ? parseFloat(existing.value) || 0 : 0;
+                      // Получаем актуальное значение из локального state через функциональное обновление
+                      let existingValue = 0;
+                      setRecords(prevRecords => {
+                        const existing = prevRecords.find(
+                          r => r.habitid === habitTimer.habitId && r.year === y && r.month === m && r.day === d
+                        );
+                        existingValue = existing ? parseFloat(existing.value) || 0 : 0;
+                        return prevRecords; // не меняем state, только читаем
+                      });
+                      
                       const newValue = Math.round((existingValue + hours) * 10) / 10;
 
-                      // Отправить сумму, а не просто hours
+                      // Отправить сумму на сервер
                       await api.post('/habits/records', {
                         habit_id: habitTimer.habitId,
                         year: y, month: m, day: d,

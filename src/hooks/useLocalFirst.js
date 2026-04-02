@@ -44,8 +44,9 @@ export const useLocalFirst = ({
         
         if (cachedData) {
           setData(cachedData);
-          setLoading(false);
         }
+        // Всегда сбрасываем loading после проверки кеша (даже если кеш пустой)
+        setLoading(false);
       }
       
       // 2. Затем синхронизируем с сервером в фоне

@@ -33,10 +33,10 @@ class SQLiteCacheManager {
         CREATE INDEX IF NOT EXISTS idx_cache_timestamp ON cache(timestamp);
       `);
       
-      // 🧹 Cleanup через 2 секунды после старта — чтобы не конкурировать с первыми запросами
-      setTimeout(() => this.cleanup(24 * 60 * 60 * 1000), 2000);
-      
       console.log('✅ SQLite cache initialized');
+      
+      // 🧹 Cleanup через 5 секунд после полной инициализации
+      setTimeout(() => this.cleanup(24 * 60 * 60 * 1000), 5000);
     } catch (error) {
       console.error('❌ SQLite init error:', error);
       throw error;
@@ -44,9 +44,14 @@ class SQLiteCacheManager {
   }
 
   async ensureDb() {
-    if (!this.db) {
-      await this.initPromise;
+    if (this.db) return; // уже открыта
+    if (this.initPromise) {
+      await this.initPromise; // уже открывается — ждём
+      return;
     }
+    // Инициализация ещё не начата — стартуем
+    this.initPromise = this.init();
+    await this.initPromise;
   }
 
   // Установить значение в кеш
@@ -206,21 +211,15 @@ class SQLiteCacheManager {
 
   // Очистка старых записей (старше N дней)
   async cleanup(maxAge = 7 * 24 * 60 * 60 * 1000) { // 7 дней по умолчанию
+    if (!this.db) return 0; // БД не готова — пропускаем
     return this.executeOperation(async () => {
-      await this.ensureDb();
-      try {
-        const cutoffTime = Date.now() - maxAge;
-        const result = await this.db.runAsync(
-          'DELETE FROM cache WHERE timestamp < ?',
-          [cutoffTime]
-        );
-        
-        console.log(`🧹 Cleaned ${result.changes} old cache entries`);
-        return result.changes;
-      } catch (error) {
-        console.error('❌ Cache cleanup error:', error);
-        return 0;
-      }
+      const cutoffTime = Date.now() - maxAge;
+      const result = await this.db.runAsync(
+        'DELETE FROM cache WHERE timestamp < ?',
+        [cutoffTime]
+      );
+      console.log(`🧹 Cleaned ${result.changes} old cache entries`);
+      return result.changes;
     });
   }
 

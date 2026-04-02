@@ -395,6 +395,7 @@ const TasksScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const { tick, bumpAll } = useDataSync();
   const [tasks, setTasks] = useState([]);
+  const [overdueTasks, setOverdueTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -795,16 +796,35 @@ const TasksScreen = ({ navigation }) => {
       const token = await getToken();
       if (!token) return;
       
-      const params = isCurrentMonth ? {} : { month: date.getMonth(), year: date.getFullYear() };
+      const params = { month: date.getMonth() + 1, year: date.getFullYear() };
       let tasksData;
       let statsApi;
       
       if (isCurrentMonth) {
-        const [res, resStats] = await Promise.all([tasksAPI.getTasks(params), api.get('/tasks/stats')]);
+        const [res, resStats, overdueRes] = await Promise.all([
+          tasksAPI.getTasks(params),
+          api.get('/tasks/stats'),
+          api.get('/tasks/overdue')
+        ]);
         tasksData = res;
         statsApi = resStats;
+        // Форматируем и сохраняем просроченные задачи
+        const formattedOverdue = overdueRes.data.map(task => ({
+          ...task,
+          priority: task.priority === 1 ? 'high' : task.priority === 3 ? 'low' : 'medium',
+          dueDate: task.deadline || task.date,
+          completed: task.done || false,
+          doneDate: task.doneDate || task.done_date || null,
+          time: task.time || null,
+          isRecurring: task.isRecurring ?? task.is_recurring ?? task.isrecurring ?? 0,
+          recurrenceType: task.recurrenceType ?? task.recurrence_type ?? task.recurrencetype ?? null,
+          focusSessions: task.focusSessions || 0,
+          folderId: task.folderId ?? task.folder_id ?? null,
+        }));
+        setOverdueTasks(formattedOverdue);
       } else {
         tasksData = await tasksAPI.getTasks(params);
+        setOverdueTasks([]); // Сбрасываем просроченные для других месяцев
       }
       
       const formatted = tasksData.map(task => ({
@@ -1211,6 +1231,9 @@ const TasksScreen = ({ navigation }) => {
   }, []);
 
   const taskSections = useMemo(() => {
+    const now = new Date();
+    const isCurrentMonth = selectedDate.getMonth() === now.getMonth() && selectedDate.getFullYear() === now.getFullYear();
+    
     const empty = [
       { key: 'overdue', title: 'ПРОСРОЧЕННЫЕ', color: colors.danger1, data: [] },
       { key: 'today', title: 'СЕГОДНЯ', color: colors.accent1, data: [] },
@@ -1218,13 +1241,15 @@ const TasksScreen = ({ navigation }) => {
       { key: 'nodate', title: 'БЕЗ ДАТЫ', color: colors.textMuted, data: [] },
     ];
     if (sortBy !== 'date') {
+      // В режиме сортировки добавляем просроченные в общий список если это текущий месяц
+      const allTasks = isCurrentMonth ? [...overdueTasks, ...sortedTasks] : sortedTasks;
       return [
         ...empty,
-        { key: 'custom', title: sortBy === 'priority' ? 'СОРТИРОВКА: ВАЖНОСТЬ' : 'СОРТИРОВКА: НАЗВАНИЕ', color: colors.textMuted, data: sortedTasks },
+        { key: 'custom', title: sortBy === 'priority' ? 'СОРТИРОВКА: ВАЖНОСТЬ' : 'СОРТИРОВКА: НАЗВАНИЕ', color: colors.textMuted, data: allTasks },
       ];
     }
 
-    const overdue = [];
+    const overdue = isCurrentMonth ? [...overdueTasks] : [];
     const todayGroup = [];
     const futureMap = {};
     const noDate = [];
@@ -1255,7 +1280,7 @@ const TasksScreen = ({ navigation }) => {
       { key: 'future', title: 'БУДУЩИЕ', color: '#60a5fa', data: future },
       { key: 'nodate', title: 'БЕЗ ДАТЫ', color: colors.textMuted, data: noDate },
     ];
-  }, [sortedTasks, sortBy, colors, getTaskStatus, getDateGroupLabel]);
+  }, [sortedTasks, sortBy, colors, getTaskStatus, getDateGroupLabel, overdueTasks, selectedDate]);
 
   // ==================== RENDER ====================
 

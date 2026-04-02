@@ -152,6 +152,44 @@ router.get('/date', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/tasks/overdue — просроченные невыполненные из прошлых месяцев
+router.get('/overdue', authenticateToken, async (req, res) => {
+  try {
+    const [tasks] = await pool.query(`
+      SELECT t.*, 
+        CASE WHEN EXISTS (
+          SELECT 1 FROM subtasks s WHERE s.task_id = t.id
+        ) THEN 1 ELSE 0 END AS has_subtasks,
+        (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) as subtasks_count
+      FROM tasks t
+      WHERE t.user_id = ?
+      AND t.done = 0
+      AND t.date < DATE_FORMAT(NOW(), '%Y-%m-01')
+      ORDER BY t.date ASC
+    `, [req.userId]);
+    
+    const formatted = tasks.map(task => ({
+      ...task,
+      done: Boolean(task.done),
+      isRecurring: Boolean(task.is_recurring),
+      isGenerated: Boolean(task.is_generated),
+      subtasks_count: task.subtasks_count || 0,
+      userId: task.user_id,
+      doneDate: task.done_date,
+      focusSessions: task.focus_sessions,
+      recurrenceType: task.recurrence_type,
+      recurrenceValue: task.recurrence_value,
+      templateId: task.template_id,
+      folderId: task.folder_id,
+    }));
+    
+    res.json(formatted);
+  } catch (err) {
+    console.error('Overdue tasks error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/tasks/sync  — ВАЖНО: выше /:id
 router.post('/sync', authenticateToken, async (req, res) => {
   try {

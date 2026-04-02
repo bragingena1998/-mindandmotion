@@ -13,53 +13,41 @@ router.get('/', authenticateToken, async (req, res) => {
   try {
     const { year, month } = req.query;
 
+    // Если указаны year и month — фильтруем привычки активные в этом месяце
+    if (year && month) {
+      const requestedYear = parseInt(year);
+      const requestedMonth = parseInt(month);
+
+      const sql = `SELECT h.* FROM habits h
+         WHERE h.user_id = ?
+         AND (
+           h.start_year < ? OR 
+           (h.start_year = ? AND h.start_month <= ?)
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM habit_monthly_configs hmc
+           WHERE hmc.habit_id = h.id
+           AND hmc.year = ? AND hmc.month = ?
+           AND hmc.is_archived = 1
+         )
+         ORDER BY h.order_index ASC, h.id ASC`;
+      
+      const params = [req.userId, requestedYear, requestedYear, requestedMonth, requestedYear, requestedMonth];
+      console.log('[GET /habits] SQL:', sql.replace(/\s+/g, ' ').trim());
+      console.log('[GET /habits] Params:', params);
+
+      const [habits] = await pool.query(sql, params);
+      console.log(`[GET /habits] Found ${habits.length} habits for ${requestedYear}-${requestedMonth}`);
+      return res.json(habits);
+    }
+
+    // Без year/month — возвращаем все привычки пользователя
     const [habits] = await pool.query(
       'SELECT * FROM habits WHERE user_id = ? ORDER BY order_index ASC, id ASC',
       [req.userId]
     );
 
-    if (!year || !month) return res.json(habits);
-
-    const requestedYear = parseInt(year);
-    const requestedMonth = parseInt(month);
-
-    const [configs] = await pool.query(
-      'SELECT * FROM habit_monthly_configs WHERE habit_id IN (?) AND year = ? AND month = ?',
-      [habits.map(h => h.id).length > 0 ? habits.map(h => h.id) : [0], year, month]
-    );
-
-    const [records] = await pool.query(
-      'SELECT DISTINCT habit_id FROM habit_records WHERE user_id = ? AND year = ? AND month = ?',
-      [req.userId, year, month]
-    );
-    const activeHabitIds = new Set(records.map(r => r.habit_id));
-
-    const mergedHabits = habits.map(habit => {
-      const config = configs.find(c => c.habit_id === habit.id);
-      const effectivePlan = config ? config.plan : habit.plan;
-      const effectiveUnit = config ? config.unit : habit.unit;
-      const isArchived = config ? config.is_archived : false;
-      const habitStartYear = habit.start_year;
-      const habitStartMonth = habit.start_month;
-      let existedInThisMonth = true;
-
-      if (habitStartYear && habitStartMonth) {
-        if (requestedYear < habitStartYear ||
-            (requestedYear === habitStartYear && requestedMonth < habitStartMonth)) {
-          existedInThisMonth = false;
-        }
-      }
-
-      return {
-        ...habit,
-        plan: effectivePlan,
-        unit: effectiveUnit,
-        isArchived,
-        shouldShow: existedInThisMonth && (!isArchived || activeHabitIds.has(habit.id))
-      };
-    });
-
-    res.json(mergedHabits);
+    res.json(habits);
   } catch (err) {
     console.error('Get habits error:', err);
     res.status(500).json({ error: err.message });
