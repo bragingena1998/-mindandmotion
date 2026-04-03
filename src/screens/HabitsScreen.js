@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
 import cacheManager from '../utils/cacheManager';
+import syncQueue from '../utils/syncQueue';
 import HabitTable from '../components/HabitTable';
 import Modal from '../components/Modal';
 import Input from '../components/Input';
@@ -239,7 +240,7 @@ const HabitsScreen = ({ route }) => {
       const response = await api.get('/user/profile');
       setProfile(response.data);
       calculateLifeProgress(response.data.birthdate, response.data.gender);
-    } catch (error) { console.error('Ошибка загрузки профиля:', error); }
+    } catch (error) { console.log('📵 Ошибка загрузки профиля — offline mode'); }
   };
 
   const calculateLifeProgress = (birthdate, gender = 'male') => {
@@ -297,11 +298,35 @@ const HabitsScreen = ({ route }) => {
       originalData = result.originalData;
 
       if (numValue > 0) {
-        await api.post('/habits/records', {
-          habit_id: habitId, year, month, day, value: numValue,
-        });
+        try {
+          await api.post('/habits/records', {
+            habit_id: habitId, year, month, day, value: numValue,
+          });
+        } catch (error) {
+          if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+            // Нет сети — сохраняем в очередь синхронизации
+            await syncQueue.enqueue('POST', '/habits/records', {
+              habit_id: habitId, year, month, day, value: numValue,
+            });
+            console.log('📵 Offline — queued habit update');
+            // UI уже обновлён оптимистично — ничего не откатываем
+          } else {
+            throw error; // другая ошибка — пробрасываем
+          }
+        }
       } else {
-        await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
+        try {
+          await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
+        } catch (error) {
+          if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+            // Нет сети — сохраняем в очередь синхронизации
+            await syncQueue.enqueue('DELETE', `/habits/records/${habitId}/${year}/${month}/${day}`, {});
+            console.log('📵 Offline — queued habit delete');
+            // UI уже обновлён оптимистично — ничего не откатываем
+          } else {
+            throw error; // другая ошибка — пробрасываем
+          }
+        }
       }
 
       // Держим блокировку 1500мс после успешного сохранения

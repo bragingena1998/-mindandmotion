@@ -45,6 +45,7 @@ import { useDataSync } from '../contexts/DataSyncContext';
 import { countTodayPlanTotal, countCompletedToday } from '../utils/taskDayStats';
 import { useLocalFirstTasks, useLocalFirstFolders } from '../hooks/useLocalFirst';
 import cacheManager from '../utils/cacheManager';
+import syncQueue from '../utils/syncQueue';
 
 // Debounce функция для оптимизации сохранения задач
 let _saveTimer = null;
@@ -85,6 +86,67 @@ const tasksAPI = {
   deleteTask: async (id) => (await api.delete(`/tasks/${id}`)).data,
   stopRecurring: async (id) => (await api.put(`/tasks/${id}/stop-recurring`)).data,
   addFocusSession: async (id) => (await api.post(`/tasks/${id}/focus`)).data,
+  
+  // Офлайн-версии с syncQueue
+  createTaskOffline: async (taskData) => {
+    try {
+      return await api.post('/tasks', taskData);
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        const tempId = 'temp-' + Date.now();
+        const newTask = { id: tempId, ...taskData, offline: true };
+        
+        // Сохраняем в syncQueue для отправки на сервер
+        await syncQueue.enqueue('POST', '/tasks', { ...taskData, id: tempId });
+        
+        // Сохраняем в кеш чтобы loadTasks увидел задачу офлайн
+        const cached = await cacheManager.getTasks() || [];
+        await cacheManager.setTasks([...cached, newTask]);
+        
+        console.log('📵 Offline — queued + cached task:', tempId);
+        return { data: newTask };
+      }
+      throw error;
+    }
+  },
+  updateTaskOffline: async (id, taskData) => {
+    try {
+      return await api.put(`/tasks/${id}`, taskData);
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        await syncQueue.enqueue('PUT', `/tasks/${id}`, taskData);
+        
+        // Обновляем в кеше для офлайн-режима
+        const cached = await cacheManager.getTasks() || [];
+        const updated = cached.map(t => 
+          t.id === id ? { ...t, ...taskData, offline: true } : t
+        );
+        await cacheManager.setTasks(updated);
+        
+        console.log('📵 Offline — queued task update + cached');
+        return { data: { id, ...taskData, offline: true } };
+      }
+      throw error;
+    }
+  },
+  deleteTaskOffline: async (id) => {
+    try {
+      return await api.delete(`/tasks/${id}`);
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        await syncQueue.enqueue('DELETE', `/tasks/${id}`, {});
+        
+        // Удаляем из кеша для офлайн-режима
+        const cached = await cacheManager.getTasks() || [];
+        const filtered = cached.filter(t => t.id !== id);
+        await cacheManager.setTasks(filtered);
+        
+        console.log('📵 Offline — queued task delete + cached');
+        return { data: { id, deleted: true, offline: true } };
+      }
+      throw error;
+    }
+  },
 };
 
 const foldersAPI = {
@@ -93,6 +155,78 @@ const foldersAPI = {
   updateFolder: async (id, data) => (await api.put(`/folders/${id}`, data)).data,
   deleteFolder: async (id) => (await api.delete(`/folders/${id}`)).data,
   reorderFolders: async (folders) => (await api.put('/folders/reorder', { folders })).data,
+  
+  // Офлайн-версии с syncQueue
+  createFolderOffline: async (data) => {
+    try {
+      return await api.post('/folders', data);
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        const tempId = 'temp-folder-' + Date.now();
+        const newFolder = { id: tempId, ...data, offline: true };
+        
+        await syncQueue.enqueue('POST', '/folders', data);
+        
+        // Сохраняем в кеш
+        const cached = await cacheManager.getFolders() || [];
+        await cacheManager.setFolders([...cached, newFolder]);
+        
+        console.log('📵 Offline — queued + cached folder:', tempId);
+        return { data: newFolder };
+      }
+      throw error;
+    }
+  },
+  updateFolderOffline: async (id, data) => {
+    try {
+      return await api.put(`/folders/${id}`, data);
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        await syncQueue.enqueue('PUT', `/folders/${id}`, data);
+        
+        // Обновляем в кеше
+        const cached = await cacheManager.getFolders() || [];
+        const updated = cached.map(f => 
+          f.id === id ? { ...f, ...data, offline: true } : f
+        );
+        await cacheManager.setFolders(updated);
+        
+        console.log('📵 Offline — queued + cached folder update');
+        return { data: { id, ...data, offline: true } };
+      }
+      throw error;
+    }
+  },
+  deleteFolderOffline: async (id) => {
+    try {
+      return await api.delete(`/folders/${id}`);
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        await syncQueue.enqueue('DELETE', `/folders/${id}`, {});
+        
+        // Удаляем из кеша
+        const cached = await cacheManager.getFolders() || [];
+        const filtered = cached.filter(f => f.id !== id);
+        await cacheManager.setFolders(filtered);
+        
+        console.log('📵 Offline — queued + cached folder delete');
+        return { data: { id, deleted: true, offline: true } };
+      }
+      throw error;
+    }
+  },
+  reorderFoldersOffline: async (folders) => {
+    try {
+      return await api.put('/folders/reorder', { folders });
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        await syncQueue.enqueue('PUT', '/folders/reorder', { folders });
+        console.log('📵 Offline — queued folders reorder');
+        return { data: { reordered: true, offline: true } };
+      }
+      throw error;
+    }
+  },
 };
 
 const EMOJI_LIST = ['📁','💼','🏠','🎯','📚','💡','🏋️','🎨','🛒','❤️','⭐','🚀','🌿','🎮','🧘','🔬','🎵','✈️','💰','🏆'];
@@ -585,16 +719,33 @@ const TasksScreen = ({ navigation }) => {
     try {
       const data = await foldersAPI.getFolders();
       setFolders(Array.isArray(data) ? data : []);
+      // Сохраняем в кеш при успешной загрузке
+      await cacheManager.set('folders', 'list', data);
     } catch (err) {
-      console.error('loadFolders error:', err);
+      const isNetworkError = err.code === 'ERR_NETWORK' || 
+                           err.message === 'Network Error' || 
+                           !err.response;
+      
+      if (isNetworkError) {
+        // Пробуем загрузить из кеша при сетевой ошибке
+        const cached = await cacheManager.get('folders', 'list');
+        if (cached && Array.isArray(cached)) {
+          setFolders(cached);
+          console.log('📵 Offline — using cached folders');
+        } else {
+          console.log('📵 Offline — no cached folders available');
+        }
+      } else {
+        console.log('❌ loadFolders error:', err.message || err);
+      }
     }
   };
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
     try {
-      const created = await foldersAPI.createFolder({ name: newFolderName.trim(), icon: newFolderEmoji });
-      setFolders(prev => [...prev, created]);
+      const created = await foldersAPI.createFolderOffline({ name: newFolderName.trim(), icon: newFolderEmoji });
+      setFolders(prev => [...prev, created.data || created]);
       setNewFolderName('');
       setNewFolderEmoji('📁');
       setShowCreateFolderModal(false);
@@ -607,7 +758,7 @@ const TasksScreen = ({ navigation }) => {
   const handleUpdateFolder = async () => {
     if (!editFolderName.trim() || !editingFolder) return;
     try {
-      await foldersAPI.updateFolder(editingFolder.id, {
+      await foldersAPI.updateFolderOffline(editingFolder.id, {
         name: editFolderName.trim(),
         icon: editFolderEmoji,
       });
@@ -621,7 +772,7 @@ const TasksScreen = ({ navigation }) => {
 
   const handleDeleteFolder = async (folder) => {
     try {
-      await foldersAPI.deleteFolder(folder.id);
+      await foldersAPI.deleteFolderOffline(folder.id);
       setFolders(prev => prev.filter(f => f.id !== folder.id));
       if (activeFolderId === folder.id) setActiveFolderId(null);
       setTasks(prev => prev.map(t => t.folderId === folder.id ? { ...t, folderId: null } : t));
@@ -640,7 +791,7 @@ const TasksScreen = ({ navigation }) => {
     setFolders(newFolders);
     setShowFolderActionModal(false);
     try {
-      await foldersAPI.reorderFolders(newFolders.map((f, i) => ({ id: f.id, order_index: i })));
+      await foldersAPI.reorderFoldersOffline(newFolders.map((f, i) => ({ id: f.id, order_index: i })));
       showToast('↑ Папка перемещена');
     } catch {
       loadFolders();
@@ -656,7 +807,7 @@ const TasksScreen = ({ navigation }) => {
     setFolders(newFolders);
     setShowFolderActionModal(false);
     try {
-      await foldersAPI.reorderFolders(newFolders.map((f, i) => ({ id: f.id, order_index: i })));
+      await foldersAPI.reorderFoldersOffline(newFolders.map((f, i) => ({ id: f.id, order_index: i })));
       showToast('↓ Папка перемещена');
     } catch {
       loadFolders();
@@ -779,7 +930,14 @@ const TasksScreen = ({ navigation }) => {
             focusSessions: task.focusSessions || 0,
             folderId: task.folderId ?? task.folder_id ?? null,
           }));
-          setTasks(formatted);
+          
+          // Объединяем кеш с текущим state чтобы сохранить tempId задачи
+          setTasks(prev => {
+            const cachedIds = new Set(formatted.map(t => t.id));
+            // Сохраняем tempId задачи которых нет в кеше (только что созданные офлайн)
+            const tempTasks = prev.filter(t => String(t.id).startsWith('temp-') && !cachedIds.has(t.id));
+            return [...formatted, ...tempTasks];
+          });
           
           if (isCurrentMonth) {
             setStats((prev) => ({
@@ -838,10 +996,18 @@ const TasksScreen = ({ navigation }) => {
         recurrenceType: task.recurrenceType ?? task.recurrence_type ?? task.recurrencetype ?? null,
         focusSessions: task.focusSessions || 0,
         folderId: task.folderId ?? task.folder_id ?? null,
-      }));
+      })).filter(task => !String(task.id).startsWith('temp-')); // Убираем временные задачи при загрузке с сервера
       
-      // Обновляем состояние и кеш
-      setTasks(formatted);
+      // Обновляем состояние — очищаем старые temp-задачи, сохраняем новые с сервера
+      setTasks(prevTasks => {
+        // Убираем все temp-задачи из текущего стейта
+        const cleanTasks = prevTasks.filter(t => !String(t.id).startsWith('temp-'));
+        // Добавляем новые задачи с сервера (которые уже отфильтрованы от temp)
+        // Но проверяем на дубликаты по real id
+        const existingIds = new Set(cleanTasks.map(t => t.id));
+        const newTasks = formatted.filter(t => !existingIds.has(t.id));
+        return [...cleanTasks, ...newTasks];
+      });
       await cacheManager.setTasks(formatted); // Сохраняем в кеш
       
       if (isCurrentMonth && statsApi) {
@@ -867,7 +1033,17 @@ const TasksScreen = ({ navigation }) => {
       await cacheManager.setSyncTime('tasks');
       
     } catch (err) {
-      console.error('❌ Загрузка задач:', err);
+      // Проверяем, является ли ошибка сетевой
+      const isNetworkError = err.code === 'ERR_NETWORK' || 
+                           err.message === 'Network Error' || 
+                           !err.response;
+      
+      if (isNetworkError) {
+        console.log('📵 Offline — using cache for tasks');
+      } else {
+        console.log('❌ Загрузка задач:', err.message || err);
+      }
+      
       // Если сервер недоступен, пробуем загрузить из кеша
       const cachedTasks = await cacheManager.getTasks();
       if (cachedTasks && !forceRefresh) {
@@ -884,6 +1060,11 @@ const TasksScreen = ({ navigation }) => {
           folderId: task.folderId ?? task.folder_id ?? null,
         }));
         setTasks(formatted);
+        setLoading(false);
+      } else if (isNetworkError) {
+        // Для сетевых ошибок без кеша — просто пустой список без ошибки
+        console.log('📵 Offline — no cache for tasks, using empty data');
+        setTasks([]);
         setLoading(false);
       } else {
         setError('Ошибка загрузки задач');
@@ -910,7 +1091,10 @@ const TasksScreen = ({ navigation }) => {
   const handleDeleteOldTasks = async () => {
     try {
       setLoading(true);
-      await Promise.all(overdueTasksList.map(t => tasksAPI.deleteTask(t.id)));
+      // При офлайн — удаляем из кеша, при онлайн — с сервера
+      const results = await Promise.all(
+        overdueTasksList.map(t => tasksAPI.deleteTaskOffline(t.id))
+      );
       setShowOverdueCleanupModal(false);
       setOverdueTasksList([]);
       await loadTasks();
@@ -950,7 +1134,7 @@ const TasksScreen = ({ navigation }) => {
       
       // 4. Сервер в фоне - не блокирует UI
       try {
-        await tasksAPI.updateTask(taskId, {
+        await tasksAPI.updateTaskOffline(taskId, {
           title: t.title, date: t.date, deadline: t.deadline,
           priority: normPriority(t.priority) === 'high' ? 1 : normPriority(t.priority) === 'low' ? 3 : 2,
           comment: t.comment || '', done, doneDate: done ? toMysqlFormat(new Date()) : null,
@@ -1018,7 +1202,7 @@ const TasksScreen = ({ navigation }) => {
       
       // 5. Сервер в фоне - не блокирует UI
       try {
-        await tasksAPI.deleteTask(taskId);
+        await tasksAPI.deleteTaskOffline(taskId);
         await cancelTaskReminders(taskId); // Отменяем уведомления
         showToast('🗑️ Задача удалена');
         
@@ -1088,32 +1272,62 @@ const TasksScreen = ({ navigation }) => {
     try {
       await api.put(`/subtasks/${subtaskId}/toggle`);
       setSubtasks(prev => ({ ...prev, [taskId]: prev[taskId].map(st => st.id === subtaskId ? { ...st, completed: !st.completed } : st) }));
-    } catch {}
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        await syncQueue.enqueue('PUT', `/subtasks/${subtaskId}/toggle`, {});
+        console.log('📵 Offline — queued subtask toggle');
+        // UI уже обновлён оптимистично выше
+      }
+    }
   };
 
   const addSubtask = async () => {
     if (!newSubtaskTitle.trim() || !currentTaskForSubtask) return;
+    const tempId = 'temp-subtask-' + Date.now();
     try {
-      const res = await api.post(`/tasks/${currentTaskForSubtask}/subtasks`, { title: newSubtaskTitle });
-      const ns = { ...res.data, completed: false };
+      // Оптимистичное обновление UI
+      const optimisticSubtask = { id: tempId, title: newSubtaskTitle, completed: false, task_id: currentTaskForSubtask, offline: true };
       setSubtasks(prev => {
-        const list = [...(prev[currentTaskForSubtask] || []), ns];
+        const list = [...(prev[currentTaskForSubtask] || []), optimisticSubtask];
         setTasks(pt => pt.map(t => t.id === currentTaskForSubtask ? { ...t, subtasks_count: list.length } : t));
         return { ...prev, [currentTaskForSubtask]: list };
       });
       setNewSubtaskTitle(''); setShowAddSubtaskModal(false); setCurrentTaskForSubtask(null);
-    } catch {}
+      
+      // API запрос
+      const res = await api.post(`/tasks/${currentTaskForSubtask}/subtasks`, { title: newSubtaskTitle });
+      const ns = { ...res.data, completed: false };
+      // Обновляем временный ID на реальный
+      setSubtasks(prev => ({
+        ...prev,
+        [currentTaskForSubtask]: prev[currentTaskForSubtask].map(st => st.id === tempId ? ns : st)
+      }));
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        await syncQueue.enqueue('POST', `/tasks/${currentTaskForSubtask}/subtasks`, { title: newSubtaskTitle });
+        console.log('📵 Offline — queued subtask create');
+        // Оставляем оптимистичное обновление
+      }
+    }
   };
 
   const deleteSubtask = async (subtaskId, taskId) => {
     try {
-      await api.delete(`/subtasks/${subtaskId}`);
+      // Оптимистичное удаление из UI
       setSubtasks(prev => {
         const list = (prev[taskId] || []).filter(st => st.id !== subtaskId);
         setTasks(pt => pt.map(t => t.id === taskId ? { ...t, subtasks_count: list.length } : t));
         return { ...prev, [taskId]: list };
       });
-    } catch {}
+      // API запрос
+      await api.delete(`/subtasks/${subtaskId}`);
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        await syncQueue.enqueue('DELETE', `/subtasks/${subtaskId}`, {});
+        console.log('📵 Offline — queued subtask delete');
+        // UI уже обновлён оптимистично выше
+      }
+    }
   };
 
   const editSubtask = (subtask, taskId) => {
@@ -1140,7 +1354,25 @@ const TasksScreen = ({ navigation }) => {
       setEditSubtaskTitle('');
       setEditingSubtask(null);
       setShowEditSubtaskModal(false);
-    } catch {}
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+        await syncQueue.enqueue('PUT', `/tasks/${editingSubtask.taskId}/subtasks/${editingSubtask.id}`, {
+          title: editSubtaskTitle,
+          completed: editingSubtask.completed
+        });
+        console.log('📵 Offline — queued subtask update');
+        // Обновляем UI оптимистично
+        setSubtasks(prev => ({
+          ...prev,
+          [editingSubtask.taskId]: prev[editingSubtask.taskId].map(st =>
+            st.id === editingSubtask.id ? { ...st, title: editSubtaskTitle } : st
+          )
+        }));
+        setEditSubtaskTitle('');
+        setEditingSubtask(null);
+        setShowEditSubtaskModal(false);
+      }
+    }
   };
 
   const handleEditTask = (task) => {
@@ -1685,9 +1917,17 @@ const TasksScreen = ({ navigation }) => {
                     folderId: newTask.folderId || null,
                   };
                   const result = await (editingTask
-                    ? tasksAPI.updateTask(editingTask.id, payload)
-                    : tasksAPI.createTask(payload)
+                    ? tasksAPI.updateTaskOffline(editingTask.id, payload)
+                    : tasksAPI.createTaskOffline(payload)
                   );
+                  
+                  // Для офлайн-задач — сразу добавляем в локальный state
+                  if (!editingTask && result?.data?.offline) {
+                    setTasks(prev => [...prev, result.data]);
+                  }
+                  if (editingTask && result?.data?.offline) {
+                    setTasks(prev => prev.map(t => t.id === editingTask.id ? { ...t, ...payload, offline: true } : t));
+                  }
                   
                   // Планируем уведомления для задачи с временем
                   const taskData = editingTask ? { ...editingTask, ...payload } : { ...result, ...payload };

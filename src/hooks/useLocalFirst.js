@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AppState } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import cacheManager from '../utils/cacheManager';
+import syncQueue from '../utils/syncQueue';
+import api from '../services/api';
 
 // Универсальный хук для local-first архитектуры
 export const useLocalFirst = ({
@@ -76,7 +79,16 @@ export const useLocalFirst = ({
       return freshData;
       
     } catch (err) {
-      console.error(`Failed to load ${type}:`, err);
+      // Проверяем, является ли ошибка сетевой
+      const isNetworkError = err.code === 'ERR_NETWORK' || 
+                           err.message === 'Network Error' || 
+                           !err.response;
+      
+      if (isNetworkError) {
+        console.log(`📵 Offline — using cache for ${type}`);
+      } else {
+        console.log(`Failed to load ${type}:`, err.message || err);
+      }
       
       // Если сервер недоступен, пробуем загрузить из кеша
       if (!forceRefresh) {
@@ -106,10 +118,17 @@ export const useLocalFirst = ({
         }
       }
       
+      // Для сетевых ошибок не бросаем ошибку наружу — просто используем пустые данные
+      if (isNetworkError) {
+        console.log(`📵 Offline — no cache for ${type}, using empty data`);
+        setLoading(false);
+        return null;
+      }
+      
+      // Для других ошибок — устанавливаем ошибку но не бросаем
       setError(err.message || `Failed to load ${type}`);
-      setData(null);
       setLoading(false);
-      throw err;
+      return null;
     }
   }, [fetchFunction, type, yearMonthKey]);
 
@@ -210,6 +229,24 @@ export const useLocalFirst = ({
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
   }, [autoSync, quietSync]);
+
+  // Синхронизация очереди при появлении сети
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      if (state.isConnected) {
+        syncQueue.flush(api, (syncResult) => {
+          // При успешной синхронизации POST с real id — перезагружаем данные
+          // чтобы обновить tempId на realId и очистить дубликаты
+          if (syncResult.tempId && syncResult.realId) {
+            console.log(`🔄 Synced temp → real: ${syncResult.tempId} → ${syncResult.realId}`);
+            // Перезагружаем данные чтобы очистить temp записи и получить real
+            loadData(true);
+          }
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [loadData]);
 
   return {
     data,

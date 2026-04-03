@@ -28,6 +28,7 @@ import CalendarTutorial from '../components/CalendarTutorial';
 import { useTutorial } from '../hooks/useTutorial';
 import { useDataSync } from '../contexts/DataSyncContext';
 import cacheManager from '../utils/cacheManager';
+import syncQueue from '../utils/syncQueue';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PADDING_H = 16;
@@ -523,7 +524,7 @@ const CalendarScreen = ({ navigation }) => {
         console.log('📵 Offline mode — using cached calendar data');
       }
     } catch (e) {
-      console.error('loadData error:', e);
+      console.log('📵 loadData — using cached data');
     } finally {
       setLoading(false);
     }
@@ -637,26 +638,71 @@ const CalendarScreen = ({ navigation }) => {
       year: eventForm.year ? parseInt(eventForm.year) : null,
       notify_before: parseInt(eventForm.notify_before) || 1,
     };
+    const tempId = editEvent ? editEvent.id : 'temp-event-' + Date.now();
+    const optimisticEvent = { id: tempId, ...payload };
+    
     try {
+      // Оптимистичное обновление UI
       if (editEvent) {
-        await api.put(`/birthdays/${editEvent.id}`, payload);
-        // Обновляем уведомление для события
-        const updatedEvent = { ...editEvent, ...payload };
-        await scheduleBirthdayNotification(updatedEvent);
+        setEvents(prev => prev.map(ev => ev.id === editEvent.id ? { ...ev, ...payload } : ev));
       } else {
-        const result = await api.post('/birthdays', payload);
-        // Планируем уведомление для нового события
-        await scheduleBirthdayNotification({ ...result, ...payload });
+        setEvents(prev => [...prev, optimisticEvent]);
       }
       setShowEventModal(false);
+      
+      // API запрос с офлайн-обработкой
+      try {
+        if (editEvent) {
+          await api.put(`/birthdays/${editEvent.id}`, payload);
+          // Обновляем уведомление для события
+          const updatedEvent = { ...editEvent, ...payload };
+          await scheduleBirthdayNotification(updatedEvent);
+        } else {
+          const result = await api.post('/birthdays', payload);
+          // Обновляем временный ID на реальный
+          setEvents(prev => prev.map(ev => ev.id === tempId ? { ...result, ...payload } : ev));
+          // Планируем уведомление для нового события
+          await scheduleBirthdayNotification({ ...result, ...payload });
+        }
+      } catch (error) {
+        if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+          // Нет сети — сохраняем в очередь синхронизации
+          if (editEvent) {
+            await syncQueue.enqueue('PUT', `/birthdays/${editEvent.id}`, payload);
+          } else {
+            await syncQueue.enqueue('POST', '/birthdays', payload);
+          }
+          console.log('📵 Offline — queued event save');
+          // UI уже обновлён оптимистично выше
+        } else {
+          throw error; // другая ошибка — пробрасываем
+        }
+      }
+      
       loadData();
       bumpAll();
     } catch (e) { console.error(e); }
   };
   const deleteEvent = async id => {
     try { 
+      // Оптимистичное удаление из UI
+      setEvents(prev => prev.filter(ev => ev.id !== id));
       await cancelBirthdayNotification(id); // Отменяем уведомление
-      await api.delete(`/birthdays/${id}`); 
+      
+      // API запрос с офлайн-обработкой
+      try {
+        await api.delete(`/birthdays/${id}`);
+      } catch (error) {
+        if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+          // Нет сети — сохраняем в очередь синхронизации
+          await syncQueue.enqueue('DELETE', `/birthdays/${id}`, {});
+          console.log('📵 Offline — queued event delete');
+          // UI уже обновлён оптимистично выше
+        } else {
+          throw error; // другая ошибка — пробрасываем
+        }
+      }
+      
       loadData();
       bumpAll();
     }

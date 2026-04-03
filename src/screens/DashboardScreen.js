@@ -463,7 +463,7 @@ const DashboardScreen = ({ navigation }) => {
       const res = await api.get(`/habits/records/${year}/${month}`);
       setHabitRecords(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
-      console.error(e);
+      console.log('📵 reloadHabitRecords — offline mode');
     }
   };
 
