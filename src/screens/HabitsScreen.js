@@ -137,7 +137,7 @@ const HabitsScreen = ({ route }) => {
     },
     dependencies: [year, month],
     yearMonthKey,
-    autoSync: false, // Отключаем авто-синхронизацию — она перезаписывает optimistic update
+    autoSync: false,
   });
 
   const [loading, setLoading] = useState(habitsLoading || recordsLoading);
@@ -147,12 +147,10 @@ const HabitsScreen = ({ route }) => {
   const [lifeProgress, setLifeProgress] = useState({ percent: 0, yearsLived: 0, yearsLeft: 64 });
   const [yearProgress, setYearProgress] = useState({ percent: 0, daysPassed: 0, daysLeft: 365 });
 
-  // 🔄 Синхронизация loading состояния с хуками useLocalFirst
   useEffect(() => {
     setLoading(habitsLoading || recordsLoading);
   }, [habitsLoading, recordsLoading]);
 
-  // 🔄 Синхронизация данных привычек и записей
   useEffect(() => {
     if (habitsData) setHabits(habitsData);
   }, [habitsData]);
@@ -184,6 +182,7 @@ const HabitsScreen = ({ route }) => {
     isVisible: tutorialVisible,
     currentStep: tutorialStep,
     isCompleted: tutorialCompleted,
+    initialized: tutorialInitialized,
     startTutorial,
     restartTutorial,
     nextStep,
@@ -192,12 +191,14 @@ const HabitsScreen = ({ route }) => {
     skipTutorial,
   } = useTutorial('habits');
 
-  // Запуск туториала при первом входе
+  // Запуск туториала при первом входе:
+  // ждём initialized (чтобы AsyncStorage успел прочитаться)
+  // и только потом проверяем tutorialCompleted
   useEffect(() => {
-    if (!loading && !tutorialCompleted && habits.length > 0) {
+    if (!loading && tutorialInitialized && !tutorialCompleted && habits.length > 0) {
       setTimeout(() => startTutorial(), 1000);
     }
-  }, [loading, tutorialCompleted, habits.length]);
+  }, [loading, tutorialInitialized, tutorialCompleted, habits.length]);
 
   useEffect(() => {
     if (route?.params?.year && route?.params?.month) {
@@ -208,7 +209,6 @@ const HabitsScreen = ({ route }) => {
 
   useEffect(() => { loadProfile(); }, []);
 
-  // Проверка таймера привычки
   useEffect(() => {
     const checkHabitTimer = async () => {
       try {
@@ -222,14 +222,11 @@ const HabitsScreen = ({ route }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Не подписываемся на tick: bumpAll после ячейки обновляет дашборд/другие экраны,
-  // а полный loadHabits+loadRecords здесь давал «перезагрузку страницы» при каждом вводе.
-
   useFocusEffect(
     useCallback(() => {
-      if (isUpdatingRef.current) return; // тихо, без лога
+      if (isUpdatingRef.current) return;
       const now = Date.now();
-      if (now - lastLoadTimeRef.current < 30000) return; // не чаще раз в 30 сек
+      if (now - lastLoadTimeRef.current < 30000) return;
       lastLoadTimeRef.current = now;
       if (loadRecords) loadRecords();
     }, [loadRecords])
@@ -304,14 +301,12 @@ const HabitsScreen = ({ route }) => {
           });
         } catch (error) {
           if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
-            // Нет сети — сохраняем в очередь синхронизации
             await syncQueue.enqueue('POST', '/habits/records', {
               habit_id: habitId, year, month, day, value: numValue,
             });
             console.log('📵 Offline — queued habit update');
-            // UI уже обновлён оптимистично — ничего не откатываем
           } else {
-            throw error; // другая ошибка — пробрасываем
+            throw error;
           }
         }
       } else {
@@ -319,18 +314,14 @@ const HabitsScreen = ({ route }) => {
           await api.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
         } catch (error) {
           if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
-            // Нет сети — сохраняем в очередь синхронизации
             await syncQueue.enqueue('DELETE', `/habits/records/${habitId}/${year}/${month}/${day}`, {});
             console.log('📵 Offline — queued habit delete');
-            // UI уже обновлён оптимистично — ничего не откатываем
           } else {
-            throw error; // другая ошибка — пробрасываем
+            throw error;
           }
         }
       }
 
-      // Держим блокировку 1500мс после успешного сохранения
-      // чтобы сервер успел обновить данные до следующего reload
       setTimeout(() => {
         isUpdatingRef.current = false;
       }, 1500);
@@ -348,16 +339,12 @@ const HabitsScreen = ({ route }) => {
         'Не удалось сохранить изменение. Проверьте подключение к интернету.'
       );
     }
-    // ← НЕТ finally! Флаг сбрасывается вручную:
-    //   - в catch немедленно
-    //   - в try через setTimeout(1500) после успеха
   };
 
   const executeDelete = async () => {
     if (!habitToDelete) return;
     const habitId = habitToDelete.id;
     
-    // 🚀 Optimistic update - мгновенное удаление
     const habitsResult = await optimisticUpdateHabits(currentHabits => 
       currentHabits.filter(h => h.id !== habitId)
     );
@@ -372,20 +359,12 @@ const HabitsScreen = ({ route }) => {
     }
 
     try {
-      // Сервер в фоне - не блокирует UI
-      // 🏛️ Архивируем привычку для текущего месяца вместо удаления
       await api.put(`/habits/${habitId}/archive`, { year, month });
-      
-      // Успешная синхронизация
       bumpAll();
-      
     } catch (error) {
       console.error('Ошибка удаления привычки:', error);
-      
-      // Откат optimistic update при ошибке
       rollbackHabits(habitsResult.originalData);
       rollbackRecords(recordsResult.originalData);
-      
       Alert.alert('Ошибка', 'Не удалось архивировать привычку. Проверьте подключение к интернету.');
     } finally {
       setHabitToDelete(null);
@@ -409,7 +388,7 @@ const HabitsScreen = ({ route }) => {
       });
       const hasAdvanced = !!(habit.start_date || habit.end_date || (habit.days_of_week && habit.days_of_week.length > 0));
       setShowAdvanced(hasAdvanced);
-      setShowCustomUnit(!['Дни', 'Часы', 'Кол-во'].includes(habit.unit));
+      setShowCustomUnit(!=['Дни', 'Часы', 'Кол-во'].includes(habit.unit));
     } else {
       setEditingHabitId(null);
       setHabitForm({ name: '', unit: 'Дни', plan: '', targetType: 'daily', startDate: null, endDate: null, daysOfWeek: [] });
@@ -436,7 +415,6 @@ const HabitsScreen = ({ route }) => {
 
     try {
       if (editingHabitId) {
-        // 🚀 Optimistic update для редактирования
         const result = await optimisticUpdateHabits(currentHabits => 
           currentHabits.map(h => h.id === editingHabitId 
             ? { ...h, ...payload, shouldShow: true }
@@ -450,17 +428,14 @@ const HabitsScreen = ({ route }) => {
         }
 
         try {
-          // Сервер в фоне
           await api.put(`/habits/${editingHabitId}`, payload);
           bumpAll();
         } catch (serverError) {
-          // Откат при ошибке
           rollbackHabits(result.originalData);
           Alert.alert('Ошибка', 'Не удалось обновить привычку. Проверьте подключение к интернету.');
           return;
         }
       } else {
-        // 🚀 Optimistic update для создания
         const tempId = `temp-${Date.now()}`;
         const newHabit = { 
           id: tempId, 
@@ -477,10 +452,8 @@ const HabitsScreen = ({ route }) => {
         }
 
         try {
-          // Сервер в фоне
           const response = await api.post('/habits', payload);
           
-          // Обновляем временный ID на реальный
           await optimisticUpdateHabits(currentHabits => 
             currentHabits.map(h => h.id === tempId 
               ? { ...h, id: response.data.id, ...response.data }
@@ -490,14 +463,12 @@ const HabitsScreen = ({ route }) => {
           
           bumpAll();
         } catch (serverError) {
-          // Откат при ошибке
           rollbackHabits(result.originalData);
           Alert.alert('Ошибка', 'Не удалось создать привычку. Проверьте подключение к интернету.');
           return;
         }
       }
 
-      // Закрываем модал и сбрасываем форму
       setShowHabitModal(false);
       setShowCustomUnit(false);
       setShowAdvanced(false);
@@ -610,35 +581,31 @@ const HabitsScreen = ({ route }) => {
                 <TouchableOpacity
                   style={[{ borderWidth: 1, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 }, { borderColor: colors.ok1 }]}  
                   onPress={async () => {
-                    // Сохраняем результат в запись привычки
                     const elapsed = Math.floor((Date.now() - habitTimer.startedAt) / 1000) + (habitTimer.accumulated || 0);
-                    const hours = Math.round((elapsed / 3600) * 10) / 10; // округление до 0.1ч
+                    const hours = Math.round((elapsed / 3600) * 10) / 10;
                     try {
                       const today = new Date();
                       const y = today.getFullYear();
                       const m = today.getMonth() + 1;
                       const d = today.getDate();
 
-                      // Получаем актуальное значение из локального state через функциональное обновление
                       let existingValue = 0;
                       setRecords(prevRecords => {
                         const existing = prevRecords.find(
                           r => r.habitid === habitTimer.habitId && r.year === y && r.month === m && r.day === d
                         );
                         existingValue = existing ? parseFloat(existing.value) || 0 : 0;
-                        return prevRecords; // не меняем state, только читаем
+                        return prevRecords;
                       });
                       
                       const newValue = Math.round((existingValue + hours) * 10) / 10;
 
-                      // Отправить сумму на сервер
                       await api.post('/habits/records', {
                         habit_id: habitTimer.habitId,
                         year: y, month: m, day: d,
                         value: newValue,
                       });
 
-                      // Обновить локальный state
                       setRecords(prev => {
                         const filtered = prev.filter(
                           r => !(r.habitid === habitTimer.habitId && r.year === y && r.month === m && r.day === d)
@@ -734,7 +701,6 @@ const HabitsScreen = ({ route }) => {
         onClose={() => { setShowHabitModal(false); setShowCustomUnit(false); setShowAdvanced(false); }}
         title={editingHabitId ? 'Редактировать' : 'Новая привычка'}
       >
-        {/* НАЗВАНИЕ */}
         <Input
           label="Название"
           placeholder="Например: Чтение"
@@ -742,11 +708,9 @@ const HabitsScreen = ({ route }) => {
           onChangeText={t => setHabitForm({ ...habitForm, name: t })}
         />
 
-        {/* ЕДИНИЦА + ПЛАН + ТОГГЛ */}
         <View style={{ marginBottom: 16 }}>
           <Text style={[styles.formLabel, { color: colors.textMain }]}>Единица и План</Text>
 
-          {/* Строка единиц */}
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
             {['Дни', 'Часы', 'Кол-во'].map(u => (
               <TouchableOpacity
@@ -772,7 +736,6 @@ const HabitsScreen = ({ route }) => {
             />
           )}
 
-          {/* ПЛАН + ТОГГЛ — используем containerStyle чтобы убрать marginBottom у Input */}
           <View style={styles.planRow}>
             <Input
               placeholder="План"
@@ -797,7 +760,6 @@ const HabitsScreen = ({ route }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Пояснение */}
           <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6, marginLeft: 2 }}>
             {habitForm.targetType === 'daily'
               ? 'Количество в день'
@@ -805,7 +767,6 @@ const HabitsScreen = ({ route }) => {
           </Text>
         </View>
 
-        {/* ДОП. НАСТРОЙКИ */}
         <TouchableOpacity
           style={[styles.advancedToggle, { borderColor: colors.borderSubtle }]}
           onPress={() => setShowAdvanced(p => !p)}
@@ -847,7 +808,6 @@ const HabitsScreen = ({ route }) => {
           </Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <Button title="Отмена" variant="outline" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
-            {/* noBorder убирает зелёную рамку поверх danger-фона */}
             <Button title="Архивировать" variant="danger" noBorder onPress={executeDelete} style={{ flex: 1 }} />
           </View>
         </View>
@@ -901,7 +861,7 @@ const styles = StyleSheet.create({
   },
   planInputWrap: {
     flex: 1,
-    marginBottom: 0,  // перебивает дефолтный marginBottom: 16 у Input
+    marginBottom: 0,
   },
   targetToggleBtn: {
     height: 48,
