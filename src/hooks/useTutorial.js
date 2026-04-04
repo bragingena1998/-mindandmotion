@@ -11,22 +11,16 @@ export const useTutorial = (screenName) => {
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [userId, setUserId] = useState(null);
+  const [initialized, setInitialized] = useState(false);
 
+  // Ключ не зависит от userId — используем только screenName.
+  // Туториал показывается один раз на устройство, а не на аккаунт.
   const getTutorialKey = useCallback(
-    () => `${TUTORIAL_KEY}_${screenName}_${userId || 'anon'}`,
-    [screenName, userId]
+    () => `${TUTORIAL_KEY}_${screenName}`,
+    [screenName]
   );
 
-  useEffect(() => {
-    const loadUserId = async () => {
-      const uid = await getUserId();
-      setUserId(uid || null);
-    };
-    loadUserId();
-  }, []);
-
-  // Проверка, завершен ли туториал для экрана
+  // Проверка при монтировании — один раз, без userId-гонки
   useEffect(() => {
     const checkTutorialStatus = async () => {
       try {
@@ -34,6 +28,8 @@ export const useTutorial = (screenName) => {
         setIsCompleted(!!completed);
       } catch (error) {
         console.error('Error checking tutorial status:', error);
+      } finally {
+        setInitialized(true);
       }
     };
 
@@ -67,7 +63,6 @@ export const useTutorial = (screenName) => {
   // Закрытие туториала
   const closeTutorial = useCallback(async () => {
     setIsVisible(false);
-    // Отмечаем туториал как завершенный
     try {
       await AsyncStorage.setItem(getTutorialKey(), 'true');
       setIsCompleted(true);
@@ -79,7 +74,6 @@ export const useTutorial = (screenName) => {
   // Пропуск туториала
   const skipTutorial = useCallback(async () => {
     setIsVisible(false);
-    // Отмечаем туториал как пропущенный (завершенный)
     try {
       await AsyncStorage.setItem(getTutorialKey(), 'true');
       setIsCompleted(true);
@@ -104,6 +98,7 @@ export const useTutorial = (screenName) => {
     isVisible,
     currentStep,
     isCompleted,
+    initialized,
     startTutorial,
     restartTutorial,
     nextStep,
