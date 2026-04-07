@@ -1155,3 +1155,9 @@ body {
   color: #764ba2;
 }
 
+@media (max-width: 768px) {
+  .app-root {
+    padding: 8px 8px 72px;
+  }
+}
+
