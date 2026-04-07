@@ -1,8 +1,8 @@
-/* ===== ПРИВЯЗКА К ПЕРЕМЕННЫМ ИЗ COMMON.CSS ===== */
+﻿/* ===== РџР РР’РЇР—РљРђ Рљ РџР•Р Р•РњР•РќРќР«Рњ РР— COMMON.CSS ===== */
 
-/* Все цвета теперь берутся из тем в common.css */
+/* Р’СЃРµ С†РІРµС‚Р° С‚РµРїРµСЂСЊ Р±РµСЂСѓС‚СЃСЏ РёР· С‚РµРј РІ common.css */
 
-/* ===== КОНТЕЙНЕР СТРАНИЦЫ И РАМКА ПРИВЫЧЕК ===== */
+/* ===== РљРћРќРўР•Р™РќР•Р  РЎРўР РђРќРР¦Р« Р Р РђРњРљРђ РџР РР’Р«Р§Р•Рљ ===== */
 
 .page-habits .page-inner {
   margin-top: 20px;
@@ -17,7 +17,7 @@
     0 0 0 1px rgba(129, 140, 248, 0.4) inset;
 }
 
-/* ===== ЖИЗНЕННОЕ ВРЕМЯ ===== */
+/* ===== Р–РР—РќР•РќРќРћР• Р’Р Р•РњРЇ ===== */
 
 .life-time-grid {
   display: grid;
@@ -95,7 +95,7 @@
   color: #020617;
 }
 
-/* ===== КНОПКИ / ДЕЙСТВИЯ ПОД ТАБЛИЦЕЙ ===== */
+/* ===== РљРќРћРџРљР / Р”Р•Р™РЎРўР’РРЇ РџРћР” РўРђР‘Р›РР¦Р•Р™ ===== */
 
 .habits-actions {
   margin-top: 10px;
@@ -161,7 +161,7 @@
   color: var(--accent-text);
 }
 
-/* ===== ТАБЛИЦА ПРИВЫЧЕК ===== */
+/* ===== РўРђР‘Р›РР¦Рђ РџР РР’Р«Р§Р•Рљ ===== */
 
 .table-wrapper {
   margin-top: 4px;
@@ -218,7 +218,7 @@
   box-sizing: border-box;
 }
 
-/* хедер липкий по вертикали */
+/* С…РµРґРµСЂ Р»РёРїРєРёР№ РїРѕ РІРµСЂС‚РёРєР°Р»Рё */
 .habits-table thead {
   position: sticky;
   top: 0;
@@ -244,7 +244,7 @@
   color: var(--text-muted);
 }
 
-/* ширины колонок */
+/* С€РёСЂРёРЅС‹ РєРѕР»РѕРЅРѕРє */
 
 .col-task {
   width: 200px;
@@ -276,7 +276,7 @@
   max-width: 110px;
 }
 
-/* sticky-колонки */
+/* sticky-РєРѕР»РѕРЅРєРё */
 
 .habits-table th.sticky,
 .habits-table td.sticky {
@@ -333,7 +333,7 @@
   z-index: 8;
 }
 
-/* правые две колонки */
+/* РїСЂР°РІС‹Рµ РґРІРµ РєРѕР»РѕРЅРєРё */
 
 .habits-table th.col-percent,
 .habits-table td.col-percent {
@@ -351,7 +351,7 @@
   background-color: #020617 !important;
 }
 
-/* выходные / праздники в шапке и теле */
+/* РІС‹С…РѕРґРЅС‹Рµ / РїСЂР°Р·РґРЅРёРєРё РІ С€Р°РїРєРµ Рё С‚РµР»Рµ */
 
 .col-day-weekend,
 .col-day-holiday {
@@ -373,7 +373,7 @@
     0 0 14px rgba(248, 113, 113, 0.9);
 }
 
-/* сегодня в шапке и ячейке */
+/* СЃРµРіРѕРґРЅСЏ РІ С€Р°РїРєРµ Рё СЏС‡РµР№РєРµ */
 
 .col-day-today {
   position: relative;
@@ -394,7 +394,7 @@
   color: #f0fdf4;
 }
 
-/* заполненная ячейка */
+/* Р·Р°РїРѕР»РЅРµРЅРЅР°СЏ СЏС‡РµР№РєР° */
 
 .habit-cell--filled {
   position: relative;
@@ -433,7 +433,7 @@
     0 0 14px var(--ok-1);
 }
 
-/* бегущий таймер */
+/* Р±РµРіСѓС‰РёР№ С‚Р°Р№РјРµСЂ */
 
 .habit-cell--running {
   background-color: #022c22 !important;
@@ -443,7 +443,7 @@
     0 0 14px var(--ok-1);
 }
 
-/* hover по строке + прогресс по строке */
+/* hover РїРѕ СЃС‚СЂРѕРєРµ + РїСЂРѕРіСЂРµСЃСЃ РїРѕ СЃС‚СЂРѕРєРµ */
 
 #habits-tbody td {
   cursor: pointer;
@@ -503,7 +503,7 @@
   text-shadow: 0 0 2px #000;
 }
 
-/* контекстное меню строки */
+/* РєРѕРЅС‚РµРєСЃС‚РЅРѕРµ РјРµРЅСЋ СЃС‚СЂРѕРєРё */
 
 .habit-row-menu {
   position: absolute;
@@ -584,7 +584,7 @@
   background: radial-gradient(circle at left, rgba(248, 113, 113, 0.55) 0, #020617 75%);
 }
 
-/* Стили для редактируемых полей */
+/* РЎС‚РёР»Рё РґР»СЏ СЂРµРґР°РєС‚РёСЂСѓРµРјС‹С… РїРѕР»РµР№ */
 
 .habit-edit-input {
   width: 100%;
@@ -613,7 +613,7 @@
   padding: 2px 2px;
 }
 
-/* Стили для выпадающего списка */
+/* РЎС‚РёР»Рё РґР»СЏ РІС‹РїР°РґР°СЋС‰РµРіРѕ СЃРїРёСЃРєР° */
 
 .habit-edit-select {
   width: 100%;
@@ -645,7 +645,7 @@
   font-size: 12px;
 }
 
-/* ===== МОДАЛЬНОЕ ОКНО ДЛЯ ОЧИСТКИ МЕСЯЦА ===== */
+/* ===== РњРћР”РђР›Р¬РќРћР• РћРљРќРћ Р”Р›РЇ РћР§РРЎРўРљР РњР•РЎРЇР¦Рђ ===== */
 
 .habits-modal-backdrop {
   position: fixed;
@@ -746,7 +746,7 @@
   transform: translateY(-2px);
 }
 
-/* ===== УВЕДОМЛЕНИЕ С ОТМЕНОЙ (UNDO TOAST) ===== */
+/* ===== РЈР’Р•Р”РћРњР›Р•РќРР• РЎ РћРўРњР•РќРћР™ (UNDO TOAST) ===== */
 
 .undo-toast {
   position: fixed;
@@ -829,7 +829,7 @@
   transition: width 0.1s linear;
 }
 
-/* ===== АДАПТИВ ===== */
+/* ===== РђР”РђРџРўРР’ ===== */
 
 @media (max-width: 600px) {
   .undo-toast {
@@ -856,8 +856,8 @@
 .onboarding-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.25); /* ✅ ОЧЕНЬ СЛАБОЕ ЗАТЕМНЕНИЕ */
-  backdrop-filter: blur(0.5px); /* ✅ ЕДВА ЗАМЕТНОЕ РАЗМЫТИЕ */
+  background: rgba(0, 0, 0, 0.25); /* вњ… РћР§Р•РќР¬ РЎР›РђР‘РћР• Р—РђРўР•РњРќР•РќРР• */
+  backdrop-filter: blur(0.5px); /* вњ… Р•Р”Р’Рђ Р—РђРњР•РўРќРћР• Р РђР—РњР«РўРР• */
   pointer-events: auto;
   animation: fadeIn 0.3s ease-out;
 }
@@ -868,10 +868,10 @@
   border: 3px solid var(--accent-border);
   border-radius: var(--radius-md, 12px);
   box-shadow: 
-    0 0 0 9999px rgba(0, 0, 0, 0.35), /* ✅ СЛАБОЕ ЗАТЕМНЕНИЕ ВОКРУГ */
-    0 0 40px var(--accent-border), /* ✅ ЯРКОЕ СВЕЧЕНИЕ */
+    0 0 0 9999px rgba(0, 0, 0, 0.35), /* вњ… РЎР›РђР‘РћР• Р—РђРўР•РњРќР•РќРР• Р’РћРљР РЈР“ */
+    0 0 40px var(--accent-border), /* вњ… РЇР РљРћР• РЎР’Р•Р§Р•РќРР• */
     0 0 80px var(--accent-soft),
-    inset 0 0 0 2px rgba(255, 255, 255, 0.1); /* ✅ ВНУТРЕННЯЯ ПОДСВЕТКА */
+    inset 0 0 0 2px rgba(255, 255, 255, 0.1); /* вњ… Р’РќРЈРўР Р•РќРќРЇРЇ РџРћР”РЎР’Р•РўРљРђ */
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
   z-index: 10001;
@@ -887,7 +887,7 @@
   padding: 24px;
   box-shadow: 
     var(--shadow-soft),
-    0 0 30px var(--accent-soft); /* ✅ ДОПОЛНИТЕЛЬНОЕ СВЕЧЕНИЕ */
+    0 0 30px var(--accent-soft); /* вњ… Р”РћРџРћР›РќРРўР•Р›Р¬РќРћР• РЎР’Р•Р§Р•РќРР• */
   z-index: 10002;
   pointer-events: auto;
   animation: slideUp 0.4s ease-out;
@@ -1003,7 +1003,7 @@
   background: var(--accent-soft);
 }
 
-/* Адаптив */
+/* РђРґР°РїС‚РёРІ */
 @media (max-width: 768px) {
   .onboarding-tooltip {
     min-width: 280px;
@@ -1024,24 +1024,11 @@
     font-size: 13px;
   }
 }
-  
-/* ===== �� �� � ===== */  
-@media (max-width: 768px) {  
-  /* 1. ��� � �������� �ࠢ����� */  
-  .block-header { flex-wrap: wrap; gap: 8px; }  
-  .block-header__controls { flex-wrap: wrap; gap: 6px; justify-content: flex-end; }  
-  /* 2. ������� ����� ������⭥� */  
-  .habits-month-select { font-size: 11px; padding: 3px 6px; }  
-  /* 3. ������� �� ⠡��� �஫����� */  
-  .table-wrapper--scroll { -webkit-overflow-scrolling: touch; }  
-  /* 4. ��� ��� �祭� 㧪�� ��࠭�� */  
-  .habits-actions { flex-wrap: wrap; }  
-} 
 
-/* ===== МОБИЛЬНАЯ АДАПТАЦИЯ ПРИВЫЧЕК ===== */
+/* ===== РњРћР‘РР›Р¬РќРђРЇ РђР”РђРџРўРђР¦РРЇ РџР РР’Р«Р§Р•Рљ ===== */
 
 @media (max-width: 768px) {
-  /* 1. Блок с кнопками управления */
+  /* 1. Р‘Р»РѕРє СЃ РєРЅРѕРїРєР°РјРё СѓРїСЂР°РІР»РµРЅРёСЏ */
   .block-header {
     flex-wrap: wrap;
     gap: 8px;
@@ -1052,18 +1039,18 @@
     justify-content: flex-end;
   }
 
-  /* 2. Селектор месяца компактнее */
+  /* 2. РЎРµР»РµРєС‚РѕСЂ РјРµСЃСЏС†Р° РєРѕРјРїР°РєС‚РЅРµРµ */
   .habits-month-select {
     font-size: 11px;
     padding: 3px 6px;
   }
 
-  /* 3. Убедимся что таблица скроллится плавно на iOS */
+  /* 3. РЈР±РµРґРёРјСЃСЏ С‡С‚Рѕ С‚Р°Р±Р»РёС†Р° СЃРєСЂРѕР»Р»РёС‚СЃСЏ РїР»Р°РІРЅРѕ РЅР° iOS */
   .table-wrapper--scroll {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* 4. Фикс для очень узких экранов */
+  /* 4. Р¤РёРєСЃ РґР»СЏ РѕС‡РµРЅСЊ СѓР·РєРёС… СЌРєСЂР°РЅРѕРІ */
   .habits-actions {
     flex-wrap: wrap;
   }
