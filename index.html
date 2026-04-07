@@ -1,0 +1,2705 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Привычки</title>
+  <link rel="stylesheet" href="common.css?v=17">
+    <link rel="stylesheet" href="header.css">        <!-- ← ДОБАВЬ ЭТУ СТРОКУ -->
+  <link rel="stylesheet" href="habits.css">
+  <script src="header-loader.js"></script>
+  <script src="auth.js"></script>
+
+</head>
+
+<body class="theme-storm">
+  <div class="site-bg-base"></div>
+  <div class="site-bg-mask"></div>
+
+  <div class="app-root">
+    <div class="app-shell">
+
+<!-- Загружаемая общая шапка -->
+<div id="header-placeholder"></div>
+
+
+      <main class="page-content page-habits" id="habits">
+        <div class="page-inner">
+          <div class="page-header">
+            <h1 class="page-title">📈 Привычки</h1>
+          </div>
+
+          <section class="block block-life-time">
+            <h2 class="block-title">⏳ Жизненное время</h2>
+            <div class="life-time-grid">
+              <div class="life-time-item">
+                <div class="life-time-item__label">Прожито</div>
+                <div class="life-time-item__value" id="lifePercent">0%</div>
+                <div class="life-time-item__bar">
+                  <div class="life-time-item__bar-fill" id="lifeProgressBar" style="width:0%">
+                    <span id="lifeProgressText" style="display:inline-block;padding:0 6px;font-size:11px;font-weight:600;color:#020617;">0%</span>
+                  </div>
+                </div>
+                <div class="life-time-item__details" id="lifeDetails" style="font-size:12px;margin-top:4px;opacity:.8">0 лет, 100% осталось</div>
+              </div>
+
+              <div class="life-time-item">
+                <div class="life-time-item__label">Личный год</div>
+                <div class="life-time-item__value" id="yearDays">0</div>
+                <div class="life-time-item__bar personal-year-bar">
+                  <div class="life-time-item__bar-fill personal-year-bar__fill" id="yearProgressBar" style="width:0%">
+                    <span id="yearProgressText" style="display:inline-block;padding:0 6px;font-size:11px;font-weight:600;color:#020617;">0%</span>
+                  </div>
+                </div>
+                <div class="life-time-item__details" id="yearDetails" style="font-size:12px;margin-top:4px;opacity:.8">0 дней прожито, 0 до ДР</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="block block-habits-table">
+            <div class="block-header">
+              <h2 class="block-title">Трекер привычек</h2>
+              <div class="block-header__controls">
+                <div class="habits-month-select-wrapper">
+                  <button type="button" class="habits-month-select" id="habits-month-button">01.2026</button>
+                  <div class="habits-month-dropdown" id="habits-month-dropdown" hidden></div>
+                </div>
+                <button type="button" class="habits-btn" id="habits-new-month-btn">+ Новый месяц</button>
+                <button type="button" class="habits-btn habits-btn--danger" id="habits-delete-month-btn">Удалить месяц</button>
+                <button type="button" class="habits-btn habits-btn--tutorial" onclick="restartTour()" title="Запустить обучение заново"> 📖 </button>
+                <div class="habits-help-tooltip" aria-label="Подсказка по управлению таблицей">
+                  <span class="habits-help-tooltip__icon">?</span>
+                  <div class="habits-help-tooltip__content">
+                    <p><strong>Дни - ЛКМ:</strong> Ставит/снимает ✓</p>
+                    <p><strong>Часы - ЛКМ:</strong> Запуск/стоп таймера (без ввода 1)</p>
+                    <p><strong>Часы - ПКМ:</strong> +1 час</p>
+                    <p><strong>Часы - Двойной клик:</strong> −1 час (до 0)</p>
+                    <p><strong>Счёта - ЛКМ:</strong> +1</p>
+                    <p><strong>Счёта - ПКМ:</strong> −1 (до 0)</p>
+                    <p><strong>ПКМ по названию / ед. изм. / плану:</strong> меню строки</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="habit-row-menu" class="habit-row-menu" hidden>
+              <div class="habit-row-menu__item" data-action="edit">✎ Редактировать</div>
+              <div class="habit-row-menu__item" data-action="move">⟷ Переместить строку</div>
+              <div class="habit-row-menu__item habit-row-menu__item--delete" data-action="delete">✕ Удалить</div>
+            </div>
+
+            <div class="table-wrapper table-wrapper--scroll">
+              <table class="habits-table" id="habits-table">
+                <thead>
+                  <tr>
+                    <th class="col-task sticky sticky-col-1" rowspan="2">Задача</th>
+                    <th class="col-unit sticky sticky-col-2" rowspan="2">Ед. изм.</th>
+                    <th class="col-plan sticky sticky-col-3" rowspan="2">План</th>
+                    <th class="col-day" data-day="1">1</th><th class="col-day" data-day="2">2</th>
+                    <th class="col-day" data-day="3">3</th><th class="col-day" data-day="4">4</th>
+                    <th class="col-day" data-day="5">5</th><th class="col-day" data-day="6">6</th>
+                    <th class="col-day" data-day="7">7</th><th class="col-day" data-day="8">8</th>
+                    <th class="col-day" data-day="9">9</th><th class="col-day" data-day="10">10</th>
+                    <th class="col-day" data-day="11">11</th><th class="col-day" data-day="12">12</th>
+                    <th class="col-day" data-day="13">13</th><th class="col-day" data-day="14">14</th>
+                    <th class="col-day" data-day="15">15</th><th class="col-day" data-day="16">16</th>
+                    <th class="col-day" data-day="17">17</th><th class="col-day" data-day="18">18</th>
+                    <th class="col-day" data-day="19">19</th><th class="col-day" data-day="20">20</th>
+                    <th class="col-day" data-day="21">21</th><th class="col-day" data-day="22">22</th>
+                    <th class="col-day" data-day="23">23</th><th class="col-day" data-day="24">24</th>
+                    <th class="col-day" data-day="25">25</th><th class="col-day" data-day="26">26</th>
+                    <th class="col-day" data-day="27">27</th><th class="col-day" data-day="28">28</th>
+                    <th class="col-day" data-day="29">29</th><th class="col-day" data-day="30">30</th>
+                    <th class="col-day" data-day="31">31</th>
+                    <th class="col-result" rowspan="2">Результат</th>
+                    <th class="col-percent" rowspan="2">% выполнено</th>
+                  </tr>
+                  <tr>
+                    <th class="col-day col-day-week" data-day="1"></th><th class="col-day col-day-week" data-day="2"></th>
+                    <th class="col-day col-day-week" data-day="3"></th><th class="col-day col-day-week" data-day="4"></th>
+                    <th class="col-day col-day-week" data-day="5"></th><th class="col-day col-day-week" data-day="6"></th>
+                    <th class="col-day col-day-week" data-day="7"></th><th class="col-day col-day-week" data-day="8"></th>
+                    <th class="col-day col-day-week" data-day="9"></th><th class="col-day col-day-week" data-day="10"></th>
+                    <th class="col-day col-day-week" data-day="11"></th><th class="col-day col-day-week" data-day="12"></th>
+                    <th class="col-day col-day-week" data-day="13"></th><th class="col-day col-day-week" data-day="14"></th>
+                    <th class="col-day col-day-week" data-day="15"></th><th class="col-day col-day-week" data-day="16"></th>
+                    <th class="col-day col-day-week" data-day="17"></th><th class="col-day col-day-week" data-day="18"></th>
+                    <th class="col-day col-day-week" data-day="19"></th><th class="col-day col-day-week" data-day="20"></th>
+                    <th class="col-day col-day-week" data-day="21"></th><th class="col-day col-day-week" data-day="22"></th>
+                    <th class="col-day col-day-week" data-day="23"></th><th class="col-day col-day-week" data-day="24"></th>
+                    <th class="col-day col-day-week" data-day="25"></th><th class="col-day col-day-week" data-day="26"></th>
+                    <th class="col-day col-day-week" data-day="27"></th><th class="col-day col-day-week" data-day="28"></th>
+                    <th class="col-day col-day-week" data-day="29"></th><th class="col-day col-day-week" data-day="30"></th>
+                    <th class="col-day col-day-week" data-day="31"></th>
+                  </tr>
+                </thead>
+                <tbody id="habits-tbody"></tbody>
+              </table>
+            </div>
+
+            <div class="habits-actions">
+              <button type="button" class="habits-btn" id="habits-add-btn">+ Добавить привычку</button>
+              <button type="button" class="habits-btn habits-btn--danger" id="habits-clear-btn">Очистить месяц</button>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+  
+</body>
+<script>
+(function () {
+    const timers = new Map();
+    let rowMenu = null;
+    let rowMenuTargetRow = null;
+    let editingRow = null;
+    let dragRow = null;
+    let dragPlaceholder = null;
+    let isDragging = false;
+    let currentActiveCell = null;
+
+    // ===== ИНИЦИАЛИЗАЦИЯ ТЕКУЩЕГО МЕСЯЦА =====
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth() + 1;
+
+    const weekdayNamesShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+    const productionDays = {
+        2025: {
+            '01-01': 'h','01-02': 'h','01-03': 'h','01-04': 'h','01-05': 'h',
+            '01-06': 'h','01-07': 'h','01-08': 'h',
+            '02-23': 'h','03-08': 'h','05-01': 'h','05-09': 'h',
+            '06-12': 'h','11-04': 'h'
+        },
+        2026: {
+            '01-01': 'h','01-02': 'h','01-03': 'h','01-04': 'h','01-05': 'h',
+            '01-06': 'h','01-07': 'h','01-08': 'h','01-09': 'h','01-10': 'h','01-11': 'h',
+            '02-23': 'h','03-08': 'h','05-01': 'h','05-09': 'h',
+            '06-12': 'h','11-04': 'h','12-31': 'h'
+        },
+        2027: {
+            '01-01': 'h','01-02': 'h','01-03': 'h','01-04': 'h','01-05': 'h',
+            '01-06': 'h','01-07': 'h','01-08': 'h',
+            '02-23': 'h','03-08': 'h','05-01': 'h','05-09': 'h',
+            '06-12': 'h','11-04': 'h'
+        }
+    };
+
+    function isProductionHoliday(date) {
+        const year = date.getFullYear();
+        const yearMap = productionDays[year];
+        if (!yearMap) return false;
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return yearMap[mm + '-' + dd] === 'h';
+    }
+
+    function monthKey(year, month) {
+        return year + '-' + String(month).padStart(2, '0');
+    }
+
+    function monthLabel(year, month) {
+        return String(month).padStart(2, '0') + '.' + year;
+    }
+
+    const defaultHabitsTemplate = [
+        { name:'Тренировки',             unit:'Дни',      plan:12,  schedule:{type:'weeklyCount', weeklyTarget:3} },
+        { name:'Работа над проектом',    unit:'Часы',     plan:30,  schedule:{type:'weekdays'} },
+        { name:'Смотрим Брина',          unit:'Часы',     plan:15,  schedule:{type:'weeklyCount', weeklyTarget:2} },
+        { name:'Инвистиции изучение',    unit:'Часы',     plan:10,  schedule:{type:'weeklyCount', weeklyTarget:2} },
+        { name:'Проект "айф"',           unit:'Счета',    plan:4,   schedule:{type:'monthlyFixed'} },
+        { name:'Искл. Соц. Сети',        unit:'Дни<1ч/д', plan:23,  schedule:{type:'weekdays'} },
+        { name:'Искл. Хартстоун',        unit:'Дни<1ч/д', plan:31,  schedule:{type:'daily'} },
+        { name:'Моторика ведение',       unit:'Дни',      plan:31,  schedule:{type:'daily'} },
+        { name:'Ведение Важное,Срочное', unit:'Дни',      plan:31,  schedule:{type:'daily'} },
+        { name:'Напоминалка перечитать', unit:'Дни',      plan:12,  schedule:{type:'weeklyCount', weeklyTarget:3} },
+        { name:'Упражнения на спину',    unit:'Дни',      plan:23,  schedule:{type:'weekdays'} },
+        { name:'Помнить ради чего все',  unit:'Дни',      plan:31,  schedule:{type:'daily'} }
+    ];
+
+    function getStoredMonthKeys() {
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (!k) continue;
+            if (k.startsWith('habits:order:')) {
+                const mk = k.substring('habits:order:'.length);
+                if (mk.includes('-') && !keys.includes(mk)) keys.push(mk);
+            } else if (k.startsWith('habits:')) {
+                const rest = k.substring('habits:'.length);
+                const mk = rest.split(':')[0];
+                if (mk.includes('-') && !keys.includes(mk)) keys.push(mk);
+            }
+        }
+        keys.sort();
+        return keys;
+    }
+
+    function getUnitType(unit) {
+        const unitLower = unit.toLowerCase();
+        if (unitLower.includes('час')) return 'time';
+        if (unitLower.includes('кол-во') || unitLower.includes('счета')) return 'count';
+        return 'check';
+    }
+
+    function getCellClass(unit) {
+        const type = getUnitType(unit);
+        if (type === 'time') return 'habit-cell--time';
+        if (type === 'count') return 'habit-cell--count';
+        return 'habit-cell--check';
+    }
+
+    // ===== ИНИЦИАЛИЗАЦИЯ МЕСЯЦА =====
+    function initMonthSelect() {
+        const button = document.getElementById('habits-month-button');
+        const dropdown = document.getElementById('habits-month-dropdown');
+        if (!button || !dropdown) return;
+
+        const mkCurrent = monthKey(currentYear, currentMonth);
+        const keys = getStoredMonthKeys();
+        if (!keys.includes(mkCurrent)) {
+            keys.push(mkCurrent);
+            keys.sort();
+        }
+
+        dropdown.innerHTML = '';
+        keys.forEach(mk => {
+            const [y, m] = mk.split('-');
+            const opt = document.createElement('div');
+            opt.className = 'habits-month-option' + (mk === mkCurrent ? ' habits-month-option--active' : '');
+            opt.dataset.value = mk;
+            opt.textContent = monthLabel(Number(y), Number(m));
+            dropdown.appendChild(opt);
+        });
+
+        button.textContent = monthLabel(currentYear, currentMonth);
+
+        button.onclick = function () {
+            const isHidden = dropdown.hasAttribute('hidden');
+            if (isHidden) {
+                dropdown.removeAttribute('hidden');
+            } else {
+                dropdown.setAttribute('hidden', '');
+            }
+        };
+
+        dropdown.onclick = function (e) {
+            const opt = e.target.closest('.habits-month-option');
+            if (!opt) return;
+            const mk = opt.dataset.value;
+            const [y, m] = mk.split('-');
+            currentYear = Number(y);
+            currentMonth = Number(m);
+            dropdown.querySelectorAll('.habits-month-option').forEach(el => {
+                el.classList.toggle('habits-month-option--active', el === opt);
+            });
+            button.textContent = monthLabel(currentYear, currentMonth);
+            dropdown.setAttribute('hidden', '');
+            createHabitsFromTemplate();
+            applyRowsOrder();
+            loadAllCellsState();
+            highlightTodayColumn();
+            updateWeekdayHeader();
+        };
+
+        document.addEventListener('click', function onDocClick(e) {
+            if (!button.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.setAttribute('hidden', '');
+            }
+        });
+    }
+
+
+// ===== СОЗДАНИЕ СТРОК ТАБЛИЦЫ =====
+async function createHabitsFromTemplate() {
+    const tbody = document.getElementById('habits-tbody');
+    if (!tbody) return;
+
+    // Загружаем привычки из API
+    const habits = await loadHabitsFromAPI();
+    
+    if (habits.length === 0) {
+        tbody.innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = '';
+
+    habits.forEach((habit) => {
+        const row = document.createElement('tr');
+        row.className = 'habit-row';
+        row.dataset.habitId = String(habit.id); // ID из БД
+
+        const cellClass = getCellClass(habit.unit);
+
+        row.innerHTML = `
+            <td class="col-task habit-name sticky sticky-col-1"></td>
+            <td class="col-unit habit-unit sticky sticky-col-2"></td>
+            <td class="col-plan habit-plan sticky sticky-col-3"></td>
+        `;
+
+        const cells = row.querySelectorAll('td');
+        cells[0].textContent = habit.name;
+        cells[1].textContent = habit.unit;
+        cells[2].textContent = habit.plan;
+
+        for (let day = 1; day <= 31; day++) {
+            const td = document.createElement('td');
+            td.className = 'habit-cell ' + cellClass;
+            td.dataset.day = String(day);
+            row.appendChild(td);
+        }
+
+        const resultTd = document.createElement('td');
+        resultTd.className = 'col-result habit-result';
+        resultTd.textContent = '0';
+        row.appendChild(resultTd);
+
+        const percentTd = document.createElement('td');
+        percentTd.className = 'col-percent habit-percent';
+        percentTd.innerHTML = `
+            <div class="habit-percent-bar">
+                <div class="habit-percent-bar__fill" style="width:0%"></div>
+                <span class="habit-percent-bar__label">0%</span>
+            </div>
+        `;
+        row.appendChild(percentTd);
+
+        tbody.appendChild(row);
+    });
+
+    updateWeekdayHeader();
+}
+
+
+
+// ===== РЕДАКТИРОВАНИЕ СТРОКИ =====
+function startEditRow(row) {
+  if (!row) return;
+  
+  // Если редактируем другую строку - закончить предыдущее редактирование
+  if (editingRow && editingRow !== row) {
+    finishEditRow();
+  }
+  
+  editingRow = row;
+  row.classList.add('habit-row--active');
+  
+  const nameCell = row.querySelector('.habit-name');
+  const unitCell = row.querySelector('.habit-unit');
+  const planCell = row.querySelector('.habit-plan');
+  
+  if (!nameCell || !unitCell || !planCell) return;
+  
+  makeCellEditable(nameCell, 'text');
+  makeCellEditable(unitCell, 'text');
+  makeCellEditable(planCell, 'number');
+}
+
+function makeCellEditable(cell, type) {
+  if (!cell || cell.dataset.editing === '1') return;
+  const oldText = cell.textContent.trim();
+  cell.dataset.oldValue = oldText;
+  cell.dataset.editing = '1';
+  
+  let input;
+  
+  // Если это ячейка "Ед. изм." - создаём select с опциями
+  if (cell.classList.contains('habit-unit')) {
+    input = document.createElement('select');
+    input.className = 'habit-edit-input habit-edit-select';
+    
+    const options = [
+      { value: 'дни', label: 'Дни' },
+      { value: 'часы', label: 'Часы' },
+      { value: 'кол-во', label: 'Кол-во' },
+      { value: 'другое', label: 'Другое...' }
+    ];
+    
+    options.forEach(opt => {
+      const option = document.createElement('option');
+      option.value = opt.value;
+      option.textContent = opt.label;
+      if (oldText.toLowerCase().includes(opt.value)) {
+        option.selected = true;
+      }
+      input.appendChild(option);
+    });
+    
+    // Проверяем, есть ли текущее значение в списке
+    const hasMatch = options.some(opt => oldText.toLowerCase().includes(opt.value));
+    if (!hasMatch && oldText) {
+      const customOption = document.createElement('option');
+      customOption.value = oldText;
+      customOption.textContent = oldText;
+      customOption.selected = true;
+      input.appendChild(customOption);
+    }
+    
+  } else {
+    // Обычный input для названия и плана
+    input = document.createElement('input');
+    input.type = type === 'number' ? 'number' : 'text';
+    input.className = 'habit-edit-input';
+    input.value = oldText;
+  }
+  
+  input.autofocus = true;
+  cell.textContent = '';
+  cell.appendChild(input);
+  
+  // Обработка Enter/Escape
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      finishEditRow();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditRow();
+    }
+    // ВАЖНО: НЕ блокируем стандартное поведение для других клавиш!
+    // e.stopPropagation() добавляем только для Del/Backspace
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.stopPropagation(); // Останавливаем всплытие события
+    }
+  });
+  
+  // Если выбрали "Другое" - заменяем select на input
+  if (input.tagName === 'SELECT') {
+    input.addEventListener('change', function() {
+      if (this.value === 'другое') {
+        const customInput = document.createElement('input');
+        customInput.type = 'text';
+        customInput.className = 'habit-edit-input';
+        customInput.value = '';
+        customInput.placeholder = 'Введите свою единицу...';
+        customInput.autofocus = true;
+        
+        cell.textContent = '';
+        cell.appendChild(customInput);
+        customInput.focus();
+        
+        // Добавляем обработчики для нового input
+        customInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            finishEditRow();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelEditRow();
+          }
+          if (e.key === 'Delete' || e.key === 'Backspace') {
+            e.stopPropagation();
+          }
+        });
+        
+        customInput.addEventListener('blur', function() {
+          setTimeout(() => {
+            if (!rowContainsFocusedInput(editingRow)) finishEditRow();
+          }, 0);
+        });
+      }
+    });
+  }
+  
+  input.addEventListener('blur', function() {
+    setTimeout(() => {
+      if (!rowContainsFocusedInput(editingRow)) finishEditRow();
+    }, 0);
+  });
+  
+  // Фокусируемся на input
+  setTimeout(() => input.focus(), 10);
+}
+
+
+async function finishEditRow() {
+    if (!editingRow) return;
+    const row = editingRow;
+    const habitId = row.dataset.habitId;
+    const nameCell = row.querySelector('.habit-name');
+    const unitCell = row.querySelector('.habit-unit');
+    const planCell = row.querySelector('.habit-plan');
+
+    const name = extractInputValue(nameCell);
+    const unit = extractInputValue(unitCell);
+    const plan = extractInputValue(planCell);
+
+    nameCell.textContent = name;
+    unitCell.textContent = unit;
+    planCell.textContent = plan;
+
+    clearCellEditingFlags(nameCell);
+    clearCellEditingFlags(unitCell);
+    clearCellEditingFlags(planCell);
+
+    // ✅ Обновляем через API
+    const updated = await updateHabitAPI(habitId, name, unit, Number(plan) || 0);
+    
+    if (!updated) {
+        alert('Ошибка сохранения привычки!');
+    }
+
+    // Обновляем тип ячеек
+    const newCellClass = getCellClass(unit);
+    row.querySelectorAll('.habit-cell').forEach(cell => {
+        cell.className = 'habit-cell ' + newCellClass + (cell.dataset.day ? '' : '');
+        cell.dataset.day = cell.dataset.day;
+    });
+
+    row.classList.remove('habit-row--active');
+    editingRow = null;
+    updateRowResult(row);
+}
+
+    function cancelEditRow() {
+        if (!editingRow) return;
+
+        const row = editingRow;
+        const nameCell = row.querySelector('.habit-name');
+        const unitCell = row.querySelector('.habit-unit');
+        const planCell = row.querySelector('.habit-plan');
+
+        restoreCellFromOldValue(nameCell);
+        restoreCellFromOldValue(unitCell);
+        restoreCellFromOldValue(planCell);
+
+        row.classList.remove('habit-row--active');
+        editingRow = null;
+    }
+
+function extractInputValue(cell) {
+  if (!cell) return '';
+  const input = cell.querySelector('.habit-edit-input');
+  if (!input) return cell.textContent.trim();
+  
+  // Если это select и выбрано "другое" - возвращаем пустую строку
+  if (input.tagName === 'SELECT' && input.value === 'другое') {
+    return '';
+  }
+  
+  return input.value.trim();
+}
+
+
+    function clearCellEditingFlags(cell) {
+        if (!cell) return;
+        delete cell.dataset.oldValue;
+        delete cell.dataset.editing;
+    }
+
+    function restoreCellFromOldValue(cell) {
+        if (!cell) return;
+        const old = cell.dataset.oldValue || '';
+        cell.textContent = old;
+        clearCellEditingFlags(cell);
+    }
+
+    function rowContainsFocusedInput(row) {
+        if (!row) return false;
+        const active = document.activeElement;
+        return !!active && row.contains(active) && active.classList.contains('habit-edit-input');
+    }
+
+    function saveRowMetaToStorage(habitId, name, unit, plan) {
+        if (!habitId) return;
+        const key = 'habits:rowmeta:' + habitId;
+        const payload = { name, unit, plan };
+        try {
+            localStorage.setItem(key, JSON.stringify(payload));
+        } catch (e) {}
+    }
+
+    function loadRowMetaFromStorage(row) {
+        const habitId = row.dataset.habitId;
+        if (!habitId) return;
+        const key = 'habits:rowmeta:' + habitId;
+        let raw = null;
+        try {
+            raw = localStorage.getItem(key);
+        } catch (e) {
+            raw = null;
+        }
+        if (!raw) return;
+
+        try {
+            const meta = JSON.parse(raw);
+            if (!meta) return;
+            if (meta.name) row.querySelector('.habit-name').textContent = meta.name;
+            if (meta.unit) row.querySelector('.habit-unit').textContent = meta.unit;
+            if (meta.plan !== undefined) row.querySelector('.habit-plan').textContent = meta.plan;
+        } catch (e) {}
+    }
+
+    // ===== МЕНЮ СТРОК =====
+    function getRowMenu() {
+        if (!rowMenu) {
+            rowMenu = document.getElementById('habit-row-menu');
+        }
+        return rowMenu;
+    }
+
+    function closeRowMenu() {
+        const menu = getRowMenu();
+        if (menu) {
+            menu.style.display = 'none';
+            menu.hidden = false;
+        }
+        if (rowMenuTargetRow) {
+            rowMenuTargetRow.classList.remove('habit-row--active');
+            rowMenuTargetRow = null;
+        }
+    }
+
+    function openRowMenu(row, x, y) {
+        const menu = getRowMenu();
+        if (!menu || !row) return;
+
+        closeRowMenu();
+
+        rowMenuTargetRow = row;
+        row.classList.add('habit-row--active');
+
+        menu.hidden = false;
+        menu.style.display = 'block';
+
+        let left = x + window.scrollX;
+        let top  = y + window.scrollY;
+
+        menu.style.left = left + 'px';
+        menu.style.top  = top  + 'px';
+
+        const rect    = menu.getBoundingClientRect();
+        const vpWidth = window.innerWidth;
+        const vpHeight = window.innerHeight;
+
+        if (rect.right > vpWidth) {
+            left -= (rect.right - vpWidth) + 8;
+        }
+        if (rect.bottom > vpHeight) {
+            top -= (rect.bottom - vpHeight) + 8;
+        }
+
+        menu.style.left = left + 'px';
+        menu.style.top  = top  + 'px';
+    }
+
+    document.addEventListener('click', function (e) {
+        const menu = getRowMenu();
+        if (!menu) return;
+
+        const clickedInsideMenu = menu.contains(e.target);
+        const clickedRow = e.target.closest('.habit-row');
+
+        if (!clickedInsideMenu && (!rowMenuTargetRow || clickedRow !== rowMenuTargetRow)) {
+            closeRowMenu();
+        }
+    });
+
+    // ===== ЛОГИКА ЯЧЕЕК =====
+    function formatHours(value) {
+        return (Math.round(value * 100) / 100).toString();
+    }
+
+    function cellKey(cell) {
+        const row = cell.closest('.habit-row');
+        const habitId = row?.dataset.habitId || 'row-' + Array.from(row.parentNode.children).indexOf(row);
+        const day = cell.dataset.day || '';
+        return habitId + ':' + day;
+    }
+
+    // ВРЕМЯ: ПКМ +1 час
+    function onCellContextMenuTime(e, cell) {
+        e.preventDefault();
+        const current = parseFloat(cell.textContent.replace(',', '.')) || 0;
+        const next = current + 1;
+        cell.textContent = formatHours(next);
+        updateFilledState(cell);
+        saveCellState(cell);
+        updateRowResult(cell.closest('.habit-row'));
+    }
+
+    // ВРЕМЯ: ЛКМ запуск/стоп таймера (БЕЗ установки значения 1)
+    function onCellClickTime(cell) {
+        const key = cellKey(cell);
+        const entry = timers.get(key);
+
+        if (!entry) {
+            startTimer(cell);
+        } else {
+            stopTimer(cell);
+        }
+    }
+
+    function startTimer(cell) {
+        const key = cellKey(cell);
+        if (timers.has(key)) return;
+        cell.classList.add('habit-cell--running');
+        timers.set(key, { start: performance.now() });
+    }
+
+    function stopTimer(cell) {
+        const key = cellKey(cell);
+        const entry = timers.get(key);
+        if (!entry) return;
+
+        const elapsedMs = performance.now() - entry.start;
+        timers.delete(key);
+        cell.classList.remove('habit-cell--running');
+
+        const minutes = elapsedMs / 1000 / 60;
+        const hours = minutes / 60;
+
+        const current = parseFloat(cell.textContent.replace(',', '.')) || 0;
+        const next = current + hours;
+        cell.textContent = formatHours(next);
+        updateFilledState(cell);
+        saveCellState(cell);
+        updateRowResult(cell.closest('.habit-row'));
+    }
+
+    // ВРЕМЯ: Двойной клик -1 час
+    function onCellDblClickTime(cell) {
+        const current = parseFloat(cell.textContent.replace(',', '.')) || 0;
+        let next = current - 1;
+
+        if (next <= 0) {
+            cell.textContent = '';
+        } else {
+            cell.textContent = formatHours(next);
+        }
+
+        updateFilledState(cell);
+        saveCellState(cell);
+        updateRowResult(cell.closest('.habit-row'));
+    }
+
+    // СЧЕТА: ЛКМ +1
+    function onCellClickCount(cell) {
+        const current = parseInt(cell.textContent, 10) || 0;
+        const next = current + 1;
+        cell.textContent = next;
+
+        updateFilledState(cell);
+        saveCellState(cell);
+        updateRowResult(cell.closest('.habit-row'));
+    }
+
+    // СЧЕТА: ПКМ -1
+    function onCellContextMenuCount(e, cell) {
+        e.preventDefault();
+        const current = parseInt(cell.textContent, 10) || 0;
+        const next = Math.max(0, current - 1);
+        cell.textContent = next || '';
+
+        updateFilledState(cell);
+        saveCellState(cell);
+        updateRowResult(cell.closest('.habit-row'));
+    }
+
+    // ГАЛОЧКИ: переключение
+    function toggleCheckCell(cell) {
+        cell.classList.toggle('checked');
+        cell.textContent = cell.classList.contains('checked') ? '✓' : '';
+        updateFilledState(cell);
+        saveCellState(cell);
+        const row = cell.closest('.habit-row');
+        if (row) {
+            updateRowResult(row);
+        }
+    }
+
+async function saveCellState(cell) {
+    const row = cell.closest('.habit-row');
+    if (!row) return;
+
+    const habitId = row.dataset.habitId;
+    const day = Number(cell.dataset.day);
+    if (!habitId || !day) return;
+
+    const mk = monthKey(currentYear, currentMonth);
+    const [year, month] = mk.split('-').map(Number);
+
+    let value = null;
+
+    if (cell.classList.contains('habit-cell--time')) {
+        value = cell.textContent.trim() || '0';
+    } else if (cell.classList.contains('habit-cell--check')) {
+        value = cell.classList.contains('checked') ? '✓' : '0';
+    } else if (cell.classList.contains('habit-cell--count')) {
+        value = cell.textContent.trim() || '0';
+    }
+
+    // Сохраняем в БД
+    await saveHabitRecord(habitId, year, month, day, value);
+}
+
+
+async function loadAllCellsState() {
+  const tbody = document.getElementById('habits-tbody');
+  if (!tbody) {
+    console.warn('tbody not found');
+    return;
+  }
+  
+  // Проверяем, что привычки загружены
+  const rows = tbody.querySelectorAll('.habit-row');
+  if (rows.length === 0) {
+    console.warn('No habit rows found, waiting...');
+    // Повторить попытку через 100мс
+    setTimeout(() => loadAllCellsState(), 100);
+    return;
+  }
+  
+  const mk = monthKey(currentYear, currentMonth);
+  const [year, month] = mk.split('-').map(Number);
+  
+  console.log(`Loading records for ${year}-${month}`);
+  
+  // API
+  const records = await loadHabitRecordsForMonth(year, month);
+  
+  if (!records || records.length === 0) {
+    console.log('No records found for this month');
+    return;
+  }
+  
+  console.log(`Loaded ${records.length} records`);
+  
+  // Очистить все ячейки
+  tbody.querySelectorAll('.habit-cell').forEach(cell => {
+    cell.textContent = '';
+    cell.classList.remove('checked', 'filled');
+  });
+  
+  // Заполнить данными
+records.forEach(record => {
+  const row = tbody.querySelector(`tr[data-habit-id="${record.habitid}"]`);
+  if (!row) {
+    console.warn(`Row not found for habit ${record.habitid}`);
+    return;
+  }
+  
+  const cell = row.querySelector(`.habit-cell[data-day="${record.day}"]`);
+  if (!cell) {
+    console.warn(`Cell not found for day ${record.day} in habit ${record.habitid}`);
+    return;
+  }
+  
+  const value = record.value;
+  console.log(`Loading: habitId=${record.habitid}, day=${record.day}, value=${value} (type: ${typeof value})`);
+  
+  // Для чекбоксов (привычки типа "галочка")
+  if (cell.classList.contains('habit-cell--check')) {
+    // Используем == вместо === для сравнения числа и строки
+    if (value == 1 || value === '✓') {
+      cell.classList.add('checked');
+      cell.textContent = '✓';
+      console.log(`✓ Cell checked for day ${record.day}`);
+    } else {
+      cell.classList.remove('checked');
+      cell.textContent = '';
+    }
+  } 
+  // Для счётчиков и таймеров
+  else if (cell.classList.contains('habit-cell--time') || cell.classList.contains('habit-cell--count')) {
+    if (value && value != 0 && value !== '0' && value !== '') {
+      cell.textContent = value;
+      console.log(`✓ Cell filled with value "${value}" for day ${record.day}`);
+    } else {
+      cell.textContent = '';
+    }
+  }
+  
+  updateFilledState(cell);
+});
+
+
+  
+  tbody.querySelectorAll('.habit-row').forEach(row => updateRowResult(row));
+}
+
+
+
+
+    function updateFilledState(cell) {
+        if (!cell) return;
+
+        const raw = cell.textContent.trim();
+
+        if (raw === '') {
+            cell.classList.remove('habit-cell--filled');
+            cell.textContent = '';
+            return;
+        }
+
+        const span = document.createElement('span');
+        span.textContent = raw;
+        cell.innerHTML = '';
+        cell.appendChild(span);
+
+        cell.classList.add('habit-cell--filled');
+    }
+
+    // ===== РЕЗУЛЬТАТЫ =====
+    function updateRowResult(row) {
+        if (!row) return;
+        let sum = 0;
+
+        row.querySelectorAll('.habit-cell--time').forEach(td => {
+            const v = parseFloat(td.textContent.replace(',', '.'));
+            if (!isNaN(v)) sum += v;
+        });
+
+        row.querySelectorAll('.habit-cell--check.checked').forEach(() => {
+            sum += 1;
+        });
+
+        row.querySelectorAll('.habit-cell--count').forEach(td => {
+            const v = parseInt(td.textContent, 10);
+            if (!isNaN(v)) sum += v;
+        });
+
+        const resultCell = row.querySelector('.habit-result');
+        if (resultCell) {
+            resultCell.textContent = formatHours(sum);
+        }
+
+        const planCell = row.querySelector('.habit-plan');
+        const percentCell = row.querySelector('.habit-percent');
+        if (!planCell || !percentCell) return;
+
+        const plan = parseFloat(planCell.textContent.replace(',', '.')) || 0;
+        let percent = 0;
+
+        if (plan > 0) {
+            percent = Math.min(100, Math.round((sum / plan) * 100));
+        }
+
+        const bar = percentCell.querySelector('.habit-percent-bar__fill');
+        const label = percentCell.querySelector('.habit-percent-bar__label');
+        if (bar) {
+            bar.style.width = percent + '%';
+        }
+        if (label) {
+            label.textContent = percent + '%';
+        }
+    }
+
+    // ===== УДАЛЕНИЕ ПРИВЫЧКИ =====
+    let lastDeletedHabit = null;
+    let undoTimerId = null;
+    let undoSecondsLeft = 0;
+
+    function openHabitDeleteModal(row, name) {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'habits-modal-backdrop';
+
+        backdrop.innerHTML = `
+          <div class="habits-modal" role="dialog" aria-modal="true">
+            <h3 class="habits-modal__title">Подтвердите действие</h3>
+            <p class="habits-modal__text">
+              Удалить привычку <span class="habits-modal__name">"${name}"</span>?
+            </p>
+            <div class="habits-modal__actions">
+              <button type="button" class="habits-modal__btn habits-modal__btn--cancel" data-role="cancel">
+                Отмена
+              </button>
+              <button type="button" class="habits-modal__btn" data-role="ok">
+                Ок
+              </button>
+            </div>
+          </div>
+        `;
+
+        function closeModal() {
+            document.removeEventListener('keydown', onKeyDown);
+            backdrop.remove();
+        }
+
+        function onKeyDown(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        }
+
+        backdrop.addEventListener('click', function (e) {
+            const role = e.target.dataset.role;
+            if (role === 'cancel') {
+                closeModal();
+            } else if (role === 'ok') {
+                closeModal();
+                deleteHabitRowWithUndo(row);
+            }
+        });
+
+        document.addEventListener('keydown', onKeyDown);
+        document.body.appendChild(backdrop);
+    }
+
+async function deleteHabitRowWithUndo(row) {
+  const tbody = document.getElementById('habits-tbody');
+  if (!tbody) return;
+
+  const habitId = row.dataset.habitId;
+  if (!habitId) return;
+
+  const index = Array.prototype.indexOf.call(tbody.children, row);
+  const data = { 
+    html: row.outerHTML, 
+    index: index,
+    habitId: habitId
+  };
+  lastDeletedHabit = data;
+
+  // Сразу удаляем из localStorage
+  const mk = monthKey(currentYear, currentMonth);
+  const key = 'habits:' + mk + ':' + habitId;
+  try {
+    localStorage.removeItem(key);
+  } catch (e) {}
+
+  const metaKey = 'habits:rowmeta:' + habitId;
+  try {
+    localStorage.removeItem(metaKey);
+  } catch (e) {}
+
+  // Удаляем из DOM
+  if (tbody) {
+    tbody.removeChild(row);
+  }
+
+  saveRowsOrder();
+  showHabitUndoBanner();
+
+  // Запускаем таймер на удаление из БД (20 секунд)
+  setTimeout(async () => {
+    // Проверяем, что пользователь не отменил
+    if (lastDeletedHabit && lastDeletedHabit.habitId === habitId) {
+      const deleted = await deleteHabitAPI(habitId);
+      
+      if (deleted) {
+        lastDeletedHabit = null;
+      }
+    }
+  }, 20000);
+}
+
+
+
+
+    function showHabitUndoBanner() {
+        const existingBanner = document.getElementById('habits-undo-banner');
+        if (existingBanner) {
+            existingBanner.remove();
+        }
+
+        const section = document.querySelector('.block-habits-table') ||
+                        document.querySelector('.table-wrapper');
+        if (!section) return;
+
+        const bannerWrapper = document.createElement('div');
+        bannerWrapper.className = 'habits-undo-banner';
+        bannerWrapper.id = 'habits-undo-banner';
+
+        undoSecondsLeft = 20;
+
+        bannerWrapper.innerHTML = `
+          <button type="button" class="habits-undo-banner__btn" id="habits-undo-btn">
+            Восстановить (${undoSecondsLeft})
+          </button>
+        `;
+
+        section.parentNode.insertBefore(bannerWrapper, section.nextSibling);
+
+        const btn = document.getElementById('habits-undo-btn');
+        if (!btn) return;
+
+        btn.addEventListener('click', function () {
+            undoDeleteHabit();
+        });
+
+        if (undoTimerId) {
+            clearInterval(undoTimerId);
+        }
+
+undoTimerId = setInterval(function () {
+    undoSecondsLeft -= 1;
+    if (undoSecondsLeft <= 0) {
+        clearInterval(undoTimerId);
+        undoTimerId = null;
+        removeHabitUndoBanner();
+        // ✅ НЕ сбрасываем lastDeletedHabit здесь!
+        // Он сбросится в setTimeout после удаления из БД
+        return;
+            }
+            btn.textContent = 'Восстановить (' + undoSecondsLeft + ')';
+        }, 1000);
+    }
+
+function removeHabitUndoBanner() {
+  console.log('🔥 removeHabitUndoBanner called');
+  
+  const banner = document.getElementById('habits-undo-banner');
+  if (banner) {
+    banner.remove();
+  }
+
+  if (undoTimerId) {
+    clearInterval(undoTimerId);
+    undoTimerId = null;
+  }
+  
+  // ❌ НЕ СБРАСЫВАЕМ lastDeletedHabit здесь!
+  // lastDeletedHabit = null; // ← УДАЛИ ЭТУ СТРОКУ, если она есть
+  
+  console.log('🔥 Banner removed, but lastDeletedHabit NOT reset');
+}
+
+function undoDeleteHabit() {
+  if (!lastDeletedHabit) return;
+
+  const tbody = document.getElementById('habits-tbody');
+  if (!tbody) return;
+
+  const temp = document.createElement('tbody');
+  temp.innerHTML = lastDeletedHabit.html;
+  const restoredRow = temp.firstElementChild;
+  if (!restoredRow) return;
+
+  const rows = tbody.children;
+  if (lastDeletedHabit.index >= rows.length) {
+    tbody.appendChild(restoredRow);
+  } else {
+    tbody.insertBefore(restoredRow, rows[lastDeletedHabit.index]);
+  }
+
+  // Восстанавливаем в localStorage
+  const habitId = restoredRow.dataset.habitId;
+  const nameCell = restoredRow.querySelector('.habit-name');
+  const unitCell = restoredRow.querySelector('.habit-unit');
+  const planCell = restoredRow.querySelector('.habit-plan');
+  
+  if (nameCell && unitCell && planCell && habitId) {
+    saveRowMetaToStorage(habitId, nameCell.textContent, unitCell.textContent, planCell.textContent);
+  }
+
+  // ВАЖНО: Отменяем удаление из БД (сбрасываем lastDeletedHabit)
+  lastDeletedHabit = null;
+
+  removeHabitUndoBanner();
+
+  if (undoTimerId) {
+    clearInterval(undoTimerId);
+    undoTimerId = null;
+  }
+
+  tbody.querySelectorAll('.habit-row').forEach(updateRowResult);
+  saveRowsOrder();
+  
+  showNotification('Привычка восстановлена', 'success');
+}
+
+
+async function deleteHabitAPI(habitId) {
+  const token = localStorage.getItem('app-auth-token');
+  
+  if (!token) {
+    console.warn('No auth token found');
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/habits/${habitId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Delete habit error:', error);
+      return false;
+    }
+
+    console.log('Habit deleted from backend:', habitId);
+    return true;
+  } catch (error) {
+    console.error('Delete habit API call failed:', error);
+    return false;
+  }
+}
+
+
+    // ===== ПОРЯДОК СТРОК =====
+    function saveRowsOrder() {
+        const tbody = document.getElementById('habits-tbody');
+        if (!tbody) return;
+        const ids = Array.from(tbody.querySelectorAll('.habit-row'))
+            .map(r => r.dataset.habitId);
+        const mk = monthKey(currentYear, currentMonth);
+        const key = 'habits:order:' + mk;
+        try {
+            localStorage.setItem(key, JSON.stringify(ids));
+        } catch (e) {}
+    }
+
+    function applyRowsOrder() {
+        const tbody = document.getElementById('habits-tbody');
+        if (!tbody) return;
+        const mk = monthKey(currentYear, currentMonth);
+        const key = 'habits:order:' + mk;
+
+        let raw = null;
+        try {
+            raw = localStorage.getItem(key);
+        } catch (e) {
+            raw = null;
+        }
+        if (!raw) return;
+
+        let ids;
+        try {
+            ids = JSON.parse(raw);
+        } catch (e) {
+            return;
+        }
+        if (!Array.isArray(ids)) return;
+
+        const rowsById = {};
+        tbody.querySelectorAll('.habit-row').forEach(r => {
+            rowsById[r.dataset.habitId] = r;
+        });
+
+        ids.forEach(id => {
+            const row = rowsById[id];
+            if (row) {
+                tbody.appendChild(row);
+            }
+        });
+    }
+
+    // ===== ПЕРЕМЕЩЕНИЕ СТРОК =====
+    function startMoveRow(row) {
+        if (!row) return;
+        if (editingRow && editingRow !== row) {
+            finishEditRow();
+        }
+        dragRow = row;
+        isDragging = true;
+        row.classList.add('habit-row--moving');
+    }
+
+    function finishMoveRow() {
+        if (!dragRow) return;
+        dragRow.classList.remove('habit-row--moving');
+        dragRow = null;
+        isDragging = false;
+        removeDragPlaceholder();
+        saveRowsOrder();
+    }
+
+    function cancelMoveRow() {
+        if (!dragRow) return;
+        dragRow.classList.remove('habit-row--moving');
+        dragRow = null;
+        isDragging = false;
+        removeDragPlaceholder();
+    }
+
+    function createDragPlaceholder() {
+        if (dragPlaceholder || !dragRow) return;
+        dragPlaceholder = document.createElement('tr');
+        dragPlaceholder.className = 'habit-row habit-row--placeholder';
+        dragPlaceholder.style.height = dragRow.getBoundingClientRect().height + 'px';
+        const colCount = dragRow.children.length;
+        for (let i = 0; i < colCount; i++) {
+            const td = document.createElement('td');
+            dragPlaceholder.appendChild(td);
+        }
+    }
+
+    function removeDragPlaceholder() {
+        if (dragPlaceholder && dragPlaceholder.parentNode) {
+            dragPlaceholder.parentNode.removeChild(dragPlaceholder);
+        }
+        dragPlaceholder = null;
+    }
+
+    // ===== ОБРАБОТЧИКИ КОНТЕКСТНОГО МЕНЮ =====
+    document.addEventListener('contextmenu', function (e) {
+        const cell  = e.target.closest('.habit-cell, .habit-name, .habit-unit, .habit-plan');
+        const table = cell ? cell.closest('#habits-table') : null;
+
+        if (dragRow && !table) {
+            e.preventDefault();
+            cancelMoveRow();
+            return;
+        }
+
+        if (!cell || !table) return;
+
+        const row = cell.closest('.habit-row');
+
+        // ПКМ по заголовкам: открыть меню строки
+        if (cell.classList.contains('habit-name') ||
+            cell.classList.contains('habit-unit') ||
+            cell.classList.contains('habit-plan')) {
+
+            e.preventDefault();
+            openRowMenu(row, e.clientX, e.clientY);
+            return;
+        }
+
+        closeRowMenu();
+
+        // ПКМ по ячейкам данных
+        if (cell.classList.contains('habit-cell--time')) {
+            onCellContextMenuTime(e, cell);
+        } else if (cell.classList.contains('habit-cell--count')) {
+            onCellContextMenuCount(e, cell);
+        }
+    });
+
+    // ===== КЛИКИ ПО МЕНЮ СТРОК =====
+    document.addEventListener('click', function (e) {
+        const menu = getRowMenu();
+        const item = e.target.closest('.habit-row-menu__item');
+
+        if (item && menu && !menu.hidden) {
+            const action = item.dataset.action;
+            const row = rowMenuTargetRow;
+
+            if (!row) {
+                closeRowMenu();
+                return;
+            }
+
+            if (action === 'edit') {
+                startEditRow(row);
+            } else if (action === 'move') {
+                startMoveRow(row);
+            } else if (action === 'delete') {
+                const nameCell = row.querySelector('.habit-name');
+                const name = nameCell ? nameCell.textContent.trim() : '';
+                openHabitDeleteModal(row, name);
+            }
+
+            closeRowMenu();
+            return;
+        }
+
+        if (editingRow) {
+            const row = editingRow;
+            if (!row.contains(e.target)) {
+                finishEditRow();
+            }
+        }
+
+        if (dragRow) {
+            const row = dragRow;
+            if (!row.contains(e.target)) {
+                cancelMoveRow();
+            }
+        }
+    });
+
+    // ===== КЛИКИ ПО ЯЧЕЙКАМ =====
+    const habitsTbody = document.getElementById('habits-tbody');
+
+    if (habitsTbody) {
+        habitsTbody.addEventListener('click', function (e) {
+            const cell = e.target.closest('.habit-cell');
+            if (!cell) return;
+
+            if (cell.classList.contains('habit-cell--check')) {
+                toggleCheckCell(cell);
+                return;
+            }
+
+            if (cell.classList.contains('habit-cell--time')) {
+                onCellClickTime(cell);
+                return;
+            }
+
+            if (cell.classList.contains('habit-cell--count')) {
+                onCellClickCount(cell);
+                currentActiveCell = cell;
+                return;
+            }
+        });
+
+        habitsTbody.addEventListener('dblclick', function (e) {
+            const cell = e.target.closest('.habit-cell');
+            if (!cell) return;
+
+            if (cell.classList.contains('habit-cell--time')) {
+                onCellDblClickTime(cell);
+            }
+        });
+    }
+
+// Пересчитать итоги строки БЕЗ перезагрузки данных
+function recalculateRowTotals(row) {
+  if (!row) return;
+  
+  const plan = parseInt(row.querySelector('.habit-plan')?.textContent || 0);
+  if (plan <= 0) return;
+  
+  let sum = 0;
+  const cells = row.querySelectorAll('.habit-cell');
+  
+  cells.forEach(cell => {
+    const input = cell.querySelector('input[type="number"]');
+    if (input) {
+      const val = parseFloat(input.value || 0);
+      sum += val;
+    } else if (cell.classList.contains('checked')) {
+      sum += 1;
+    } else {
+      const text = cell.textContent.trim();
+      if (text && !isNaN(text)) {
+        sum += parseFloat(text);
+      }
+    }
+  });
+  
+  const result = Math.round(sum * 100) / 100;
+  const percent = Math.min(100, Math.round((result / plan) * 100));
+  
+  const resultCell = row.querySelector('.habit-result');
+  const percentCell = row.querySelector('.habit-percent-bar__label');
+  const fillBar = row.querySelector('.habit-percent-bar__fill');
+  
+  if (resultCell) resultCell.textContent = result;
+  if (percentCell) percentCell.textContent = percent + '%';
+  if (fillBar) fillBar.style.width = percent + '%';
+}
+
+// Delete - очистка ячейки
+document.addEventListener('keydown', async function(e) {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        const activeElement = document.activeElement;
+        
+        console.log('🔥 Del pressed, activeElement:', activeElement?.tagName, activeElement?.className);
+        
+            // Игнорируем Delete в модальном окне авторизации
+    const authModal = document.getElementById('auth-modal');
+    if (authModal && authModal.classList.contains('active')) {
+      console.log('✅ Ignoring Delete: auth modal is open');
+      return;
+    }
+
+        
+        // Если редактируется название/единица/план - не трогаем
+        if (activeElement && activeElement.classList.contains('habit-edit-input')) {
+            console.log('❌ Skipping: edit input');
+            return;
+        }
+        
+        // ✅ ИЩЕМ ЯЧЕЙКУ ЛЮБЫМИ СПОСОБАМИ
+        let targetCell = null;
+        
+        // 1. Если активный элемент - input, ищем родительскую ячейку
+        if (activeElement && activeElement.tagName === 'INPUT') {
+            targetCell = activeElement.closest('.habit-cell');
+            
+            // Если input не пустой - позволяем удалять цифры
+            if (activeElement.type === 'number' && activeElement.value !== '') {
+                console.log('❌ Input not empty, allowing normal delete');
+                return;
+            }
+        }
+        
+        // 2. Если активный элемент - сама ячейка
+        if (!targetCell && activeElement && activeElement.classList.contains('habit-cell')) {
+            targetCell = activeElement;
+        }
+        
+        // 3. Используем currentActiveCell как резерв
+        if (!targetCell && currentActiveCell) {
+            targetCell = currentActiveCell;
+        }
+        
+        // 4. Последний шанс - ищем ячейку через :hover
+        if (!targetCell) {
+            targetCell = document.querySelector('.habit-cell:hover');
+        }
+        
+        console.log('🔥 Final targetCell:', targetCell);
+        
+        if (!targetCell) {
+            console.log('❌ No targetCell found!');
+            return;
+        }
+        
+        e.preventDefault();
+        
+        const row = targetCell.closest('.habit-row');
+        if (!row) return;
+        
+        const habitId = row.dataset.habitId;
+        const day = targetCell.dataset.day;
+        
+        if (!habitId || !day) return;
+        
+        console.log('✅ Deleting cell:', habitId, day);
+        
+        // Очищаем интерфейс
+        targetCell.textContent = '';
+        targetCell.classList.remove('checked', 'habit-cell--filled');
+        
+        // ✅ Если это input (для часов) - очищаем его
+        const input = targetCell.querySelector('input[type="number"]');
+        if (input) {
+            input.value = '';
+            input.blur();
+        }
+        
+        // ✅ Удаляем через DELETE API
+        const deleted = await deleteHabitRecord(habitId, currentYear, currentMonth, parseInt(day));
+        
+        if (deleted) {
+            console.log('✅ Cell cleared via API:', habitId, day);
+            
+            // Удаляем из localStorage
+            const mk = monthKey(currentYear, currentMonth);
+            const key = `habits:${mk}:${habitId}`;
+            try {
+                const stored = localStorage.getItem(key);
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    delete data[day];
+                    localStorage.setItem(key, JSON.stringify(data));
+                }
+            } catch (e) {}
+        }
+        
+        // Пересчитываем итоги
+        if (typeof recalculateRowTotals === 'function') {
+            recalculateRowTotals(row);
+        }
+    }
+});
+
+
+
+    // ===== КЛАВИША Escape =====
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeRowMenu();
+            cancelEditRow();
+            cancelMoveRow();
+        }
+    });
+
+    // ===== ПЕРЕТАСКИВАНИЕ =====
+    document.addEventListener('mousedown', function (e) {
+        if (!dragRow) return;
+        const row = e.target.closest('.habit-row');
+        if (!row || row !== dragRow) return;
+        if (e.button !== 0) return;
+
+        isDragging = true;
+        createDragPlaceholder();
+
+        const tbody = document.getElementById('habits-tbody');
+        if (tbody && dragPlaceholder && dragRow.parentNode === tbody) {
+            tbody.insertBefore(dragPlaceholder, dragRow.nextSibling);
+        }
+
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function (e) {
+        if (!isDragging || !dragRow) return;
+
+        const tbody = document.getElementById('habits-tbody');
+        if (!tbody) return;
+
+        const rows = Array.from(tbody.querySelectorAll('.habit-row'))
+            .filter(r => r !== dragRow);
+        const y = e.clientY;
+
+        let targetRow = null;
+        for (const r of rows) {
+            const rect = r.getBoundingClientRect();
+            if (y < rect.top + rect.height / 2) {
+                targetRow = r;
+                break;
+            }
+        }
+
+        removeDragPlaceholder();
+        createDragPlaceholder();
+
+        if (targetRow) {
+            tbody.insertBefore(dragPlaceholder, targetRow);
+        } else {
+            tbody.appendChild(dragPlaceholder);
+        }
+    });
+
+    document.addEventListener('mouseup', function () {
+        if (!isDragging || !dragRow) return;
+
+        const tbody = document.getElementById('habits-tbody');
+        if (!tbody || !dragPlaceholder) {
+            cancelMoveRow();
+            return;
+        }
+
+        tbody.insertBefore(dragRow, dragPlaceholder);
+        finishMoveRow();
+    });
+
+async function addHabitRow() {
+  const tbody = document.getElementById('habits-tbody');
+  if (!tbody) return;
+
+  // ✅ Создаём привычку через API
+  const habit = await createHabitAPI('', 'Дни', 10);
+  
+  if (!habit) {
+    alert('Ошибка создания привычки!');
+    return;
+  }
+
+  // ✅ Создаём строку в таблице
+  const row = document.createElement('tr');
+  row.className = 'habit-row';
+  row.dataset.habitId = String(habit.id);
+
+  const nameCell = document.createElement('td');
+  nameCell.className = 'col-task habit-name sticky sticky-col-1';
+  nameCell.textContent = habit.name;
+  row.appendChild(nameCell);
+
+  const unitCell = document.createElement('td');
+  unitCell.className = 'col-unit habit-unit sticky sticky-col-2';
+  unitCell.textContent = habit.unit;
+  row.appendChild(unitCell);
+
+  const planCell = document.createElement('td');
+  planCell.className = 'col-plan habit-plan sticky sticky-col-3';
+  planCell.textContent = habit.plan;
+  row.appendChild(planCell);
+
+  const cellClass = getCellClass(habit.unit);
+
+  for (let day = 1; day <= 31; day++) {
+    const td = document.createElement('td');
+    td.className = `habit-cell ${cellClass}`;
+    td.dataset.day = String(day);
+    row.appendChild(td);
+  }
+
+  const resultTd = document.createElement('td');
+  resultTd.className = 'col-result habit-result';
+  resultTd.textContent = '0';
+  row.appendChild(resultTd);
+
+  const percentTd = document.createElement('td');
+  percentTd.className = 'col-percent habit-percent';
+  percentTd.innerHTML = `<div class="habit-percent-bar"><div class="habit-percent-barfill" style="width:0%"></div><span class="habit-percent-barlabel">0%</span></div>`;
+  row.appendChild(percentTd);
+
+  tbody.appendChild(row);
+  updateWeekdayHeader();
+  highlightTodayColumn();
+  saveRowsOrder();
+  
+  // ✅ Сразу открываем редактирование
+  startEditRow(row);
+}
+
+// ===== УВЕДОМЛЕНИЕ С ОТМЕНОЙ =====
+function showUndoNotification(message, onUndo, onConfirm, timeout = 5000) {
+  const toast = document.createElement('div');
+  toast.className = 'undo-toast';
+  toast.innerHTML = `
+    <div class="undo-toast-content">
+      <span class="undo-toast-message">${message}</span>
+      <button class="undo-toast-btn" data-action="undo">Отменить</button>
+      <div class="undo-toast-timer"></div>
+    </div>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  const timerBar = toast.querySelector('.undo-toast-timer');
+  let startTime = Date.now();
+  let cancelled = false;
+  
+  // Анимация таймера
+  function updateTimer() {
+    if (cancelled) return;
+    
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / timeout, 1);
+    timerBar.style.width = `${progress * 100}%`;
+    
+    if (progress < 1) {
+      requestAnimationFrame(updateTimer);
+    } else {
+      // Время истекло - подтверждаем
+      toast.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => {
+        toast.remove();
+        if (onConfirm) onConfirm();
+      }, 300);
+    }
+  }
+  
+  requestAnimationFrame(updateTimer);
+  
+  // Кнопка "Отменить"
+  toast.querySelector('[data-action="undo"]').addEventListener('click', () => {
+    cancelled = true;
+    toast.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => {
+      toast.remove();
+      if (onUndo) onUndo();
+    }, 300);
+  });
+}
+
+async function clearHabitsMonth() {
+  const tbody = document.getElementById('habits-tbody');
+  if (!tbody) return;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'habits-modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="habits-modal" role="dialog" aria-modal="true">
+      <h3 class="habits-modal-title">Очистить месяц</h3>
+      <p class="habits-modal-text">
+        Удалить все отметки за <strong>${monthLabel(currentYear, currentMonth)}</strong>?
+      </p>
+      <div class="habits-modal-actions">
+        <button type="button" class="habits-modal-btn habits-modal-btn--cancel" data-role="cancel">
+          Отмена
+        </button>
+        <button type="button" class="habits-modal-btn" data-role="ok">
+          Очистить
+        </button>
+      </div>
+    </div>
+  `;
+
+  function closeModal() {
+    document.removeEventListener('keydown', onKeyDown);
+    backdrop.remove();
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'Escape') closeModal();
+  }
+
+  backdrop.addEventListener('click', async function(e) {
+    const role = e.target.dataset.role;
+    
+    if (role === 'cancel') {
+      closeModal();
+    } else if (role === 'ok') {
+      closeModal();
+      
+      // ✅ СОХРАНЯЕМ ДАННЫЕ ДЛЯ ОТМЕНЫ
+      const backupData = [];
+      const mk = monthKey(currentYear, currentMonth);
+      const [year, month] = mk.split('-').map(Number);
+      const rows = tbody.querySelectorAll('.habit-row');
+      
+      // Собираем текущие данные
+      for (const row of rows) {
+        const habitId = row.dataset.habitId;
+        if (!habitId) continue;
+        
+        const cells = row.querySelectorAll('.habit-cell');
+        cells.forEach(cell => {
+          const day = parseInt(cell.dataset.day);
+          const value = cell.textContent.trim();
+          const classes = Array.from(cell.classList);
+          
+          if (value || classes.includes('checked') || classes.includes('habit-cell--filled')) {
+            backupData.push({
+              habitId,
+              year,
+              month,
+              day,
+              value,
+              classes
+            });
+          }
+        });
+      }
+      
+      // Очищаем UI
+      for (const row of rows) {
+        row.querySelectorAll('.habit-cell').forEach(cell => {
+          cell.textContent = '';
+          cell.classList.remove('checked', 'habit-cell--running', 'habit-cell--filled');
+        });
+        updateRowResult(row);
+      }
+      
+      // ✅ ПОКАЗЫВАЕМ УВЕДОМЛЕНИЕ С ОТМЕНОЙ
+      showUndoNotification(
+        `Месяц очищен. Отменить?`,
+        async () => {
+          // ФУНКЦИЯ ОТМЕНЫ - восстанавливаем данные
+          for (const item of backupData) {
+            const row = tbody.querySelector(`[data-habit-id="${item.habitId}"]`);
+            if (!row) continue;
+            
+            const cell = row.querySelector(`[data-day="${item.day}"]`);
+            if (!cell) continue;
+            
+            cell.textContent = item.value;
+            item.classes.forEach(cls => {
+              if (cls.startsWith('habit-cell')) {
+                cell.classList.add(cls);
+              }
+            });
+          }
+          
+          // Обновляем прогресс
+          rows.forEach(row => updateRowResult(row));
+          showNotification('Месяц восстановлен!', 'success');
+        },
+        async () => {
+          // ФУНКЦИЯ ПОДТВЕРЖДЕНИЯ - удаляем из БД
+          showNotification('Удаляем из базы данных...', 'info');
+          
+          let deletedCount = 0;
+          let errorCount = 0;
+          
+          for (const item of backupData) {
+            const success = await deleteHabitRecord(item.habitId, item.year, item.month, item.day);
+            if (success) deletedCount++;
+            else errorCount++;
+          }
+          
+          console.log(`Удалено: ${deletedCount}, Ошибок: ${errorCount}`);
+          
+          if (errorCount > 0) {
+            showNotification(`Удалено с ошибками: ${errorCount}`, 'error');
+          } else {
+            showNotification('Месяц успешно удалён!', 'success');
+          }
+        }
+      );
+    }
+  });
+
+  document.addEventListener('keydown', onKeyDown);
+  document.body.appendChild(backdrop);
+}
+
+
+
+
+
+    document.addEventListener('click', function (e) {
+        const addBtn = e.target.closest('#habits-add-btn');
+        if (addBtn) {
+            e.preventDefault();
+            addHabitRow();
+            return;
+        }
+
+       const clearBtn = e.target.closest('.habits-btn.habits-btn--danger');
+        if (clearBtn) {
+            e.preventDefault();
+            clearHabitsMonth();
+            return;
+        }
+
+        const newMonthBtn = e.target.closest('#habits-new-month-btn');
+        if (newMonthBtn) {
+            e.preventDefault();
+            createNextMonthFromCurrent();
+            return;
+        }
+    });
+
+    function createNextMonthFromCurrent() {
+        const keys = getStoredMonthKeys();
+        let year = currentYear;
+        let month = currentMonth;
+
+        if (keys.length > 0) {
+            const lastMk = keys[keys.length - 1];
+            const [y, m] = lastMk.split('-').map(Number);
+            year = y;
+            month = m;
+        }
+
+        month += 1;
+        if (month > 12) {
+            month = 1;
+            year += 1;
+        }
+
+        currentYear = year;
+        currentMonth = month;
+
+        createHabitsFromTemplate();
+        applyRowsOrder();
+        loadAllCellsState();
+        highlightTodayColumn();
+        updateWeekdayHeader();
+        initMonthSelect();
+    }
+
+    // ===== ШАПКА ТАБЛИЦЫ =====
+    function updateWeekdayHeader() {
+        const thead = document.querySelector('#habits-table thead');
+        if (!thead) return;
+
+        const mk = monthKey(currentYear, currentMonth);
+        const [y, m] = mk.split('-').map(Number);
+        const year = y;
+        const monthIndex = m - 1;
+
+        for (let day = 1; day <= 31; day++) {
+            const date = new Date(year, monthIndex, day);
+
+            const topTh = thead.querySelector('th.col-day[data-day="' + day + '"]');
+            const bottomTh = thead.querySelector('th.col-day-week[data-day="' + day + '"]');
+
+            if (date.getMonth() !== monthIndex) {
+                if (topTh) {
+                    topTh.textContent = day.toString();
+                    topTh.classList.remove('col-day-weekend', 'col-day-disabled', 'col-day-holiday');
+                }
+                if (bottomTh) {
+                    bottomTh.textContent = '';
+                    bottomTh.classList.remove('col-day-weekend', 'col-day-disabled', 'col-day-holiday');
+                }
+
+                const tbody = document.getElementById('habits-tbody');
+                if (tbody) {
+                    tbody.querySelectorAll('td[data-day="' + day + '"]').forEach(td => {
+                        td.classList.remove('habit-col-weekend', 'habit-col-holiday');
+                    });
+                }
+                continue;
+            }
+
+            const weekday = date.getDay();
+            const weekdayIndex = (weekday + 6) % 7;
+            const name = weekdayNamesShort[weekdayIndex];
+
+            const isWeekend = (weekdayIndex === 5 || weekdayIndex === 6);
+            const isHoliday = isProductionHoliday(date);
+
+            if (topTh) {
+                topTh.textContent = day.toString();
+                topTh.classList.toggle('col-day-weekend', isWeekend || isHoliday);
+                topTh.classList.toggle('col-day-holiday', isHoliday);
+                topTh.classList.remove('col-day-disabled');
+            }
+            if (bottomTh) {
+                bottomTh.textContent = name;
+                bottomTh.classList.toggle('col-day-weekend', isWeekend || isHoliday);
+                bottomTh.classList.toggle('col-day-holiday', isHoliday);
+                bottomTh.classList.remove('col-day-disabled');
+            }
+
+            const tbody = document.getElementById('habits-tbody');
+            if (tbody) {
+                tbody.querySelectorAll('td[data-day="' + day + '"]').forEach(td => {
+                    td.classList.toggle('habit-col-weekend', isWeekend || isHoliday);
+                    td.classList.toggle('habit-col-holiday', isHoliday);
+                });
+            }
+        }
+    }
+
+    function highlightTodayColumn() {
+        const table = document.getElementById('habits-table');
+        const wrapper = table?.closest('.table-wrapper--scroll');
+        if (!table || !wrapper) return;
+
+        const today = new Date();
+        const day = today.getDate();
+        if (day < 1 || day > 31) return;
+
+        table.querySelectorAll('.col-day-today').forEach(th => th.classList.remove('col-day-today'));
+        table.querySelectorAll('.habit-cell--today').forEach(td => td.classList.remove('habit-cell--today'));
+
+        const dayHeaders = table.querySelectorAll('thead .col-day');
+        const targetHeader = dayHeaders[day - 1];
+        if (!targetHeader) return;
+
+        targetHeader.classList.add('col-day-today');
+
+        const tbody = document.getElementById('habits-tbody');
+        if (tbody) {
+            tbody.querySelectorAll('.habit-cell[data-day="' + day + '"]').forEach(td => {
+                td.classList.add('habit-cell--today');
+            });
+        }
+
+        const headerRect = targetHeader.getBoundingClientRect();
+        const tableRect = table.getBoundingClientRect();
+
+        const headerOffsetLeft = headerRect.left - tableRect.left;
+        const headerCenter = headerOffsetLeft + headerRect.width / 2;
+
+        const visibleWidth = wrapper.clientWidth;
+        const scrollTarget = headerCenter - visibleWidth / 2;
+
+        wrapper.scrollLeft = Math.max(0, scrollTarget);
+    }
+
+    function deleteCurrentMonthData() {
+        const mk = monthKey(currentYear, currentMonth);
+        if (!mk) return;
+
+        if (!confirm('Удалить данные месяца ' + monthLabel(currentYear, currentMonth) + '?')) {
+            return;
+        }
+
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (!k) continue;
+            if (k.startsWith('habits:' + mk + ':') || k === 'habits:order:' + mk) {
+                keysToRemove.push(k);
+            }
+        }
+        keysToRemove.forEach(k => {
+            try { localStorage.removeItem(k); } catch (e) {}
+        });
+
+        createHabitsFromTemplate();
+        applyRowsOrder();
+        loadAllCellsState();
+        highlightTodayColumn();
+        updateWeekdayHeader();
+        initMonthSelect();
+    }
+
+    const deleteMonthBtn = document.getElementById('habits-delete-month-btn');
+    if (deleteMonthBtn) {
+        deleteMonthBtn.addEventListener('click', function () {
+            deleteCurrentMonthData();
+        });
+    }
+
+    function initTableWheelScroll() {
+        const wrapper = document.querySelector('.table-wrapper--scroll');
+        if (!wrapper) return;
+
+        wrapper.addEventListener('wheel', function (e) {
+            if (wrapper.scrollWidth > wrapper.clientWidth) {
+                wrapper.scrollLeft += e.deltaY;
+                e.preventDefault();
+            }
+        }, { passive: false });
+    }
+
+    // ===== АВТОРИЗАЦИЯ И ТЕМА =====
+    
+    // Кнопка переключения темы (шестеренка) - 5 ТЕМ
+    const THEMES_LIST = ['theme-storm', 'theme-ice', 'theme-blood', 'theme-toxic', 'theme-glitch'];
+    let currentThemeIndex = 0;
+
+
+// ==================== API ДЛЯ ПРИВЫЧЕК ====================
+
+
+
+// Получить токен авторизации
+function getAuthToken() {
+  return localStorage.getItem('app-auth-token');
+}
+
+// Получить headers с авторизацией
+function getAuthHeaders() {
+  const token = getAuthToken();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  };
+}
+
+async function loadHabitsFromAPI() {
+  // Проверить токен перед запросом
+  if (!isLoggedIn || !currentUser || !currentUser.token) {
+    console.warn('User not logged in, cannot load habits');
+    return [];
+  }
+  
+  try {
+    const response = await fetch(`${API_URL}/api/habits`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (response.status === 403 || response.status === 401) {
+      console.error('Auth token invalid or expired');
+      // Очистить токен и перезагрузить
+      localStorage.removeItem('app-auth-token');
+      localStorage.removeItem('app-user-email');
+      isLoggedIn = false;
+      currentUser = null;
+      alert('Сессия истекла. Пожалуйста, войдите снова.');
+      location.reload();
+      return [];
+    }
+    
+    if (!response.ok) {
+      console.error('Failed to load habits:', response.status);
+      return [];
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('Error loading habits:', err);
+    return [];
+  }
+}
+
+
+// Загрузить записи привычек за месяц
+async function loadHabitRecordsForMonth(year, month) {
+  if (!isLoggedIn || !currentUser || !currentUser.token) {
+    console.warn('User not logged in, cannot load records');
+    return [];
+  }
+  
+  try {
+    const response = await fetch(`${API_URL}/api/habits/records/${year}/${month}`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (response.status === 403 || response.status === 401) {
+      console.error('Auth token invalid or expired');
+      return [];
+    }
+    
+    if (!response.ok) {
+      console.error('Failed to load habit records:', response.status);
+      return [];
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('Error loading habit records:', err);
+    return [];
+  }
+}
+
+// Сохранить запись привычки
+async function saveHabitRecord(habitId, year, month, day, value) {
+  try {
+    const response = await fetch(`${API_URL}/api/habits/records`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        habit_id: habitId,
+        year: year,
+        month: month,
+        day: day,
+        value: value
+      })
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to save habit record:', response.status);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Error saving habit record:', err);
+    return false;
+  }
+}
+
+// ✅ Удаление отметки
+async function deleteHabitRecord(habitId, year, month, day) {
+  const token = localStorage.getItem('app-auth-token');
+  if (!token) {
+    console.error('No auth token');
+    return false;
+  }
+
+  try {
+    // ✅ ИСПОЛЬЗУЕМ URL С ПАРАМЕТРАМИ
+    const url = `${API_URL}/api/habits/records/${habitId}/${year}/${month}/${day}`;
+    console.log(`🗑️ Deleting: ${url}`);
+    
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    console.log(`Response status: ${response.status}`);
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      console.error(`❌ Server error for day ${day}:`, data);
+      return false;
+    }
+
+    const data = await response.json();
+    console.log(`✅ Deleted day ${day}:`, data);
+    
+    return data.success === true;
+  } catch (err) {
+    console.error(`❌ Network error for day ${day}:`, err);
+    return false;
+  }
+}
+
+
+// Создать новую привычку
+async function createHabitAPI(name, unit, plan) {
+  try {
+    const response = await fetch(`${API_URL}/api/habits`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ name, unit, plan })
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to create habit:', response.status);
+      return null;
+    }
+    
+    return await response.json();
+  } catch (err) {
+    console.error('Error creating habit:', err);
+    return null;
+  }
+}
+
+// Обновить привычку
+async function updateHabitAPI(habitId, name, unit, plan) {
+  try {
+    const response = await fetch(`${API_URL}/api/habits/${habitId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ name, unit, plan })
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to update habit:', response.status);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Error updating habit:', err);
+    return false;
+  }
+}
+
+// ==================== ПРОГРЕСС-БАРЫ (ЖИЗНЕННОЕ ВРЕМЯ) ====================
+
+// Загрузка профиля и расчёт прогресса
+async function loadUserProfileAndProgress() {
+  const token = localStorage.getItem('app-auth-token');
+  if (!token) {
+    updateLifeProgress(null);
+    return;
+  }
+
+  try {
+    const response = await fetch('http://85.198.96.149:5000/api/user/profile', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      updateLifeProgress(null);
+      return;
+    }
+
+    const profile = await response.json();
+    updateLifeProgress(profile.birthdate);
+  } catch (err) {
+    console.error('Error loading profile:', err);
+    updateLifeProgress(null);
+  }
+}
+
+// Функция расчёта прогресса
+function updateLifeProgress(birthdate) {
+  const lifePercentEl = document.getElementById('lifePercent');
+  const lifeProgressBar = document.getElementById('lifeProgressBar');
+  const lifeProgressText = document.getElementById('lifeProgressText');
+  const lifeDetails = document.getElementById('lifeDetails');
+
+  const yearDaysEl = document.getElementById('yearDays');
+  const yearProgressBar = document.getElementById('yearProgressBar');
+  const yearProgressText = document.getElementById('yearProgressText');
+  const yearDetails = document.getElementById('yearDetails');
+
+  if (!birthdate) {
+    if (lifePercentEl) lifePercentEl.textContent = '0%';
+    if (lifeProgressBar) lifeProgressBar.style.width = '0%';
+    if (lifeProgressText) lifeProgressText.textContent = '0%';
+    if (lifeDetails) lifeDetails.textContent = '0 лет, 100% осталось';
+
+    if (yearDaysEl) yearDaysEl.textContent = '0';
+    if (yearProgressBar) yearProgressBar.style.width = '0%';
+    if (yearProgressText) yearProgressText.textContent = '0%';
+    if (yearDetails) yearDetails.textContent = '0 дней прожито, 0 до ДР';
+    return;
+  }
+
+  const today = new Date();
+  const birth = new Date(birthdate);
+
+  // === РАСЧЁТ ПРОЖИТОЙ ЖИЗНИ (от 64 лет) ===
+  const lifeExpectancy = 64;
+  const ageMs = today - birth;
+  const ageYears = ageMs / (1000 * 60 * 60 * 24 * 365.25);
+  const lifePercent = Math.min(100, Math.round((ageYears / lifeExpectancy) * 100));
+  const remainingYears = Math.max(0, Math.round(lifeExpectancy - ageYears));
+
+  if (lifePercentEl) lifePercentEl.textContent = `${lifePercent}%`;
+  if (lifeProgressBar) lifeProgressBar.style.width = `${lifePercent}%`;
+  if (lifeProgressText) lifeProgressText.textContent = `${lifePercent}%`;
+  if (lifeDetails) lifeDetails.textContent = `${Math.floor(ageYears)} лет прожито, ${remainingYears} лет осталось`;
+
+  // === РАСЧЁТ ЛИЧНОГО ГОДА ===
+  const birthMonth = birth.getMonth();
+  const birthDay = birth.getDate();
+
+  let yearStart = new Date(today.getFullYear(), birthMonth, birthDay);
+  if (today < yearStart) {
+    yearStart = new Date(today.getFullYear() - 1, birthMonth, birthDay);
+  }
+
+  const yearEnd = new Date(yearStart.getFullYear() + 1, birthMonth, birthDay - 1);
+  const daysInYear = Math.round((yearEnd - yearStart) / (1000 * 60 * 60 * 24)) + 1;
+  const daysPassed = Math.round((today - yearStart) / (1000 * 60 * 60 * 24));
+  const daysLeft = daysInYear - daysPassed;
+  const yearPercent = Math.min(100, Math.round((daysPassed / daysInYear) * 100));
+
+  if (yearDaysEl) yearDaysEl.textContent = daysPassed;
+  if (yearProgressBar) yearProgressBar.style.width = `${yearPercent}%`;
+  if (yearProgressText) yearProgressText.textContent = `${yearPercent}%`;
+  if (yearDetails) yearDetails.textContent = `${daysPassed} дней прожито, ${daysLeft} дней до ДР`;
+}
+
+    // Загрузка сохраненной темы при загрузке страницы
+    function loadTheme() {
+        try {
+            const savedIndex = localStorage.getItem('app-theme-index');
+            if (savedIndex !== null) {
+                currentThemeIndex = parseInt(savedIndex, 10);
+                if (currentThemeIndex < 0 || currentThemeIndex >= THEMES_LIST.length) {
+                    currentThemeIndex = 0;
+                }
+            }
+            
+            const body = document.body;
+            THEMES_LIST.forEach(theme => body.classList.remove(theme));
+            body.classList.add(THEMES_LIST[currentThemeIndex]);
+        } catch (e) {}
+    }
+
+    // ===== ИНИЦИАЛИЗАЦИЯ =====
+document.addEventListener('DOMContentLoaded', async function() {
+  loadUserProfileAndProgress();
+  loadTheme();
+  
+  // Сначала создаём строки привычек
+  await createHabitsFromTemplate();
+  
+  // Применяем порядок
+  applyRowsOrder();
+  
+  // ЗАТЕМ загружаем данные ячеек
+  await loadAllCellsState();
+  
+  // Остальное
+  initMonthSelect();
+  highlightTodayColumn();
+  updateWeekdayHeader();
+  initTableWheelScroll();
+});
+
+})();
+</script>
+
+<script>
+// ===== ONBOARDING TOUR ===== (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+(function() {
+  const TOUR_KEY = 'habits-tour-completed';
+  
+  const tourSteps = [
+    {
+      element: '.app-header__settings-btn',
+      title: '🎨 Смена темы',
+      text: 'Нажми на эту кнопку, чтобы сменить цветовую тему. Доступно 5 тем: Storm, Ice, Blood, Toxic и Glitch.',
+      position: 'bottom'
+    },
+    {
+      element: '.block-life-time',
+      title: '⏳ Жизненное время',
+      text: 'Здесь показано, сколько времени жизни прошло и сколько осталось в этом году. Введи дату рождения в профиле для точных данных.',
+      position: 'bottom'
+    },
+    {
+      element: '#habits-add-btn',
+      title: '➕ Добавить привычку',
+      text: 'Нажми сюда, чтобы создать новую привычку. После создания кликни на название, единицу или план, чтобы отредактировать.',
+      position: 'top'
+    },
+    {
+      element: '.habits-month-select-wrapper',
+      title: '📅 Выбор месяца',
+      text: 'Переключайся между месяцами. Кнопка "Новый месяц" создаст следующий месяц автоматически.',
+      position: 'bottom'
+    },
+    {
+      element: '.table-wrapper',
+      title: '📊 Таблица привычек',
+      text: 'ЛКМ — отметить выполнение. ПКМ — убавить. Для таймеров: клик старт/стоп, двойной клик минус час.',
+      position: 'top'
+    },
+    {
+      element: '.habits-help-tooltip',
+      title: '❓ Подсказки',
+      text: 'Наведи курсор на этот значок, чтобы увидеть подробную инструкцию по всем функциям трекера.',
+      position: 'left'
+    }
+  ];
+
+  let currentStep = 0;
+  let overlay, spotlight, tooltip, titleEl, textEl, nextBtn, prevBtn, skipBtn, currentStepEl;
+
+  function initTour() {
+    overlay = document.getElementById('onboarding-overlay');
+    spotlight = document.getElementById('onboarding-spotlight');
+    tooltip = document.getElementById('onboarding-tooltip');
+    titleEl = document.getElementById('tour-title');
+    textEl = document.getElementById('tour-text');
+    nextBtn = document.getElementById('tour-next');
+    prevBtn = document.getElementById('tour-prev');
+    skipBtn = document.getElementById('tour-skip');
+    currentStepEl = document.getElementById('tour-current');
+    
+    if (!overlay) {
+      console.error('❌ Onboarding overlay not found!');
+      return false;
+    }
+    
+    document.getElementById('tour-total').textContent = tourSteps.length;
+
+    nextBtn.addEventListener('click', nextStep);
+    prevBtn.addEventListener('click', prevStep);
+    skipBtn.addEventListener('click', endTour);
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && overlay.style.display === 'block') {
+        endTour();
+      }
+    });
+    
+    return true;
+  }
+
+  function startTour() {
+    const testElement = document.querySelector('.app-header__settings-btn');
+    if (!testElement) {
+      console.warn('⚠️ Elements not ready, retrying...');
+      setTimeout(startTour, 500);
+      return;
+    }
+    
+    currentStep = 0;
+    overlay.style.display = 'block';
+    
+    // ✅ Задержка перед первым шагом
+    setTimeout(() => showStep(currentStep), 100);
+  }
+
+  function showStep(stepIndex) {
+    const step = tourSteps[stepIndex];
+    const targetEl = document.querySelector(step.element);
+    
+    if (!targetEl) {
+      console.warn('⚠️ Element not found:', step.element);
+      if (stepIndex < tourSteps.length - 1) {
+        setTimeout(() => showStep(stepIndex + 1), 100);
+      } else {
+        endTour();
+      }
+      return;
+    }
+
+    // Обновляем контент
+    titleEl.textContent = step.title;
+    textEl.textContent = step.text;
+    currentStepEl.textContent = stepIndex + 1;
+
+    // Кнопки
+    prevBtn.style.display = stepIndex > 0 ? 'inline-block' : 'none';
+    nextBtn.textContent = stepIndex === tourSteps.length - 1 ? 'Завершить' : 'Далее';
+
+    // ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Сначала скролл, потом позиционирование
+    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    
+    // ✅ Увеличенная задержка после скролла для стабилизации
+    setTimeout(() => {
+      updateSpotlightPosition(targetEl, step.position);
+    }, 400);  // 400мс достаточно для завершения smooth scroll
+  }
+
+  function updateSpotlightPosition(targetEl, position) {
+    // ✅ ОДИН ВЫЗОВ getBoundingClientRect() - храним результат
+    const rect = targetEl.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    
+    // ✅ Позиция spotlight относительно документа (НЕ viewport!)
+    const spotlightTop = rect.top + scrollTop - 8;
+    const spotlightLeft = rect.left + scrollLeft - 8;
+    const spotlightWidth = rect.width + 16;
+    const spotlightHeight = rect.height + 16;
+    
+    spotlight.style.top = `${spotlightTop}px`;
+    spotlight.style.left = `${spotlightLeft}px`;
+    spotlight.style.width = `${spotlightWidth}px`;
+    spotlight.style.height = `${spotlightHeight}px`;
+
+    // ✅ Tooltip позиционируется после spotlight
+    setTimeout(() => {
+      positionTooltip(rect, position, scrollTop, scrollLeft);
+    }, 50);
+  }
+
+  function positionTooltip(rect, position, scrollTop, scrollLeft) {
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    let top, left;
+
+    switch (position) {
+      case 'bottom':
+        top = rect.bottom + scrollTop + 20;
+        left = rect.left + scrollLeft + rect.width / 2 - tooltipRect.width / 2;
+        break;
+      case 'top':
+        top = rect.top + scrollTop - tooltipRect.height - 20;
+        left = rect.left + scrollLeft + rect.width / 2 - tooltipRect.width / 2;
+        break;
+      case 'left':
+        top = rect.top + scrollTop + rect.height / 2 - tooltipRect.height / 2;
+        left = rect.left + scrollLeft - tooltipRect.width - 20;
+        break;
+      case 'right':
+        top = rect.top + scrollTop + rect.height / 2 - tooltipRect.height / 2;
+        left = rect.right + scrollLeft + 20;
+        break;
+      default:
+        top = rect.bottom + scrollTop + 20;
+        left = rect.left + scrollLeft;
+    }
+
+    // Ограничения viewport
+    const margin = 20;
+    
+    if (left < margin) left = margin;
+    if (left + tooltipRect.width > viewportWidth - margin) {
+      left = viewportWidth - tooltipRect.width - margin;
+    }
+    if (top < scrollTop + margin) top = rect.bottom + scrollTop + 20;
+
+    tooltip.style.top = `${Math.max(margin, top)}px`;
+    tooltip.style.left = `${Math.max(margin, left)}px`;
+  }
+
+  function nextStep() {
+    if (currentStep < tourSteps.length - 1) {
+      currentStep++;
+      showStep(currentStep);
+    } else {
+      endTour();
+    }
+  }
+
+  function prevStep() {
+    if (currentStep > 0) {
+      currentStep--;
+      showStep(currentStep);
+    }
+  }
+
+  function endTour() {
+    overlay.style.display = 'none';
+    localStorage.setItem(TOUR_KEY, 'true');
+  }
+
+  window.restartTour = function() {
+    localStorage.removeItem(TOUR_KEY);
+    if (initTour()) {
+      startTour();
+    }
+  };
+
+  // ✅ Улучшенная проверка готовности DOM
+  function attemptStart() {
+    const hasSeenTour = localStorage.getItem(TOUR_KEY);
+    if (!hasSeenTour) {
+      // Проверяем, что все ключевые элементы загружены
+      const requiredElements = [
+        '.app-header__settings-btn',
+        '#habits-add-btn',
+        '.table-wrapper'
+      ];
+      
+      const allReady = requiredElements.every(sel => document.querySelector(sel));
+      
+      if (allReady) {
+        if (initTour()) {
+          startTour();
+        }
+      } else {
+        console.warn('⚠️ Some elements not ready, retrying...');
+        setTimeout(attemptStart, 500);
+      }
+    }
+  }
+
+  // ✅ Запуск после полной загрузки
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(attemptStart, 1500);  // 1.5 сек после DOMContentLoaded
+    });
+  } else {
+    setTimeout(attemptStart, 1500);
+  }
+})();
+</script>
+<!-- ===== ONBOARDING TOUR HTML ===== -->
+<div id="onboarding-overlay" class="onboarding-overlay" style="display: none;">
+  <div class="onboarding-backdrop"></div>
+  <div id="onboarding-spotlight" class="onboarding-spotlight"></div>
+  <div id="onboarding-tooltip" class="onboarding-tooltip">
+    <div class="onboarding-tooltip__header">
+      <span class="onboarding-tooltip__step">Шаг <span id="tour-current">1</span> из <span id="tour-total">6</span></span>
+      <button class="onboarding-tooltip__close" id="tour-skip">✕</button>
+    </div>
+    <h3 class="onboarding-tooltip__title" id="tour-title">Заголовок</h3>
+    <p class="onboarding-tooltip__text" id="tour-text">Текст подсказки</p>
+    <div class="onboarding-tooltip__actions">
+      <button class="onboarding-tooltip__btn onboarding-tooltip__btn--secondary" id="tour-prev" style="display: none;">Назад</button>
+      <button class="onboarding-tooltip__btn onboarding-tooltip__btn--primary" id="tour-next">Далее</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

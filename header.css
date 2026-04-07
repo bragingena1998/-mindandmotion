@@ -1,0 +1,160 @@
+/* ===== ШАПКА С РАМКОЙ И КНОПКОЙ ТЕМ ===== */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+    gap: 8px;
+  padding: 10px 18px;
+  margin-bottom: 4px;
+  background: linear-gradient(
+    135deg,
+    rgba(26,16,48,0.96) 0%,
+    rgba(8,4,18,0.98) 100%
+  );
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  box-shadow:
+    0 2px 14px rgba(0,0,0,0.8),
+    0 0 0 1px rgba(15,23,42,0.9),
+    0 0 18px var(--accent-soft);
+}
+
+.app-header__title {
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e9e4ff;
+  white-space: nowrap;
+}
+
+.app-header__buttons {
+      display: flex;
+        gap: 8px;
+          align-items: center;
+}
+
+.app-header__settings-btn {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: radial-gradient(circle at top, var(--accent-1), #0b0618);
+  color: var(--accent-text);
+  cursor: pointer;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 14px var(--accent-soft);
+  transition: 0.18s ease-out;
+}
+
+.app-header__settings-btn::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  border: 1px solid rgba(255,255,255,0.08);
+  pointer-events: none;
+}
+
+.app-header__settings-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(248, 181, 77, 1);
+}
+
+/* Кнопка входа */
+.app-header__auth-btn {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    border: 1px solid var(--accent-border);
+    background: radial-gradient(circle at top, var(--accent-1), #0b0618);
+    color: var(--accent-text);
+    cursor: pointer;
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 14px var(--accent-soft);
+    transition: 0.18s ease-out;
+    margin-right: 8px;
+}
+
+.app-header__auth-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 18px rgba(248, 181, 77, 1);
+}
+
+.app-header__settings-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 6px rgba(0,0,0,0.9);
+}
+
+/* ===== ВЕРХНИЕ ТАБЫ НАВИГАЦИИ ===== */
+
+.top-menu {
+  margin-top: 6px;
+  margin-bottom: 10px;
+}
+
+.top-menu__list {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.top-menu__item a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 18px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 999px;
+  color: #e5e7eb;
+  border: 1px solid transparent;
+  background: linear-gradient(180deg, #111827, #020617);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.3);
+}
+
+.top-menu__item a:hover {
+  border-color: #facc15;
+}
+
+.top-menu__item--active a {
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  color: #111827;
+  border-color: var(--accent-border);
+  box-shadow: 0 0 18px rgba(236, 72, 153, 0.9);
+}
+
+/* ========================================
+   ЗАГЛУШКА НЕАКТИВНЫХ РАЗДЕЛОВ
+   ======================================== */
+
+.top-menu__item a.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.top-menu__item a.disabled:hover {
+  opacity: 0.7;
+  border-color: transparent;
+}
+
+.top-menu__item a.disabled::before {
+  content: '🚧';
+  margin-right: 4px;
+  font-size: 12px;
+}
