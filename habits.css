@@ -1024,3 +1024,47 @@
     font-size: 13px;
   }
 }
+  
+/* ===== ЬЯ ТЯ Ы ===== */  
+@media (max-width: 768px) {  
+  /* 1. лок с кнопками управления */  
+  .block-header { flex-wrap: wrap; gap: 8px; }  
+  .block-header__controls { flex-wrap: wrap; gap: 6px; justify-content: flex-end; }  
+  /* 2. Селектор месяца компактнее */  
+  .habits-month-select { font-size: 11px; padding: 3px 6px; }  
+  /* 3. бедимся что таблица скроллится */  
+  .table-wrapper--scroll { -webkit-overflow-scrolling: touch; }  
+  /* 4. икс для очень узких экранов */  
+  .habits-actions { flex-wrap: wrap; }  
+} 
+
+/* ===== ╨Ь╨Ю╨С╨Ш╨Ы╨м╨Э╨Р╨п ╨Р╨Ф╨Р╨Я╨в╨Р╨ж╨Ш╨п ╨Я╨а╨Ш╨Т╨л╨з╨Х╨Ъ ===== */
+
+@media (max-width: 768px) {
+  /* 1. ╨С╨╗╨╛╨║ ╤Б ╨║╨╜╨╛╨┐╨║╨░╨╝╨╕ ╤Г╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╤П */
+  .block-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .block-header__controls {
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  /* 2. ╨б╨╡╨╗╨╡╨║╤В╨╛╤А ╨╝╨╡╤Б╤П╤Ж╨░ ╨║╨╛╨╝╨┐╨░╨║╤В╨╜╨╡╨╡ */
+  .habits-month-select {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  /* 3. ╨г╨▒╨╡╨┤╨╕╨╝╤Б╤П ╤З╤В╨╛ ╤В╨░╨▒╨╗╨╕╤Ж╨░ ╤Б╨║╤А╨╛╨╗╨╗╨╕╤В╤Б╤П ╨┐╨╗╨░╨▓╨╜╨╛ ╨╜╨░ iOS */
+  .table-wrapper--scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 4. ╨д╨╕╨║╤Б ╨┤╨╗╤П ╨╛╤З╨╡╨╜╤М ╤Г╨╖╨║╨╕╤Е ╤Н╨║╤А╨░╨╜╨╛╨▓ */
+  .habits-actions {
+    flex-wrap: wrap;
+  }
+}
