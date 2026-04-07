@@ -911,4 +911,58 @@
 .task-done-checkbox:hover {
   border-color: var(--accent-1);
   box-shadow: 0 0 10px rgba(168,85,255,0.3);
+}/* ===== МОБИЛЬНАЯ АДАПТАЦИЯ ===== */
+
+@media (max-width: 768px) {
+  /* 1. Статистика — 2 колонки */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  /* 2. Форма добавления задачи — вертикальный стек */
+  .task-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .task-form input[type="text"],
+  .task-form select,
+  .task-form .date-display {
+    width: 100%;
+  }
+
+  .date-field {
+    width: 100%;
+  }
+
+  /* 3. Таблица задач — горизонтальный скролл */
+  .tasks-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tasks-table-scroll {
+    min-width: 900px;
+  }
+
+  /* 4. Заголовок страницы */
+  .page-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .page-header .habits-btn {
+    font-size: 11px;
+    padding: 5px 12px;
+  }
+
+  /* 5. Панель помидоро */
+  .pomodoro-panel {
+    padding: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
 }
