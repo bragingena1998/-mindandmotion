@@ -1,14 +1,16 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Р—Р°РґР°С‡Рё вЂ” Р–СѓРє Р’С‹РІРѕРґР¶СѓРє</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Задачи — Жук Выводжук</title>
 
   <link rel="stylesheet" href="common.css">
   <link rel="stylesheet" href="tasks.css">
   <link rel="stylesheet" href="header.css">
 <script src="header-loader.js"></script>
 <script src="auth.js"></script>
+<script src="tasks-api.js"></script>
 </head>
 <body class="theme-storm">
 
@@ -19,37 +21,37 @@
   <div class="app-shell">
 
   
-    <!-- Р—Р°РіСЂСѓР¶Р°РµРјР°СЏ РѕР±С‰Р°СЏ С€Р°РїРєР° -->
+    <!-- Загружаемая общая шапка -->
 <div id="header-placeholder"></div>
-  <!-- РљРћРќРўР•РќРў РЎРўР РђРќРР¦Р« Р—РђР”РђР§ -->
+  <!-- КОНТЕНТ СТРАНИЦЫ ЗАДАЧ -->
     <main class="page-content page-tasks" id="tasks">
       <div class="page-inner">
 
 <aside class="folders-sidebar" id="folders-sidebar">
   <div class="folders-header">
-    <span>РџР°РїРєРё</span>
-    <button id="add-folder-btn" title="РќРѕРІР°СЏ РїР°РїРєР°">+</button>
+    <span>Папки</span>
+    <button id="add-folder-btn" title="Новая папка">+</button>
   </div>
   <ul class="folders-list" id="folders-list">
     <li class="folder-item folder-item--active" data-folder-id="all">
-      <span class="folder-icon">рџ“‹</span>
-      <span class="folder-name">Р’СЃРµ Р·Р°РґР°С‡Рё</span>
+      <span class="folder-icon">📋</span>
+      <span class="folder-name">Все задачи</span>
     </li>
   </ul>
 </aside>
 
 
         <div class="page-header">
-          <h1 class="page-title">рџЋЇ Р—Р°РґР°С‡Рё</h1>
+          <h1 class="page-title">🎯 Задачи</h1>
 
           <div class="page-header__controls">
-            <div class="tasks-help-tooltip" aria-label="РџРѕРґСЃРєР°Р·РєР° РїРѕ РІРєР»Р°РґРєРµ Р—Р°РґР°С‡Рё">
+            <div class="tasks-help-tooltip" aria-label="Подсказка по вкладке Задачи">
               <span class="tasks-help-tooltip__icon">?</span>
               <div class="tasks-help-tooltip__content">
-                <p><strong>РЎС‚Р°С‚РёСЃС‚РёРєР° СЃРІРµСЂС…Сѓ</strong> РїРѕРєР°Р·С‹РІР°РµС‚, СЃРєРѕР»СЊРєРѕ Р·Р°РґР°С‡ СЃРґРµР»Р°РЅРѕ СЃРµРіРѕРґРЅСЏ, Р·Р° РЅРµРґРµР»СЋ, РјРµСЃСЏС† Рё РіРѕРґ.</p>
-                <p><strong>Р”Р°С‚Р° / РЎСЂРѕРє</strong> вЂ” РїР»Р°РЅРѕРІС‹Р№ РґРµРЅСЊ Рё РєСЂР°Р№РЅРёР№ РґРµРґР»Р°Р№РЅ Р·Р°РґР°С‡Рё.</p>
-                <p><strong>Р¤РѕРєСѓСЃвЂ‘СЃРµСЃСЃРёСЏ</strong> вЂ” С‚Р°Р№РјРµСЂ РџРѕРјРёРґРѕСЂРѕ, СЃС‡РёС‚Р°РµС‚ СЃРµСЃСЃРёРё РїРѕ РІС‹Р±СЂР°РЅРЅРѕР№ Р·Р°РґР°С‡Рµ.</p>
-                <p><strong>РЎС‚Р°С‚СѓСЃ Рё РїРѕРґСЃРІРµС‚РєР° СЃС‚СЂРѕРєРё</strong> РјРµРЅСЏСЋС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РїРѕ РґР°С‚Рµ Рё РґРµРґР»Р°Р№РЅСѓ; В«Р“РѕС‚РѕРІРѕВ» РїРµСЂРµРІРѕРґРёС‚ Р·Р°РґР°С‡Сѓ РІ РІС‹РїРѕР»РЅРµРЅРЅС‹Рµ.</p>
+                <p><strong>Статистика сверху</strong> показывает, сколько задач сделано сегодня, за неделю, месяц и год.</p>
+                <p><strong>Дата / Срок</strong> — плановый день и крайний дедлайн задачи.</p>
+                <p><strong>Фокус‑сессия</strong> — таймер Помидоро, считает сессии по выбранной задаче.</p>
+                <p><strong>Статус и подсветка строки</strong> меняются автоматически по дате и дедлайну; «Готово» переводит задачу в выполненные.</p>
               </div>
             </div>
           </div>
@@ -57,125 +59,125 @@
 
         <section class="block block-tasks">
           <div class="tasks-panel">
-            <h2 class="block-title">Р—Р°РґР°С‡Рё / С„РѕРєСѓСЃ / СЃСЂРѕРєРё</h2>
+            <h2 class="block-title">Задачи / фокус / сроки</h2>
 
-            <!-- РЎРўРђРўРРЎРўРРљРђ -->
+            <!-- СТАТИСТИКА -->
             <div class="stats-grid">
               <div class="stat-item">
                 <p class="stat-number" id="todayDoneCount">0</p>
-                <p class="stat-label">РЎРµРіРѕРґРЅСЏ</p>
+                <p class="stat-label">Сегодня</p>
               </div>
               <div class="stat-item">
                 <p class="stat-number" id="weekDoneCount">0</p>
-                <p class="stat-label">РќРµРґРµР»СЏ</p>
+                <p class="stat-label">Неделя</p>
               </div>
               <div class="stat-item">
                 <p class="stat-number" id="monthDoneCount">0</p>
-                <p class="stat-label">РњРµСЃСЏС†</p>
+                <p class="stat-label">Месяц</p>
               </div>
               <div class="stat-item">
                 <p class="stat-number" id="yearDoneCount">0</p>
-                <p class="stat-label">Р“РѕРґ</p>
+                <p class="stat-label">Год</p>
               </div>
                             <div class="stat-item">
                 <p class="stat-number" id="overdueDoneCount">0</p>
-                <p class="stat-label">РџСЂРѕСЃСЂРѕС‡РµРЅРѕ вњ“</p>
+                <p class="stat-label">Просрочено ✔</p>
               </div>
             </div>
 
-<!-- Р¤РћР РњРђ Р”РћР‘РђР’Р›Р•РќРРЇ -->
+<!-- ФОРМА ДОБАВЛЕНИЯ -->
 <form id="taskForm" class="task-form">
   <div class="date-field">
     <div id="taskDateDisplay"
          class="date-display"
          data-role="date-display"
-         data-target="date">вЂ”</div>
-    <span class="date-icon">рџ“…</span>
+         data-target="date">—</div>
+    <span class="date-icon">📅</span>
   </div>
 
   <div class="date-field">
     <div id="taskDeadlineDisplay"
          class="date-display"
          data-role="date-display"
-         data-target="deadline">вЂ”</div>
-    <span class="date-icon">рџ“…</span>
+         data-target="deadline">—</div>
+    <span class="date-icon">📅</span>
   </div>
 
-  <input type="text" id="taskTitle" placeholder="Р—Р°РґР°С‡Р°" required>
+  <input type="text" id="taskTitle" placeholder="Задача" required>
 
   <select id="taskPriority">
-    <option value="1">РќРёР·РєРёР№</option>
-    <option value="2" selected>РќРѕСЂРјР°Р»СЊРЅС‹Р№</option>
-    <option value="3">Р’С‹СЃРѕРєРёР№</option>
+    <option value="1">Низкий</option>
+    <option value="2" selected>Нормальный</option>
+    <option value="3">Высокий</option>
   </select>
 
-  <input type="text" id="taskComment" placeholder="РљРѕРјРјРµРЅС‚Р°СЂРёР№ / СЃСЃС‹Р»РєР°">
+  <input type="text" id="taskComment" placeholder="Комментарий / ссылка">
 
   <label class="checkbox-recurrence">
     <input type="checkbox" id="taskIsRecurring">
-    <span>рџ”Ѓ</span>
+    <span>🔁</span>
   </label>
 
   <select id="taskRecurrenceType" style="display: none;">
-  <option value="">вЂ”</option>
-  <option value="daily">Р”РµРЅСЊ</option>
-  <option value="weekly">РќРµРґРµР»СЏ</option>
-  <option value="monthly_date">РњРµСЃСЏС†</option>
-  <option value="monthly_weekday">Р”РµРЅСЊ РЅРµРґ.</option>
-  <option value="yearly">Р“РѕРґ</option>
+  <option value="">—</option>
+  <option value="daily">День</option>
+  <option value="weekly">Неделя</option>
+  <option value="monthly_date">Месяц</option>
+  <option value="monthly_weekday">День нед.</option>
+  <option value="yearly">Год</option>
 </select>
 
 </form>
 
-<!-- РљРќРћРџРљРђ Р”РћР‘РђР’Р›Р•РќРРЇ (РћРўР”Р•Р›Р¬РќРћ) -->
-<button type="submit" form="taskForm" class="habits-btn task-add-btn">+ Р”РѕР±Р°РІРёС‚СЊ Р·Р°РґР°С‡Сѓ</button>
+<!-- КНОПКА ДОБАВЛЕНИЯ (ОТДЕЛЬНО) -->
+<button type="submit" form="taskForm" class="habits-btn task-add-btn">+ Добавить задачу</button>
 
-<!-- РџРћР”РЎРљРђР—РљРђ РџРћР” РљРќРћРџРљРћР™ -->
+<!-- ПОДСКАЗКА ПОД КНОПКОЙ -->
 <div id="recurrenceHintWrapper" class="recurrence-hint-wrapper" style="display: none;">
   <span id="recurrenceHint" class="recurrence-hint"></span>
 </div>
 
-            <!-- РџРћРњРР”РћР Рћ -->
+            <!-- ПОМИДОРО -->
             <div class="pomodoro-panel">
-              <div class="pomodoro-label">Р¤РѕРєСѓСЃвЂ‘СЃРµСЃСЃРёСЏ:</div>
+              <div class="pomodoro-label">Фокус‑сессия:</div>
               <select id="pomodoroTaskSelect" style="min-width:220px;"></select>
 
               <div class="pomodoro-label">
-                Р”Р»РёС‚РµР»СЊРЅРѕСЃС‚СЊ (РјРёРЅ):
+                Длительность (мин):
                 <input type="number" id="pomodoroDuration" value="25" min="1" max="120" style="width:70px;">
               </div>
 
               <div class="pomodoro-timer" id="pomodoroTimer">25:00</div>
 
-              <button id="pomodoroToggleBtn" class="habits-btn">РЎС‚Р°СЂС‚</button>
-              <button id="pomodoroResetBtn" class="habits-btn habits-btn--secondary">РЎР±СЂРѕСЃ</button>
+              <button id="pomodoroToggleBtn" class="habits-btn">Старт</button>
+              <button id="pomodoroResetBtn" class="habits-btn habits-btn--secondary">Сброс</button>
 
               <div class="pomodoro-current" id="pomodoroCurrentInfo"></div>
             </div>
 
-            <!-- РљРќРћРџРљРђ РџРћРљРђР—Рђ Р’Р«РџРћР›РќР•РќРќР«РҐ -->
+            <!-- КНОПКА ПОКАЗА ВЫПОЛНЕННЫХ -->
             <div style="margin-bottom:10px;">
               <button id="toggleDoneTasks"
                       class="habits-btn habits-btn--secondary toggle-done">
-                РџРѕРєР°Р·Р°С‚СЊ РІС‹РїРѕР»РЅРµРЅРЅС‹Рµ
+                Показать выполненные
               </button>
             </div>
 
-            <!-- РўРђР‘Р›РР¦Рђ Р—РђР”РђР§ -->
+            <!-- ТАБЛИЦА ЗАДАЧ -->
             <div class="tasks-table-wrapper">
               <div class="tasks-table-scroll">
                 <table id="tasksTable" class="habits-table">
                   <thead>
                   <tr>
-                    <th style="width:110px;">Р”Р°С‚Р°</th>
-                    <th style="width:110px;">РЎСЂРѕРє</th>
-                    <th style="text-align:left;min-width:260px;">Р—Р°РґР°С‡Р°</th>
-                    <th style="width:120px;">РџСЂРёРѕСЂРёС‚РµС‚</th>
-                    <th style="text-align:left;min-width:260px;">РљРѕРјРјРµРЅС‚Р°СЂРёР№</th>
-                    <th style="width:80px;">Р¤РѕРєСѓСЃ</th>
-                    <th style="width:100px;">Р¤Р°РєС‚</th>
-                    <th style="width:80px;">РЎС‚Р°С‚СѓСЃ</th>
-                    <th style="width:70px;">Р“РѕС‚РѕРІРѕ</th>
+                    <th style="width:110px;">Дата</th>
+                    <th style="width:110px;">Срок</th>
+                    <th style="text-align:left;min-width:260px;">Задача</th>
+                    <th style="width:120px;">Приоритет</th>
+                    <th style="text-align:left;min-width:260px;">Комментарий</th>
+                    <th style="width:80px;">Фокус</th>
+                    <th style="width:100px;">Факт</th>
+                    <th style="width:80px;">Статус</th>
+                    <th style="width:70px;">Готово</th>
                   </tr>
                   </thead>
                   <tbody></tbody>
@@ -186,37 +188,37 @@
           </div>
         </section>
 
-        <!-- РљРћРќРўР•РљРЎРўРќРћР• РњР•РќР® -->
+        <!-- КОНТЕКСТНОЕ МЕНЮ -->
         <div id="taskContextMenu" class="task-context-menu">
-          <button type="button" data-action="delete">РЈРґР°Р»РёС‚СЊ Р·Р°РґР°С‡Сѓ</button>
+          <button type="button" data-action="delete">Удалить задачу</button>
         </div>
 
-        <!-- РњРћР”РђР›РљРђ РЈР”РђР›Р•РќРРЇ -->
+        <!-- МОДАЛКА УДАЛЕНИЯ -->
         <div id="deleteModalBackdrop" class="modal-backdrop">
           <div class="modal">
-            <div class="modal-title">РЈРґР°Р»РёС‚СЊ Р·Р°РґР°С‡Сѓ?</div>
+            <div class="modal-title">Удалить задачу?</div>
             <div class="modal-text">
-              Р—Р°РґР°С‡Р° Р±СѓРґРµС‚ СѓРґР°Р»РµРЅР° РёР· СЃРїРёСЃРєР°. Р•С‘ РјРѕР¶РЅРѕ Р±СѓРґРµС‚ РІРµСЂРЅСѓС‚СЊ
-              РІ С‚РµС‡РµРЅРёРµ 20 СЃРµРєСѓРЅРґ С‡РµСЂРµР· В«Р’РѕСЃСЃС‚Р°РЅРѕРІРёС‚СЊВ».
+              Задача будет удалена из списка. Её можно будет вернуть
+              в течение 20 секунд через «Восстановить».
             </div>
             <div class="modal-actions">
               <button type="button" id="deleteCancelBtn"
-                      class="habits-btn habits-btn--secondary">РћС‚РјРµРЅР°</button>
+                      class="habits-btn habits-btn--secondary">Отмена</button>
               <button type="button" id="deleteConfirmBtn"
-                      class="habits-btn habits-btn--danger">РЈРґР°Р»РёС‚СЊ</button>
+                      class="habits-btn habits-btn--danger">Удалить</button>
             </div>
           </div>
         </div>
 
-        <!-- UNDO-РўРћРЎРў -->
+        <!-- UNDO-ТОСТ -->
         <div id="undoToast" class="undo-toast">
-          <span>Р—Р°РґР°С‡Р° СѓРґР°Р»РµРЅР°.</span>
+          <span>Задача удалена.</span>
           <span class="undo-toast__timer" id="undoTimer">20</span>
           <button type="button" id="undoBtn"
-                  class="habits-btn habits-btn--secondary">Р’РѕСЃСЃС‚Р°РЅРѕРІРёС‚СЊ</button>
+                  class="habits-btn habits-btn--secondary">Восстановить</button>
         </div>
 
-        <!-- РњРРќРвЂ‘РљРђР›Р•РќР”РђР Р¬ -->
+        <!-- МИН‑КАЛЕНДАРЬ -->
         <div id="miniCalendarPopover" class="mini-calendar-popover">
           <div class="mini-calendar-header">
             <button type="button" class="mini-calendar-nav-btn" id="miniCalPrev">&lt;</button>
@@ -238,13 +240,11 @@
         tasks: 'tasks-tracker-tasks-v3'
     };
 
-   // вќЊ localStorage РїРѕР»РЅРѕСЃС‚СЊСЋ РѕС‚РєР»СЋС‡РµРЅ
+   // ❌ localStorage полностью отключён
 function save(key, data) {
-    // РўРѕР»СЊРєРѕ Р»РѕРіРёСЂСѓРµРј, РЅРѕ РЅРµ СЃРѕС…СЂР°РЅСЏРµРј РІ localStorage
-    console.log('рџ’ѕ Data prepared for sync (localStorage disabled)');
+    console.log('💾 Data prepared for sync (localStorage disabled)');
 }
 function load(key) {
-    // РќРµ Р·Р°РіСЂСѓР¶Р°РµРј РёР· localStorage, С‚РѕР»СЊРєРѕ СЃ СЃРµСЂРІРµСЂР°
     return null;
 }
 
@@ -289,7 +289,7 @@ function formatDateDisplay(iso) {
     }
 
     function getMonthLabel(year, monthIndex) {
-        const months = ['РЇРќР’РђР Р¬','Р¤Р•Р’Р РђР›Р¬','РњРђР Рў','РђРџР Р•Р›Р¬','РњРђР™','РР®РќР¬','РР®Р›Р¬','РђР’Р“РЈРЎРў','РЎР•РќРўРЇР‘Р Р¬','РћРљРўРЇР‘Р Р¬','РќРћРЇР‘Р Р¬','Р”Р•РљРђР‘Р Р¬'];
+        const months = ['ЯНВАРЬ','ФЕВРАЛЬ','МАРТ','АПРЕЛЬ','МАЙ','ИЮНЬ','ИЮЛЬ','АВГУСТ','СЕНТЯБРЬ','ОКТЯБРЬ','НОЯБРЬ','ДЕКАБРЬ'];
         return months[monthIndex] + ' ' + year;
     }
 
@@ -342,7 +342,7 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
     const pomodoroResetBtn = document.getElementById('pomodoroResetBtn');
     const pomodoroCurrentInfo = document.getElementById('pomodoroCurrentInfo');
 
-    // РњРёРЅРёвЂ‘РєР°Р»РµРЅРґР°СЂСЊ
+    // Мини-календарь
     const miniCalPopover = document.getElementById('miniCalendarPopover');
     const miniCalMonthLabel = document.getElementById('miniCalMonthLabel');
     const miniCalGrid = document.getElementById('miniCalGrid');
@@ -373,30 +373,23 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
     function updateTaskStats() {
     const today = getTodayISO();
     
-    // РЎР•Р“РћР”РќРЇ: С‚РѕР»СЊРєРѕ Р·Р°РґР°С‡Рё Р’Р«РџРћР›РќР•РќРќР«Р• РЎР•Р“РћР”РќРЇ
     let todayDone = 0;
     tasksData.forEach(t => {
-        if (t.done && t.doneDate === today) {
-            todayDone++;
-        }
+        if (t.done && t.doneDate === today) todayDone++;
     });
     
-    // РќР•Р”Р•Р›РЇ: РџРѕРЅРµРґРµР»СЊРЅРёРє СЌС‚РѕР№ РЅРµРґРµР»Рё в†’ Р’РѕСЃРєСЂРµСЃРµРЅСЊРµ
     const weekStart = new Date(today);
     const day = weekStart.getDay();
-    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1); // РџРѕРЅРµРґРµР»СЊРЅРёРє
+    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
     weekStart.setDate(diff);
     weekStart.setHours(0, 0, 0, 0);
     const weekStartISO = weekStart.toISOString().slice(0, 10);
     
     let weekDone = 0;
     tasksData.forEach(t => {
-        if (t.done && t.doneDate >= weekStartISO && t.doneDate <= today) {
-            weekDone++;
-        }
+        if (t.done && t.doneDate >= weekStartISO && t.doneDate <= today) weekDone++;
     });
     
-    // РњР•РЎРЇР¦: 1-РіРѕ С‡РёСЃР»Р° в†’ РєРѕРЅРµС† РјРµСЃСЏС†Р°
     const monthStart = new Date(today);
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
@@ -404,66 +397,48 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
     
     let monthDone = 0;
     tasksData.forEach(t => {
-        if (t.done && t.doneDate >= monthStartISO && t.doneDate <= today) {
-            monthDone++;
-        }
+        if (t.done && t.doneDate >= monthStartISO && t.doneDate <= today) monthDone++;
     });
     
-    // Р“РћР”: 1 СЏРЅРІР°СЂСЏ в†’ 31 РґРµРєР°Р±СЂСЏ
     const yearStart = new Date(today.split('-')[0], 0, 1);
     yearStart.setHours(0, 0, 0, 0);
     const yearStartISO = yearStart.toISOString().slice(0, 10);
     
     let yearDone = 0;
     tasksData.forEach(t => {
-        if (t.done && t.doneDate >= yearStartISO && t.doneDate <= today) {
-            yearDone++;
-        }
+        if (t.done && t.doneDate >= yearStartISO && t.doneDate <= today) yearDone++;
     });
     
-    // РџР РћРЎР РћР§Р•РќРћ (Р°РєС‚РёРІРЅС‹Рµ): deadline < СЃРµРіРѕРґРЅСЏ Р РЅРµ РІС‹РїРѕР»РЅРµРЅС‹
     let overdueActive = 0;
     tasksData.forEach(t => {
         if (!t.done) {
             const deadline = t.deadline || t.date;
-            if (deadline && deadline < today) {
-                overdueActive++;
-            }
+            if (deadline && deadline < today) overdueActive++;
         }
     });
     
-    // РћР±РЅРѕРІР»СЏРµРј HTML
     todayDoneCountEl.textContent = todayDone;
     weekDoneCountEl.textContent = weekDone;
     monthDoneCountEl.textContent = monthDone;
     yearDoneCountEl.textContent = yearDone;
     
-    
-    // РЎРљР Р«Р’РђР•Рњ "РџСЂРѕСЃСЂРѕС‡РµРЅРѕ вњ“"
     const overdueDoneSection = overdueDoneCountEl.closest('.stat-item');
-    if (overdueDoneSection) {
-        overdueDoneSection.style.display = 'none';
-    }
+    if (overdueDoneSection) overdueDoneSection.style.display = 'none';
 }
 
 
     function getRecurrenceLabel(type, value) {
         switch (type) {
-            case 'daily':
-                return 'РљР°Р¶РґС‹Р№ РґРµРЅСЊ';
-            case 'weekly':
-                return 'РљР°Р¶РґСѓСЋ РЅРµРґРµР»СЋ';
-            case 'monthly_date':
-                return `РљР°Р¶РґРѕРµ ${value}-Рµ С‡РёСЃР»Рѕ РјРµСЃСЏС†Р°`;
+            case 'daily': return 'Каждый день';
+            case 'weekly': return 'Каждую неделю';
+            case 'monthly_date': return `Каждое ${value}-е число месяца`;
             case 'monthly_weekday':
                 const [week, weekday] = value.split(',').map(Number);
-                const weekNames = {'1': 'РїРµСЂРІС‹Р№', '2': 'РІС‚РѕСЂРѕР№', '3': 'С‚СЂРµС‚РёР№', '4': 'С‡РµС‚РІС‘СЂС‚С‹Р№', '-1': 'РїРѕСЃР»РµРґРЅРёР№'};
-                const dayNames = ['РІРѕСЃРєСЂРµСЃРµРЅСЊРµ', 'РїРѕРЅРµРґРµР»СЊРЅРёРє', 'РІС‚РѕСЂРЅРёРє', 'СЃСЂРµРґСѓ', 'С‡РµС‚РІРµСЂРі', 'РїСЏС‚РЅРёС†Сѓ', 'СЃСѓР±Р±РѕС‚Сѓ'];
-                return `РљР°Р¶РґС‹Р№ ${weekNames[week.toString()]} ${dayNames[weekday]} РјРµСЃСЏС†Р°`;
-            case 'yearly':
-                return 'РљР°Р¶РґС‹Р№ РіРѕРґ РІ С‚Сѓ Р¶Рµ РґР°С‚Сѓ';
-            default:
-                return 'РќР°СЃС‚СЂРѕРµРЅРѕ РїРѕРІС‚РѕСЂРµРЅРёРµ';
+                const weekNames = {'1': 'первый', '2': 'второй', '3': 'третий', '4': 'четвёртый', '-1': 'последний'};
+                const dayNames = ['воскресенье', 'понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу'];
+                return `Каждый ${weekNames[week.toString()]} ${dayNames[weekday]} месяца`;
+            case 'yearly': return 'Каждый год в ту же дату';
+            default: return 'Настроено повторение';
         }
     }
 
@@ -506,14 +481,14 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
             if (task.isRecurring && task.recurrenceType) {
     const indicator = document.createElement('span');
     indicator.className = 'recurring-indicator';
-    indicator.textContent = 'рџ”Ѓ';
+    indicator.textContent = '🔁';
     
     const tooltip = document.createElement('div');
     tooltip.className = 'recurring-tooltip';
     
     const label = document.createElement('span');
     label.className = 'recurring-tooltip-label';
-    label.textContent = 'рџ”Ѓ РџРѕРІС‚РѕСЂСЏРµС‚СЃСЏ';
+    label.textContent = '🔁 Повторяется';
     
     const desc = document.createElement('span');
     desc.className = 'recurring-tooltip-desc';
@@ -557,7 +532,7 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
             const sessions = task.focusSessions || 0;
             const fb = document.createElement('span');
             fb.className = 'focus-badge';
-            fb.textContent = sessions ? `${sessions}Г—` : '0Г—';
+            fb.textContent = sessions ? `${sessions}×` : '0×';
             focusCell.appendChild(fb);
 
             const factCell = document.createElement('td');
@@ -565,12 +540,12 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
 
             const statusCell = document.createElement('td');
             if (task.done) {
-                statusCell.textContent = 'Р“РѕС‚РѕРІРѕ';
+                statusCell.textContent = 'Готово';
             } else {
                 const logicalDeadline = getDeadlineForLogic(task);
-                if (logicalDeadline && logicalDeadline < today) statusCell.textContent = 'РџСЂРѕСЃСЂРѕС‡РµРЅРѕ';
-                else if (logicalDeadline === today) statusCell.textContent = 'РЎРµРіРѕРґРЅСЏ';
-                else statusCell.textContent = 'Р’ СЂР°Р±РѕС‚Рµ';
+                if (logicalDeadline && logicalDeadline < today) statusCell.textContent = 'Просрочено';
+                else if (logicalDeadline === today) statusCell.textContent = 'Сегодня';
+                else statusCell.textContent = 'В работе';
             }
 
             const doneCell = document.createElement('td');
@@ -595,28 +570,21 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
     }
 
     function getPriorityText(p) {
-        if (p === 3) return 'Р’С‹СЃРѕРєРёР№';
-        if (p === 2) return 'РќРѕСЂРјР°Р»СЊРЅС‹Р№';
-        return 'РќРёР·РєРёР№';
+        if (p === 3) return 'Высокий';
+        if (p === 2) return 'Нормальный';
+        return 'Низкий';
     }
-// Р Р°СЃСЃС‡РёС‚С‹РІР°РµС‚ РЅРѕРІС‹Р№ deadline РґР»СЏ РїРѕРІС‚РѕСЂСЏСЋС‰РµР№СЃСЏ Р·Р°РґР°С‡Рё
 function calculateNextDeadline(template, newDate) {
     if (!template.deadline) return '';
-
-    // Р Р°Р·РЅРёС†Р° РІ РґРЅСЏС… РјРµР¶РґСѓ РґР°С‚РѕР№ Рё deadline С€Р°Р±Р»РѕРЅР°
     const templateDate = new Date(template.date);
     const templateDeadline = new Date(template.deadline);
     const daysDiff = Math.floor((templateDeadline - templateDate) / (1000 * 60 * 60 * 24));
-
-    // Р”РѕР±Р°РІР»СЏРµРј СЌС‚Сѓ СЂР°Р·РЅРёС†Сѓ Рє РЅРѕРІРѕР№ РґР°С‚Рµ
     const newDateObj = new Date(newDate);
     newDateObj.setDate(newDateObj.getDate() + daysDiff);
-
     return newDateObj.toISOString().slice(0, 10);
 }
 
 
-    // Р“РµРЅРµСЂРёСЂСѓРµС‚ Р±СѓРґСѓС‰РёРµ РїРѕРІС‚РѕСЂРµРЅРёСЏ РЅР° РјРµСЃСЏС† РІРїРµСЂС‘Рґ
     function checkRecurringTasks() {
         const today = getTodayISO();
         const oneMonthLater = addDaysISO(today, 30);
@@ -646,7 +614,7 @@ function calculateNextDeadline(template, newDate) {
                     const newTask = {
     id: Date.now() + Math.floor(Math.random() * 1000000),
     date: currentDate,
-    deadline: calculateNextDeadline(template, currentDate),  // вњ… РќРћР’РђРЇ Р¤РЈРќРљР¦РРЇ!
+    deadline: calculateNextDeadline(template, currentDate),
                         title: template.title,
                         priority: template.priority,
                         comment: template.comment,
@@ -666,7 +634,7 @@ function calculateNextDeadline(template, newDate) {
                 const nextDate = calculateNextRecurrence(template, currentDate);
 
                 if (nextDate === currentDate) {
-                    console.error('Р‘РµСЃРєРѕРЅРµС‡РЅС‹Р№ С†РёРєР» РїСЂРµРґРѕС‚РІСЂР°С‰С‘РЅ:', template);
+                    console.error('Бесконечный цикл предотвращён:', template);
                     break;
                 }
 
@@ -674,7 +642,7 @@ function calculateNextDeadline(template, newDate) {
             }
 
             if (safetyCounter >= MAX_ITERATIONS) {
-                console.warn('Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ РёС‚РµСЂР°С†РёР№ РґР»СЏ Р·Р°РґР°С‡Рё:', template.title);
+                console.warn('Достигнут лимит итераций для задачи:', template.title);
             }
         });
 
@@ -683,7 +651,6 @@ function calculateNextDeadline(template, newDate) {
         }
     }
 
-    // РћР”РќРђ Р’Р•Р РЎРРЇ calculateNextRecurrence
     function calculateNextRecurrence(task, lastDateISO) {
         const lastDate = new Date(lastDateISO);
 
@@ -702,11 +669,8 @@ function calculateNextDeadline(template, newDate) {
     const day = parseInt(task.recurrenceValue || lastDate.getDate());
     const nextMonth = new Date(lastDate);
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    
-    // Р•СЃР»Рё РІ СЃР»РµРґСѓСЋС‰РµРј РјРµСЃСЏС†Рµ РјРµРЅСЊС€Рµ РґРЅРµР№ (РЅР°РїСЂРёРјРµСЂ, 31 в†’ 28 С„РµРІСЂР°Р»СЏ)
     const maxDay = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
     nextMonth.setDate(Math.min(day, maxDay));
-    
     return nextMonth.toISOString().slice(0, 10);
 
 
@@ -728,7 +692,6 @@ function calculateNextDeadline(template, newDate) {
         }
     }
 
-    // РџРѕР»СѓС‡РёС‚СЊ N-Р№ РґРµРЅСЊ РЅРµРґРµР»Рё РІ РјРµСЃСЏС†Рµ
     function getNthWeekdayOfMonth(year, month, n, weekday) {
         const firstDay = new Date(year, month, 1);
         const firstWeekday = firstDay.getDay();
@@ -747,13 +710,12 @@ function calculateNextDeadline(template, newDate) {
         }
     }
 
-  // РЎРѕС…СЂР°РЅРµРЅРёРµ Р·Р°РґР°С‡ (РРЎРџР РђР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ)
 async function saveTasks() {
     save(STORAGE.tasks, tasksData);
 
     const token = localStorage.getItem('app-auth-token');
     if (!token) {
-        console.log('рџ“± РќРµС‚ С‚РѕРєРµРЅР° вЂ” РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ С‚РѕР»СЊРєРѕ localStorage');
+        console.log('📱 Нет токена — используется только localStorage');
         return;
     }
 
@@ -768,12 +730,12 @@ async function saveTasks() {
         });
 
         if (response.ok) {
-            console.log('вњ… Р—Р°РґР°С‡Рё СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°РЅС‹ СЃ СЃРµСЂРІРµСЂРѕРј');
+            console.log('✅ Задачи синхронизированы с сервером');
         } else {
-            console.warn('вљ пёЏ Sync РІРµСЂРЅСѓР» РѕС€РёР±РєСѓ:', response.status);
+            console.warn('⚠️ Sync вернул ошибку:', response.status);
         }
     } catch (err) {
-        console.log('рџ“± РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ РЅРµРґРѕСЃС‚СѓРїРЅР° (РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ localStorage)');
+        console.log('📱 Синхронизация недоступна (используется localStorage)');
     }
 }
 
@@ -784,7 +746,7 @@ async function saveTasks() {
         active.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t.id;
-            opt.textContent = t.title || '(Р±РµР· РЅР°Р·РІР°РЅРёСЏ)';
+            opt.textContent = t.title || '(без названия)';
             pomodoroTaskSelect.appendChild(opt);
         });
         if (pomodoroActiveTaskId && !active.some(t => t.id === pomodoroActiveTaskId)) {
@@ -809,7 +771,7 @@ async function saveTasks() {
         }
         const sessions = task.focusSessions || 0;
         pomodoroCurrentInfo.textContent =
-            `Р¤РѕРєСѓСЃ РЅР°: ${task.title || '(Р±РµР· РЅР°Р·РІР°РЅРёСЏ)'} В· СЃРµСЃСЃРёР№: ${sessions}`;
+            `Фокус на: ${task.title || '(без названия)'} · сессий: ${sessions}`;
     }
 
     function formatSecondsToMMSS(totalSeconds) {
@@ -823,7 +785,7 @@ async function saveTasks() {
         taskDateDisplay.dataset.iso = today;
         taskDateDisplay.textContent = formatDateDisplay(today);
         taskDeadlineDisplay.dataset.iso = '';
-        taskDeadlineDisplay.textContent = 'вЂ”';
+        taskDeadlineDisplay.textContent = '—';
     }
     
   function showNotification(message, type = 'success') {
@@ -854,12 +816,9 @@ async function saveTasks() {
   async function addTaskFromForm(e) {
   e.preventDefault();
 
-  // РџСЂРѕРІРµСЂРєР° Р°РІС‚РѕСЂРёР·Р°С†РёРё
   if (!window.isUserLoggedIn?.() && !localStorage.getItem('app-auth-token')) {
-    showNotification('РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РІРѕР№РґРёС‚Рµ РІ Р°РєРєР°СѓРЅС‚', 'error');
-    if (window.openAuthModal) {
-      window.openAuthModal();
-    }
+    showNotification('Пожалуйста, войдите в аккаунт', 'error');
+    if (window.openAuthModal) window.openAuthModal();
     return;
   }
 
@@ -874,25 +833,22 @@ async function saveTasks() {
 
   if (isRecurring && recurrenceType) {
     const date = new Date(dateIso);
-
     switch (recurrenceType) {
       case 'monthly_date':
         recurrenceValue = date.getDate().toString();
         break;
-
       case 'monthly_weekday':
         const weekday = date.getDay();
         const weekOfMonth = Math.ceil(date.getDate() / 7);
         recurrenceValue = `${weekOfMonth},${weekday}`;
         break;
-
       default:
         recurrenceValue = '';
     }
   }
 
   if (!title) {
-    alert('Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ Р·Р°РґР°С‡Рё');
+    alert('Введите название задачи');
     return;
   }
 
@@ -910,18 +866,10 @@ async function saveTasks() {
     recurrenceValue
   };
 
-  console.log('рџ“¤ РћРўРџР РђР’Р›РЇР•Рњ РќРђ РЎР•Р Р’Р•Р :', {
-    isRecurring,
-    recurrenceType,
-    recurrenceValue,
-    isRecurringCheckbox: isRecurringCheckbox.checked,
-    recurrenceTypeSelect: recurrenceTypeSelect.value
-  });
-
   try {
     const token = localStorage.getItem('app-auth-token');
     if (!token) {
-      showNotification('РќРµРѕР±С…РѕРґРёРјР° Р°РІС‚РѕСЂРёР·Р°С†РёСЏ', 'error');
+      showNotification('Необходима авторизация', 'error');
       return;
     }
 
@@ -936,14 +884,11 @@ async function saveTasks() {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'РћС€РёР±РєР° РґРѕР±Р°РІР»РµРЅРёСЏ Р·Р°РґР°С‡Рё');
+      throw new Error(error.error || 'Ошибка добавления задачи');
     }
 
     const savedTask = await response.json();
-    
-    console.log('рџ“Ґ РџРћР›РЈР§Р•РќРћ РЎ РЎР•Р Р’Р•Р Рђ:', savedTask);
 
-    // РќРѕСЂРјР°Р»РёР·СѓРµРј РѕС‚РІРµС‚
     const normalizedTask = {
       id: savedTask.id || Date.now(),
       date: savedTask.date ? savedTask.date.split('T')[0] : dateIso,
@@ -961,16 +906,12 @@ async function saveTasks() {
       templateId: savedTask.templateId || savedTask.template_id || null
     };
 
-    // Р”РѕР±Р°РІР»СЏРµРј РІ РјР°СЃСЃРёРІ
     tasksData.push(normalizedTask);
 
-    // Р•СЃР»Рё РїРѕРІС‚РѕСЂСЏСЋС‰Р°СЏСЃСЏ - РіРµРЅРµСЂРёСЂСѓРµРј Р±СѓРґСѓС‰РёРµ Р·Р°РґР°С‡Рё
     if (normalizedTask.isRecurring && normalizedTask.recurrenceType) {
-      console.log('рџ”Ѓ Р“РµРЅРµСЂРёСЂСѓРµРј РїРѕРІС‚РѕСЂСЏСЋС‰РёРµСЃСЏ Р·Р°РґР°С‡Рё...');
       checkRecurringTasks();
     }
 
-    // РћС‡РёС‰Р°РµРј С„РѕСЂРјСѓ
     taskTitleInput.value = '';
     taskCommentInput.value = '';
     isRecurringCheckbox.checked = false;
@@ -979,15 +920,14 @@ async function saveTasks() {
     recurrenceHintWrapper.style.display = 'none';
     resetFormDates();
 
-    // РџРµСЂРµСЂРёСЃРѕРІС‹РІР°РµРј
     renderTasks();
     renderPomodoroTaskSelect();
     updateTaskStats();
-    showNotification('Р—Р°РґР°С‡Р° РґРѕР±Р°РІР»РµРЅР°!', 'success');
+    showNotification('Задача добавлена!', 'success');
 
   } catch (error) {
-    console.error('вќЊ РћС€РёР±РєР° РґРѕР±Р°РІР»РµРЅРёСЏ Р·Р°РґР°С‡Рё:', error);
-    showNotification('РћС€РёР±РєР°: ' + error.message, 'error');
+    console.error('❌ Ошибка добавления задачи:', error);
+    showNotification('Ошибка: ' + error.message, 'error');
   }
 }
 
@@ -1071,7 +1011,6 @@ async function setTaskDone(task, done) {
         }
     }
 
-  // РЈРґР°Р»РµРЅРёРµ Р·Р°РґР°С‡Рё (РРЎРџР РђР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ)
 async function deleteTaskById(id) {
     const idx = tasksData.findIndex(t => t.id === id);
     if (idx === -1) return;
@@ -1081,8 +1020,6 @@ async function deleteTaskById(id) {
     
     await saveTasks();
 
-    
-    // РЈРґР°Р»СЏРµРј РЅР° СЃРµСЂРІРµСЂРµ
     const token = localStorage.getItem('app-auth-token');
     if (token) {
         try {
@@ -1096,12 +1033,12 @@ async function deleteTaskById(id) {
             });
             
             if (response.ok) {
-                console.log(`вњ… Р—Р°РґР°С‡Р° СѓРґР°Р»РµРЅР° РЅР° СЃРµСЂРІРµСЂРµ: ${id}`);
+                console.log(`✅ Задача удалена на сервере: ${id}`);
             } else {
-                console.warn(`вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РЅР° СЃРµСЂРІРµСЂРµ: ${response.status}`);
+                console.warn(`⚠️ Не удалось удалить на сервере: ${response.status}`);
             }
         } catch (err) {
-            console.log('рџ“± РќРµ СѓРґР°Р»РѕСЃСЊ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°С‚СЊ СѓРґР°Р»РµРЅРёРµ');
+            console.log('📱 Не удалось синхронизировать удаление');
         }
     }
     
@@ -1130,7 +1067,7 @@ async function restoreLastDeleted() {
         if (!pomodoroTaskSelect.value) {
             const active = tasksData.filter(t => !t.done);
             if (!active.length) {
-                alert('РќРµС‚ Р°РєС‚РёРІРЅС‹С… Р·Р°РґР°С‡ РґР»СЏ С„РѕРєСѓСЃР°');
+                alert('Нет активных задач для фокуса');
                 return;
             }
             pomodoroActiveTaskId = active[0].id;
@@ -1151,7 +1088,7 @@ async function restoreLastDeleted() {
             }
         }, 1000);
 
-        pomodoroToggleBtn.textContent = 'РџР°СѓР·Р°';
+        pomodoroToggleBtn.textContent = 'Пауза';
     }
 
 async function stopPomodoro(finished) {
@@ -1164,13 +1101,23 @@ async function stopPomodoro(finished) {
         const task = tasksData.find(t => t.id === pomodoroActiveTaskId);
         if (task) {
             task.focusSessions = (task.focusSessions || 0) + 1;
-            await saveTasks();
+            // Сохраняем через API (промт 4)
+            const token = localStorage.getItem('app-auth-token');
+            if (token && window.TasksAPI) {
+                try {
+                    await window.TasksAPI.addFocusSession(task.id);
+                } catch(e) {
+                    await saveTasks(); // fallback
+                }
+            } else {
+                await saveTasks();
+            }
             renderTasks();
         }
     }
 
     updatePomodoroTimerUI();
-    pomodoroToggleBtn.textContent = 'РЎС‚Р°СЂС‚';
+    pomodoroToggleBtn.textContent = 'Старт';
 }
 
 
@@ -1182,7 +1129,7 @@ async function stopPomodoro(finished) {
         const durationMin = Math.max(1, Math.min(120, Number(pomodoroDurationInput.value || '25')));
         pomodoroRemaining = durationMin * 60;
         updatePomodoroTimerUI();
-        pomodoroToggleBtn.textContent = 'РЎС‚Р°СЂС‚';
+        pomodoroToggleBtn.textContent = 'Старт';
     }
 
     function updatePomodoroTimerUI() {
@@ -1194,459 +1141,89 @@ async function stopPomodoro(finished) {
         }
     }
 
-    function beginInlineEdit(cell) {
-        cell.contentEditable = 'true';
-        cell.dataset.oldValue = cell.textContent;
-        cell.focus();
-        document.execCommand('selectAll', false, null);
-    }
+    // ============ СОБЫТИЯ ============
 
-       async function finishInlineEdit(cell, commit) {
-        cell.contentEditable = 'false';
-        const tr = cell.closest('tr');
-        const task = findTaskByRow(tr);
-        if (!task) return;
-
-        const field = cell.classList.contains('task-label') ? 'title' :
-                      cell.classList.contains('comment-cell') ? 'comment' : null;
-        if (!field) return;
-
-        const newVal = commit ? cell.textContent.trim() : (cell.dataset.oldValue || '');
-        cell.textContent = newVal;
-        task[field] = newVal;
-        await saveTasks();  // в†ђ РЎ AWAIT!
-        renderTasks();
-    }
-
-
-// РЎРѕР·РґР°РЅРёРµ ISO РґР°С‚С‹ Р±РµР· РїСЂРѕР±Р»РµРј СЃ timezone
-    function makeISODate(year, monthIndex, day) {
-      const y = String(year);
-      const m = String(monthIndex + 1).padStart(2, '0');
-      const d = String(day).padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    }
-    
-    // РњРёРЅРёвЂ‘РєР°Р»РµРЅРґР°СЂСЊ
-
-function buildMiniCalendarGrid() {
-  miniCalGrid.innerHTML = '';
-  
-  const weekdays = ['РџРЅ', 'Р’С‚', 'РЎСЂ', 'Р§С‚', 'РџС‚', 'РЎР±', 'Р’СЃ'];
-  weekdays.forEach(w => {
-    const div = document.createElement('div');
-    div.className = 'mini-calendar-weekday';
-    div.textContent = w;
-    miniCalGrid.appendChild(div);
-  });
-
-  const year = miniCalState.year;
-  const monthIndex = miniCalState.monthIndex;
-  miniCalMonthLabel.textContent = getMonthLabel(year, monthIndex);
-
-  const firstDay = new Date(year, monthIndex, 1);
-  const firstWeekday = (firstDay.getDay() + 6) % 7; // РџРѕРЅРµРґРµР»СЊРЅРёРє = 0
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const todayIso = getTodayISO();
-  const selectedIso = miniCalState.selectedIso || null;
-
-  // РџСѓСЃС‚С‹Рµ СЏС‡РµР№РєРё РїРµСЂРµРґ РїРµСЂРІС‹Рј РґРЅС‘Рј
-  for (let i = 0; i < firstWeekday; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'mini-calendar-cell mini-calendar-cell--empty';
-    miniCalGrid.appendChild(cell);
-  }
-
-  // Р”РЅРё РјРµСЃСЏС†Р°
-  for (let d = 1; d <= daysInMonth; d++) {
-    const cell = document.createElement('div');
-    cell.className = 'mini-calendar-cell';
-    cell.textContent = d;
-
-    // РРЎРџРћР›Р¬Р—РЈР•Рњ РРЎРџР РђР’Р›Р•РќРќРЈР® Р¤РЈРќРљР¦РР®
-    const iso = makeISODate(year, monthIndex, d);
-
-    if (iso === todayIso) {
-      cell.classList.add('mini-calendar-cell--today');
-    }
-    if (selectedIso === iso) {
-      cell.classList.add('mini-calendar-cell--selected');
-    }
-
-    cell.dataset.iso = iso;
-    miniCalGrid.appendChild(cell);
-  }
-}
-
-    function openMiniCalendar(anchorEl, role, taskId) {
-        const rect = anchorEl.getBoundingClientRect();
-        const today = getTodayISO();
-        const baseDateIso = anchorEl.dataset.iso || today;
-        const baseDate = new Date(baseDateIso);
-
-        miniCalState.year = baseDate.getFullYear();
-        miniCalState.monthIndex = baseDate.getMonth();
-        miniCalState.selectedIso = baseDateIso;
-        miniCalState.anchorRole = role;
-        miniCalState.anchorTaskId = taskId != null ? Number(taskId) : null;
-
-        buildMiniCalendarGrid();
-
-        let left = rect.left;
-        let top = rect.bottom + 6;
-        miniCalPopover.style.display = 'block';
-        miniCalPopover.style.left = left + 'px';
-        miniCalPopover.style.top = top + 'px';
-        const popRect = miniCalPopover.getBoundingClientRect();
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        if (popRect.right > vw) left -= (popRect.right - vw + 8);
-        if (popRect.bottom > vh) top -= (popRect.bottom - vh + 8);
-        miniCalPopover.style.left = left + 'px';
-        miniCalPopover.style.top = top + 'px';
-    }
-
-    function closeMiniCalendar() {
-        miniCalPopover.style.display = 'none';
-        miniCalState.anchorRole = null;
-        miniCalState.anchorTaskId = null;
-    }
-
-   async function applyMiniCalendarSelection(iso) {
-    const role = miniCalState.anchorRole;
-    const taskId = miniCalState.anchorTaskId;
-
-    if (!role) return;
-
-    if (!taskId) {
-        // Р¤РѕСЂРјР° РґРѕР±Р°РІР»РµРЅРёСЏ
-        if (role === 'date') {
-            taskDateDisplay.dataset.iso = iso;
-            taskDateDisplay.textContent = formatDateDisplay(iso);
-            if (!taskDeadlineDisplay.dataset.iso) {
-                taskDeadlineDisplay.dataset.iso = iso;
-                taskDeadlineDisplay.textContent = formatDateDisplay(iso);
-            }
-        } else if (role === 'deadline') {
-            taskDeadlineDisplay.dataset.iso = iso;
-            taskDeadlineDisplay.textContent = formatDateDisplay(iso);
-        }
-    } else {
-        // Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ Р·Р°РґР°С‡Рё
-        const task = tasksData.find(t => t.id === taskId);
-        if (!task) return;
-        if (role === 'date') {
-            task.date = iso;
-        } else if (role === 'deadline') {
-            task.deadline = iso;
-        }
-        await saveTasks();  // в†ђ РўРћР›Р¬РљРћ РћР”РРќ await
-        renderTasks();
-    }
-}
-
-    // РћР±РЅРѕРІРёС‚СЊ РїРѕРґСЃРєР°Р·РєСѓ РїРѕРІС‚РѕСЂРµРЅРёСЏ
-    function updateRecurrenceHint() {
-        const dateIso = taskDateDisplay.dataset.iso || getTodayISO();
-        const type = recurrenceTypeSelect.value;
-
-        if (!type) {
-            recurrenceHintWrapper.style.display = 'none';
-            recurrenceHint.textContent = '';
-            return;
-        }
-
-        const date = new Date(dateIso);
-        const day = date.getDate();
-        const month = date.getMonth();
-        const weekday = date.getDay();
-        const weekdayNames = ['Р’СЃ', 'РџРЅ', 'Р’С‚', 'РЎСЂ', 'Р§С‚', 'РџС‚', 'РЎР±'];
-        const monthNames = ['СЏРЅРІ', 'С„РµРІ', 'РјР°СЂ', 'Р°РїСЂ', 'РјР°Р№', 'РёСЋРЅ', 
-                            'РёСЋР»', 'Р°РІРі', 'СЃРµРЅ', 'РѕРєС‚', 'РЅРѕСЏ', 'РґРµРє'];
-
-        let hint = '';
-
-        switch (type) {
-            case 'daily':
-                hint = 'рџ“… Р—Р°РґР°С‡Р° Р±СѓРґРµС‚ РїРѕРІС‚РѕСЂСЏС‚СЊСЃСЏ РµР¶РµРґРЅРµРІРЅРѕ';
-                break;
-            case 'weekly':
-                hint = `рџ“… РљР°Р¶РґС‹Р№ ${weekdayNames[weekday]} РЅРµРґРµР»Рё`;
-                break;
-            case 'monthly_date':
-                hint = `рџ“… РљР°Р¶РґРѕРµ ${day}-Рµ С‡РёСЃР»Рѕ РјРµСЃСЏС†Р°`;
-                break;
-            case 'monthly_weekday':
-                const weekOfMonth = Math.ceil(day / 7);
-                hint = `рџ“… РљР°Р¶РґС‹Р№ ${weekOfMonth}-Р№ ${weekdayNames[weekday]} РјРµСЃСЏС†Р°`;
-                break;
-            case 'yearly':
-                hint = `рџ“… Р•Р¶РµРіРѕРґРЅРѕ ${day} ${monthNames[month]}`;
-                break;
-        }
-
-        recurrenceHint.textContent = hint;
-        recurrenceHintWrapper.style.display = 'block';
-    }
-
-// РџСЂРё Р·Р°РіСЂСѓР·РєРµ СЃС‚СЂР°РЅРёС†С‹
-async function loadTasksFromServer() {
-  try {
-    const response = await fetch('http://mindandmotion.ru:5000/api/tasks');
-    const serverTasks = await response.json();
-    
-    console.log('вњ… Tasks from server:', serverTasks);
-    console.log('First task structure:', serverTasks[0]);
-    
-    tasksData = serverTasks.map(t => ({
-    id: t.id,
-    date: t.date ? t.date.split('T')[0] : '',
-    deadline: t.deadline ? t.deadline.split('T')[0] : '',
-    title: t.title || '',
-    priority: Number(t.priority || 2),
-    comment: t.comment || '',
-    done: Boolean(t.done),
-    doneDate: t.doneDate ? t.doneDate.split('T')[0] : null,
-    focusSessions: Number(t.focusSessions || 0),
-    isRecurring: Boolean(t.isRecurring),         // в†ђ Р’РђР–РќРћ!
-    recurrenceType: t.recurrenceType || '',      // в†ђ Р’РђР–РќРћ!
-    recurrenceValue: t.recurrenceValue || '',    // в†ђ Р’РђР–РќРћ!
-    isGenerated: Boolean(t.isGenerated),         // в†ђ Р’РђР–РќРћ!
-    templateId: t.templateId || null             // в†ђ Р’РђР–РќРћ!
-}));
-    
-    renderTasks();
-  } catch (err) {
-    console.error('вќЊ РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё:', err);
-  }
-}
-
-
-async function initializeApp() {
-    console.log('рџ“± РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ...');
-
-    const token = localStorage.getItem('app-auth-token');
-
-    if (!token) {
-        console.log('вљ пёЏ РќРµС‚ С‚РѕРєРµРЅР°. РџСѓСЃС‚РѕР№ СЃРїРёСЃРѕРє.');
-        tasksData = [];
-        renderTasks();
-        renderPomodoroTaskSelect();
-        updateTaskStats();
-        return;
-    }
-
-    try {
-        const response = await fetch('http://mindandmotion.ru:5000/api/tasks', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (response.ok) {
-    const serverTasks = await response.json();
-    
-    // вњ… РќРћР РњРђР›РР—РЈР•Рњ Р’РЎР• Р”РђРўР«
-tasksData = serverTasks.map(t => ({
-    id: t.id,
-    date: t.date ? t.date.split('T')[0] : '',
-    deadline: t.deadline ? t.deadline.split('T')[0] : '',
-    title: t.title || '',
-    priority: Number(t.priority || 2),
-    comment: t.comment || '',
-    done: Boolean(t.done),
-    doneDate: t.doneDate ? t.doneDate.split('T')[0] : null,
-    focusSessions: Number(t.focusSessions || 0),
-    isRecurring: Boolean(t.isRecurring),         // в†ђ Р’РђР–РќРћ!
-    recurrenceType: t.recurrenceType || '',      // в†ђ Р’РђР–РќРћ!
-    recurrenceValue: t.recurrenceValue || '',    // в†ђ Р’РђР–РќРћ!
-    isGenerated: Boolean(t.isGenerated),         // в†ђ Р’РђР–РќРћ!
-    templateId: t.templateId || null             // в†ђ Р’РђР–РќРћ!
-}));
-    
-    console.log(`вњ… Р—Р°РіСЂСѓР¶РµРЅРѕ ${tasksData.length} Р·Р°РґР°С‡`);
-}
- else {
-            console.warn(`вљ пёЏ РћС€РёР±РєР° СЃРµСЂРІРµСЂР°: ${response.status}`);
-            tasksData = [];
-        }
-    } catch (err) {
-        console.error('вќЊ РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё:', err);
-        tasksData = [];
-    }
-
-    renderTasks();
-    renderPomodoroTaskSelect();
-    updateTaskStats();
-    checkRecurringTasks();
-}
-
-// вњ… Р”Р›РЇ РћРўР›РђР”РљР
-window.debugTasksData = function() {
-    console.log('рџ“¦ Р’СЃРµРіРѕ Р·Р°РґР°С‡:', tasksData.length);
-    tasksData.forEach((t, i) => {
-        console.log(`Р—Р°РґР°С‡Р° ${i}:`, {
-            id: t.id,
-            title: t.title,
-            date: t.date,
-            deadline: t.deadline,
-            isRecurring: t.isRecurring,
-            recurrenceType: t.recurrenceType,
-            recurrenceValue: t.recurrenceValue
-        });
-    });
-};
-
-// вњ… Р’Р«Р—РћР’ РРќРР¦РРђР›РР—РђР¦РР + Р’РЎР• РЎРћР‘Р«РўРРЇ
-(async function() {
-    await initializeApp();
-
-    // ========== РЎРћР‘Р«РўРРЇ ==========
     taskForm.addEventListener('submit', addTaskFromForm);
 
-    toggleDoneTasksBtn.addEventListener('click', function(e){
-        e.preventDefault();
+    toggleDoneTasksBtn.addEventListener('click', () => {
         showDone = !showDone;
-        toggleDoneTasksBtn.textContent = showDone ? 'РЎРєСЂС‹С‚СЊ РІС‹РїРѕР»РЅРµРЅРЅС‹Рµ' : 'РџРѕРєР°Р·Р°С‚СЊ РІС‹РїРѕР»РЅРµРЅРЅС‹Рµ';
+        toggleDoneTasksBtn.textContent = showDone ? 'Скрыть выполненные' : 'Показать выполненные';
         renderTasks();
     });
 
-    [taskDateDisplay, taskDeadlineDisplay].forEach(el => {
-        el.addEventListener('click', function() {
-            const role = this.dataset.target === 'deadline' ? 'deadline' : 'date';
-            openMiniCalendar(this, role, null);
-        });
-    });
-
-    tasksTableBody.addEventListener('click', async function(e){
-        const checkbox = e.target.closest('.task-done-checkbox');
-        if (checkbox) {
-            const tr = checkbox.closest('tr');
-            const task = findTaskByRow(tr);
-            if (!task) return;
-            await setTaskDone(task, checkbox.checked);
-            return;
-        }
-
-        const priorityBtn = e.target.closest('.priority-badge');
-        if (priorityBtn) {
-            const dropdown = priorityBtn.parentNode.querySelector('.task-priority-dropdown');
-            if (dropdown) {
-                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-            }
-            return;
-        }
-
-        const dropdownItem = e.target.closest('.task-priority-dropdown button');
-        if (dropdownItem) {
-            const p = Number(dropdownItem.dataset.value);
-            const row = dropdownItem.closest('tr');
-            const task = findTaskByRow(row);
-            if (task) {
-                task.priority = p;
-                await saveTasks();
-                renderTasks();
-            }
-            return;
-        }
-
-        const dateCell = e.target.closest('.date-cell');
-        if (dateCell) {
-            const tr = dateCell.closest('tr');
-            const task = findTaskByRow(tr);
-            if (!task) return;
-            dateCell.dataset.iso = task.date || getTodayISO();
-            openMiniCalendar(dateCell, 'date', task.id);
-            return;
-        }
-
-        const deadlineCell = e.target.closest('.deadline-cell');
-        if (deadlineCell) {
-            const tr = deadlineCell.closest('tr');
-            const task = findTaskByRow(tr);
-            if (!task) return;
-            deadlineCell.dataset.iso = task.deadline || task.date || getTodayISO();
-            openMiniCalendar(deadlineCell, 'deadline', task.id);
-            return;
-        }
-
-        const cell = e.target.closest('.editable-text');
-        if (cell && cell.contentEditable !== 'true') {
-            beginInlineEdit(cell);
-        }
-    });
-
-    tasksTableBody.addEventListener('keydown', async function(e){
-        const cell = e.target.closest('.editable-text');
-        if (!cell || cell.contentEditable !== 'true') return;
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            await finishInlineEdit(cell, true);
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            finishInlineEdit(cell, false);
-        }
-    });
-
-    tasksTableBody.addEventListener('focusout', async function(e){
-        const cell = e.target.closest('.editable-text');
-        if (!cell || cell.contentEditable !== 'true') return;
-        await finishInlineEdit(cell, true);
-    });
-
-    document.addEventListener('click', function(e){
-        if (!e.target.closest('.task-priority-select')) {
-            document.querySelectorAll('.task-priority-dropdown').forEach(d => d.style.display = 'none');
-        }
-        if (!taskContextMenu.contains(e.target)) {
-            closeTaskContextMenu();
-        }
-        if (!miniCalPopover.contains(e.target) && 
-            !e.target.closest('[data-role="date-display"]') && 
-            !e.target.closest('.date-cell') && 
-            !e.target.closest('.deadline-cell')) {
-            closeMiniCalendar();
-        }
-    });
-
-    tasksTableBody.addEventListener('contextmenu', function(e){
-        const row = e.target.closest('tr');
-        if (!row) return;
+    tasksTableBody.addEventListener('contextmenu', e => {
+        const tr = e.target.closest('tr');
+        if (!tr) return;
         e.preventDefault();
-        openTaskContextMenu(e.clientX, e.clientY, row);
+        openTaskContextMenu(e.clientX, e.clientY, tr);
     });
 
-    taskContextMenu.addEventListener('click', function(e){
-        const btn = e.target.closest('button[data-action]');
-        if (!btn) return;
-        const idStr = taskContextMenu.dataset.id;
-        if (!idStr) return;
-        const id = Number(idStr);
-        if (btn.dataset.action === 'delete') {
-            showDeleteModal(id);
+    tasksTableBody.addEventListener('change', e => {
+        if (!e.target.classList.contains('task-done-checkbox')) return;
+        const tr = e.target.closest('tr');
+        if (!tr) return;
+        const task = findTaskByRow(tr);
+        if (!task) return;
+        setTaskDone(task, e.target.checked);
+    });
+
+    tasksTableBody.addEventListener('click', e => {
+        const pBtn = e.target.closest('.task-priority-select > button');
+        if (pBtn) {
+            e.stopPropagation();
+            const wrap = pBtn.closest('.task-priority-select');
+            wrap.classList.toggle('open');
+            return;
         }
+
+        const dropBtn = e.target.closest('.task-priority-dropdown button');
+        if (dropBtn) {
+            e.stopPropagation();
+            const val = Number(dropBtn.dataset.value);
+            const wrap = dropBtn.closest('.task-priority-select');
+            const tr = dropBtn.closest('tr');
+            const task = findTaskByRow(tr);
+            if (task) {
+                task.priority = val;
+                saveTasks();
+            }
+            const btn = wrap.querySelector('button');
+            btn.textContent = getPriorityText(val);
+            btn.className = 'priority-badge priority-' + val;
+            wrap.classList.remove('open');
+            return;
+        }
+    });
+
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.task-priority-select.open').forEach(w => w.classList.remove('open'));
         closeTaskContextMenu();
     });
 
-    deleteCancelBtn.addEventListener('click', function() {
+    taskContextMenu.addEventListener('click', e => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const id = Number(taskContextMenu.dataset.id);
+        closeTaskContextMenu();
+        if (action === 'delete' && id) showDeleteModal(id);
+    });
+
+    deleteConfirmBtn.addEventListener('click', () => {
+        if (!deleteTargetId) return;
+        deleteTaskById(deleteTargetId);
         hideDeleteModal();
     });
 
-    deleteConfirmBtn.addEventListener('click', function() {
-        if (deleteTargetId !== null) {
-            deleteTaskById(deleteTargetId);
-        }
-        hideDeleteModal();
+    deleteCancelBtn.addEventListener('click', hideDeleteModal);
+
+    deleteModalBackdrop.addEventListener('click', e => {
+        if (e.target === deleteModalBackdrop) hideDeleteModal();
     });
 
-    undoBtn.addEventListener('click', function() {
-        restoreLastDeleted();
-    });
+    undoBtn.addEventListener('click', restoreLastDeleted);
 
-    pomodoroToggleBtn.addEventListener('click', function(e){
-        e.preventDefault();
+    pomodoroToggleBtn.addEventListener('click', () => {
         if (pomodoroTimerId) {
             stopPomodoro(false);
         } else {
@@ -1654,66 +1231,198 @@ window.debugTasksData = function() {
         }
     });
 
-    pomodoroResetBtn.addEventListener('click', function(e){
-        e.preventDefault();
-        resetPomodoro();
-    });
+    pomodoroResetBtn.addEventListener('click', resetPomodoro);
 
-    pomodoroTaskSelect.addEventListener('change', function() {
-        pomodoroActiveTaskId = pomodoroTaskSelect.value ? Number(pomodoroTaskSelect.value) : null;
+    pomodoroTaskSelect.addEventListener('change', () => {
+        pomodoroActiveTaskId = Number(pomodoroTaskSelect.value) || null;
         updatePomodoroCurrentLabel();
     });
 
-    miniCalPrev.addEventListener('click', function() {
-        miniCalState.monthIndex--;
-        if (miniCalState.monthIndex < 0) {
-            miniCalState.monthIndex = 11;
-            miniCalState.year--;
+    // Мини-календарь
+    function renderMiniCalendar() {
+        const { year, monthIndex } = miniCalState;
+        miniCalMonthLabel.textContent = getMonthLabel(year, monthIndex);
+        miniCalGrid.innerHTML = '';
+
+        const days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+        days.forEach(d => {
+            const el = document.createElement('div');
+            el.className = 'mini-cal-weekday';
+            el.textContent = d;
+            miniCalGrid.appendChild(el);
+        });
+
+        const firstDay = new Date(year, monthIndex, 1);
+        let offset = (firstDay.getDay() + 6) % 7;
+        for (let i = 0; i < offset; i++) {
+            const empty = document.createElement('div');
+            miniCalGrid.appendChild(empty);
         }
-        buildMiniCalendarGrid();
-    });
 
-    miniCalNext.addEventListener('click', function() {
-        miniCalState.monthIndex++;
-        if (miniCalState.monthIndex > 11) {
-            miniCalState.monthIndex = 0;
-            miniCalState.year++;
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+        const today = getTodayISO();
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const iso = `${year}-${String(monthIndex+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mini-cal-day';
+            btn.textContent = d;
+            if (iso === today) btn.classList.add('today');
+
+            const { anchorRole } = miniCalState;
+            if (anchorRole === 'date' && taskDateDisplay.dataset.iso === iso) btn.classList.add('selected');
+            if (anchorRole === 'deadline' && taskDeadlineDisplay.dataset.iso === iso) btn.classList.add('selected');
+
+            btn.addEventListener('click', () => {
+                const role = miniCalState.anchorRole;
+                if (role === 'date') {
+                    taskDateDisplay.dataset.iso = iso;
+                    taskDateDisplay.textContent = formatDateDisplay(iso);
+                } else if (role === 'deadline') {
+                    taskDeadlineDisplay.dataset.iso = iso;
+                    taskDeadlineDisplay.textContent = formatDateDisplay(iso);
+                }
+                miniCalPopover.style.display = 'none';
+            });
+
+            miniCalGrid.appendChild(btn);
         }
-        buildMiniCalendarGrid();
-    });
-
-    miniCalGrid.addEventListener('click', function(e){
-        const cell = e.target.closest('.mini-calendar-cell');
-        if (!cell || cell.classList.contains('mini-calendar-cell--empty')) return;
-        const iso = cell.dataset.iso;
-        miniCalState.selectedIso = iso;
-        applyMiniCalendarSelection(iso);
-        closeMiniCalendar();
-    });
-
-    isRecurringCheckbox.addEventListener('change', function() {
-    if (this.checked) {
-        recurrenceTypeSelect.style.display = 'block';
-        recurrenceTypeSelect.value = 'daily';
-        updateRecurrenceHint();
-    } else {
-        recurrenceTypeSelect.style.display = 'none';
-        recurrenceTypeSelect.value = '';
-        recurrenceHintWrapper.style.display = 'none';
-        recurrenceHint.textContent = '';
     }
-});
 
-    recurrenceTypeSelect.addEventListener('change', function() {
-        updateRecurrenceHint();
+    function openMiniCalendar(anchorEl, role) {
+        const rect = anchorEl.getBoundingClientRect();
+        miniCalState.anchorRole = role;
+        miniCalState.year = new Date().getFullYear();
+        miniCalState.monthIndex = new Date().getMonth();
+        renderMiniCalendar();
+        miniCalPopover.style.display = 'block';
+        let top = rect.bottom + window.scrollY + 4;
+        let left = rect.left + window.scrollX;
+        miniCalPopover.style.top = top + 'px';
+        miniCalPopover.style.left = left + 'px';
+        const calRect = miniCalPopover.getBoundingClientRect();
+        if (calRect.right > window.innerWidth) {
+            left = window.innerWidth - calRect.width - 8;
+            miniCalPopover.style.left = left + 'px';
+        }
+    }
+
+    document.querySelectorAll('[data-role="date-display"]').forEach(el => {
+        el.addEventListener('click', e => {
+            e.stopPropagation();
+            const role = el.dataset.target;
+            if (miniCalPopover.style.display === 'block' && miniCalState.anchorRole === role) {
+                miniCalPopover.style.display = 'none';
+            } else {
+                openMiniCalendar(el, role);
+            }
+        });
     });
 
-    pomodoroDurationInput.addEventListener('change', function() {
-        resetPomodoro();
+    document.addEventListener('click', e => {
+        if (!miniCalPopover.contains(e.target) && !e.target.closest('[data-role="date-display"]')) {
+            miniCalPopover.style.display = 'none';
+        }
     });
+
+    miniCalPrev.addEventListener('click', e => {
+        e.stopPropagation();
+        miniCalState.monthIndex--;
+        if (miniCalState.monthIndex < 0) { miniCalState.monthIndex = 11; miniCalState.year--; }
+        renderMiniCalendar();
+    });
+
+    miniCalNext.addEventListener('click', e => {
+        e.stopPropagation();
+        miniCalState.monthIndex++;
+        if (miniCalState.monthIndex > 11) { miniCalState.monthIndex = 0; miniCalState.year++; }
+        renderMiniCalendar();
+    });
+
+    isRecurringCheckbox.addEventListener('change', () => {
+        const show = isRecurringCheckbox.checked;
+        recurrenceTypeSelect.style.display = show ? '' : 'none';
+        if (!show) {
+            recurrenceTypeSelect.value = '';
+            recurrenceHintWrapper.style.display = 'none';
+        }
+    });
+
+    recurrenceTypeSelect.addEventListener('change', () => {
+        const type = recurrenceTypeSelect.value;
+        if (!type) {
+            recurrenceHintWrapper.style.display = 'none';
+            return;
+        }
+        const dateIso = taskDateDisplay.dataset.iso || getTodayISO();
+        const date = new Date(dateIso);
+        let value = '';
+        if (type === 'monthly_date') value = date.getDate().toString();
+        if (type === 'monthly_weekday') {
+            const weekday = date.getDay();
+            const weekOfMonth = Math.ceil(date.getDate() / 7);
+            value = `${weekOfMonth},${weekday}`;
+        }
+        recurrenceHint.textContent = getRecurrenceLabel(type, value);
+        recurrenceHintWrapper.style.display = '';
+    });
+
+    // ============ ИНИЦИАЛИЗАЦИЯ ============
+
+    async function initTasks() {
+        resetFormDates();
+
+        const token = localStorage.getItem('app-auth-token');
+        if (!token) {
+            renderTasks();
+            renderPomodoroTaskSelect();
+            updateTaskStats();
+            return;
+        }
+
+        try {
+            const response = await fetch('http://mindandmotion.ru:5000/api/tasks', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const serverTasks = await response.json();
+                tasksData = serverTasks.map(t => ({
+                    id: t.id,
+                    date: t.date ? t.date.split('T')[0] : getTodayISO(),
+                    deadline: t.deadline ? t.deadline.split('T')[0] : '',
+                    title: t.title || '',
+                    priority: Number(t.priority || 2),
+                    comment: t.comment || t.description || '',
+                    done: Boolean(t.done || t.completed),
+                    doneDate: t.doneDate ? t.doneDate.split('T')[0] : (t.done_date ? t.done_date.split('T')[0] : null),
+                    focusSessions: Number(t.focusSessions || t.focussessions || 0),
+                    isRecurring: Boolean(t.isRecurring || t.isrecurring || t.is_recurring),
+                    recurrenceType: t.recurrenceType || t.recurrencetype || t.recurrence_type || '',
+                    recurrenceValue: t.recurrenceValue || t.recurrencevalue || t.recurrence_value || '',
+                    isGenerated: Boolean(t.isGenerated || t.isgenerated || t.is_generated),
+                    templateId: t.templateId || t.templateid || t.template_id || null,
+                    folderId: t.folderId || t.folderid || t.folder_id || null
+                }));
+                console.log(`✅ Загружено ${tasksData.length} задач с сервера`);
+            } else {
+                console.warn('⚠️ Не удалось загрузить задачи:', response.status);
+            }
+        } catch (err) {
+            console.log('📱 Сервер недоступен, задачи не загружены');
+        }
+
+        renderTasks();
+        renderPomodoroTaskSelect();
+        updateTaskStats();
+        checkRecurringTasks();
+    }
+
+    initTasks();
+
 })();
-
-})(); // Р—Р°РєСЂС‹РІР°РµРј (function(){
 </script>
+
 </body>
 </html>
