@@ -1,15 +1,17 @@
 // ========================================
 // API ДЛЯ РАБОТЫ С ЗАДАЧАМИ
+// Mind&Motion — tasks-api.js
 // ========================================
 
-const TASKS_API_URL = 'http://85.198.96.149:5000';
+const TASKS_API_URL = 'https://mindandmotion.ru';
 
 // ========================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ========================================
 
 function getAuthToken() {
-  return localStorage.getItem('app-auth-token');
+  // Токен JWT хранится под ключом 'mm_token' (см. auth.js)
+  return localStorage.getItem('mm_token');
 }
 
 function isUserLoggedIn() {
@@ -20,7 +22,7 @@ function isUserLoggedIn() {
 // ЗАДАЧИ
 // ========================================
 
-// GET: Получить задачи (с фильтром по папке)
+// GET: Получить задачи (с опциональным фильтром по папке)
 async function fetchTasks(folderId = null) {
   const token = getAuthToken();
   if (!token) throw new Error('Не авторизован');
@@ -75,6 +77,8 @@ async function deleteTask(taskId) {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!response.ok) throw new Error(`Ошибка удаления задачи: ${response.status}`);
+  // Некоторые DELETE возвращают 204 без тела — обрабатываем оба случая
+  if (response.status === 204) return {};
   return response.json();
 }
 
@@ -172,6 +176,7 @@ async function deleteFolder(id) {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!response.ok) throw new Error(`Ошибка удаления папки: ${response.status}`);
+  if (response.status === 204) return {};
   return response.json();
 }
 
@@ -230,6 +235,7 @@ async function deleteSubtask(taskId, subtaskId) {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!response.ok) throw new Error(`Ошибка удаления подзадачи: ${response.status}`);
+  if (response.status === 204) return {};
   return response.json();
 }
 
@@ -237,7 +243,14 @@ async function deleteSubtask(taskId, subtaskId) {
 // АДАПТЕРЫ ДАННЫХ
 // ========================================
 
-// Преобразование: БД → Frontend
+/**
+ * Преобразование: БД → Frontend
+ *
+ * Приоритет в UI (Zadachi.html):
+ *   1 = Низкий, 2 = Нормальный, 3 = Высокий
+ * Приоритет в API (строка):
+ *   'low' = Низкий, 'medium' = Нормальный, 'high' = Высокий
+ */
 function adaptTaskFromAPI(dbTask) {
   return {
     id: dbTask.id,
@@ -255,7 +268,7 @@ function adaptTaskFromAPI(dbTask) {
     isGenerated: !!(dbTask.isgenerated || dbTask.is_generated || dbTask.isGenerated),
     templateId: dbTask.templateid || dbTask.template_id || dbTask.templateId || null,
     folderId: dbTask.folderid || dbTask.folder_id || dbTask.folderId || null,
-    subtasksCount: dbTask.subtasks_count || 0
+    subtasksCount: dbTask.subtasks_count || dbTask.subtasksCount || 0
   };
 }
 
@@ -277,22 +290,33 @@ function adaptTaskForAPI(localTask) {
   };
 }
 
-// Приоритет: текст → число (1=высокий, 2=средний, 3=низкий)
+/**
+ * Приоритет: текст API → число UI
+ * API:  'low' | 'medium' | 'high'
+ * UI:    1    |     2    |    3
+ */
 function priorityTextToNumber(text) {
-  const map = { 'high': 1, 'Высокий': 1, 'medium': 2, 'Нормальный': 2, 'low': 3, 'Низкий': 3 };
-  return map[text] || 2;
+  const map = {
+    'low': 1,    'Низкий': 1,
+    'medium': 2, 'Нормальный': 2,
+    'high': 3,   'Высокий': 3
+  };
+  return map[text] ?? 2;
 }
 
-// Приоритет: число → текст
+/**
+ * Приоритет: число UI → текст API
+ * UI:   1   |    2     |   3
+ * API: 'low' | 'medium' | 'high'
+ */
 function priorityNumberToText(num) {
-  const map = { 1: 'high', 2: 'medium', 3: 'low' };
+  const map = { 1: 'low', 2: 'medium', 3: 'high' };
   return map[num] || 'medium';
 }
 
-// Получить сегодняшнюю дату в формате ISO
+// Получить сегодняшнюю дату в формате ISO (YYYY-MM-DD)
 function getTodayISO() {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10);
 }
 
 // ========================================
@@ -321,5 +345,7 @@ window.TasksAPI = {
   // Адаптеры
   adaptTaskFromAPI,
   adaptTaskForAPI,
-  isUserLoggedIn
+  // Утилиты
+  isUserLoggedIn,
+  getTodayISO
 };
