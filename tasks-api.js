@@ -10,8 +10,8 @@ const TASKS_API_URL = 'https://mindandmotion.ru';
 // ========================================
 
 function getAuthToken() {
-  // Токен JWT хранится под ключом 'mm_token' (см. auth.js)
-  return localStorage.getItem('mm_token');
+  // Совместимость: auth.js может писать в 'app-auth-token' или 'mm_token'
+  return localStorage.getItem('app-auth-token') || localStorage.getItem('mm_token');
 }
 
 function isUserLoggedIn() {
@@ -77,7 +77,6 @@ async function deleteTask(taskId) {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!response.ok) throw new Error(`Ошибка удаления задачи: ${response.status}`);
-  // Некоторые DELETE возвращают 204 без тела — обрабатываем оба случая
   if (response.status === 204) return {};
   return response.json();
 }
