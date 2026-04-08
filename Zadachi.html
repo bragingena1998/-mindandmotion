@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Задачи — Жук Выводжук</title>
+  <title>Р—Р°РґР°С‡Рё вЂ” Р–СѓРє Р’С‹РІРѕРґР¶СѓРє</title>
 
   <link rel="stylesheet" href="common.css">
   <link rel="stylesheet" href="tasks.css">
@@ -19,23 +19,37 @@
   <div class="app-shell">
 
   
-    <!-- Загружаемая общая шапка -->
+    <!-- Р—Р°РіСЂСѓР¶Р°РµРјР°СЏ РѕР±С‰Р°СЏ С€Р°РїРєР° -->
 <div id="header-placeholder"></div>
-  <!-- КОНТЕНТ СТРАНИЦЫ ЗАДАЧ -->
+  <!-- РљРћРќРўР•РќРў РЎРўР РђРќРР¦Р« Р—РђР”РђР§ -->
     <main class="page-content page-tasks" id="tasks">
       <div class="page-inner">
 
+<aside class="folders-sidebar" id="folders-sidebar">
+  <div class="folders-header">
+    <span>РџР°РїРєРё</span>
+    <button id="add-folder-btn" title="РќРѕРІР°СЏ РїР°РїРєР°">+</button>
+  </div>
+  <ul class="folders-list" id="folders-list">
+    <li class="folder-item folder-item--active" data-folder-id="all">
+      <span class="folder-icon">рџ“‹</span>
+      <span class="folder-name">Р’СЃРµ Р·Р°РґР°С‡Рё</span>
+    </li>
+  </ul>
+</aside>
+
+
         <div class="page-header">
-          <h1 class="page-title">🎯 Задачи</h1>
+          <h1 class="page-title">рџЋЇ Р—Р°РґР°С‡Рё</h1>
 
           <div class="page-header__controls">
-            <div class="tasks-help-tooltip" aria-label="Подсказка по вкладке Задачи">
+            <div class="tasks-help-tooltip" aria-label="РџРѕРґСЃРєР°Р·РєР° РїРѕ РІРєР»Р°РґРєРµ Р—Р°РґР°С‡Рё">
               <span class="tasks-help-tooltip__icon">?</span>
               <div class="tasks-help-tooltip__content">
-                <p><strong>Статистика сверху</strong> показывает, сколько задач сделано сегодня, за неделю, месяц и год.</p>
-                <p><strong>Дата / Срок</strong> — плановый день и крайний дедлайн задачи.</p>
-                <p><strong>Фокус‑сессия</strong> — таймер Помидоро, считает сессии по выбранной задаче.</p>
-                <p><strong>Статус и подсветка строки</strong> меняются автоматически по дате и дедлайну; «Готово» переводит задачу в выполненные.</p>
+                <p><strong>РЎС‚Р°С‚РёСЃС‚РёРєР° СЃРІРµСЂС…Сѓ</strong> РїРѕРєР°Р·С‹РІР°РµС‚, СЃРєРѕР»СЊРєРѕ Р·Р°РґР°С‡ СЃРґРµР»Р°РЅРѕ СЃРµРіРѕРґРЅСЏ, Р·Р° РЅРµРґРµР»СЋ, РјРµСЃСЏС† Рё РіРѕРґ.</p>
+                <p><strong>Р”Р°С‚Р° / РЎСЂРѕРє</strong> вЂ” РїР»Р°РЅРѕРІС‹Р№ РґРµРЅСЊ Рё РєСЂР°Р№РЅРёР№ РґРµРґР»Р°Р№РЅ Р·Р°РґР°С‡Рё.</p>
+                <p><strong>Р¤РѕРєСѓСЃвЂ‘СЃРµСЃСЃРёСЏ</strong> вЂ” С‚Р°Р№РјРµСЂ РџРѕРјРёРґРѕСЂРѕ, СЃС‡РёС‚Р°РµС‚ СЃРµСЃСЃРёРё РїРѕ РІС‹Р±СЂР°РЅРЅРѕР№ Р·Р°РґР°С‡Рµ.</p>
+                <p><strong>РЎС‚Р°С‚СѓСЃ Рё РїРѕРґСЃРІРµС‚РєР° СЃС‚СЂРѕРєРё</strong> РјРµРЅСЏСЋС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РїРѕ РґР°С‚Рµ Рё РґРµРґР»Р°Р№РЅСѓ; В«Р“РѕС‚РѕРІРѕВ» РїРµСЂРµРІРѕРґРёС‚ Р·Р°РґР°С‡Сѓ РІ РІС‹РїРѕР»РЅРµРЅРЅС‹Рµ.</p>
               </div>
             </div>
           </div>
@@ -43,125 +57,125 @@
 
         <section class="block block-tasks">
           <div class="tasks-panel">
-            <h2 class="block-title">Задачи / фокус / сроки</h2>
+            <h2 class="block-title">Р—Р°РґР°С‡Рё / С„РѕРєСѓСЃ / СЃСЂРѕРєРё</h2>
 
-            <!-- СТАТИСТИКА -->
+            <!-- РЎРўРђРўРРЎРўРРљРђ -->
             <div class="stats-grid">
               <div class="stat-item">
                 <p class="stat-number" id="todayDoneCount">0</p>
-                <p class="stat-label">Сегодня</p>
+                <p class="stat-label">РЎРµРіРѕРґРЅСЏ</p>
               </div>
               <div class="stat-item">
                 <p class="stat-number" id="weekDoneCount">0</p>
-                <p class="stat-label">Неделя</p>
+                <p class="stat-label">РќРµРґРµР»СЏ</p>
               </div>
               <div class="stat-item">
                 <p class="stat-number" id="monthDoneCount">0</p>
-                <p class="stat-label">Месяц</p>
+                <p class="stat-label">РњРµСЃСЏС†</p>
               </div>
               <div class="stat-item">
                 <p class="stat-number" id="yearDoneCount">0</p>
-                <p class="stat-label">Год</p>
+                <p class="stat-label">Р“РѕРґ</p>
               </div>
                             <div class="stat-item">
                 <p class="stat-number" id="overdueDoneCount">0</p>
-                <p class="stat-label">Просрочено ✓</p>
+                <p class="stat-label">РџСЂРѕСЃСЂРѕС‡РµРЅРѕ вњ“</p>
               </div>
             </div>
 
-<!-- ФОРМА ДОБАВЛЕНИЯ -->
+<!-- Р¤РћР РњРђ Р”РћР‘РђР’Р›Р•РќРРЇ -->
 <form id="taskForm" class="task-form">
   <div class="date-field">
     <div id="taskDateDisplay"
          class="date-display"
          data-role="date-display"
-         data-target="date">—</div>
-    <span class="date-icon">📅</span>
+         data-target="date">вЂ”</div>
+    <span class="date-icon">рџ“…</span>
   </div>
 
   <div class="date-field">
     <div id="taskDeadlineDisplay"
          class="date-display"
          data-role="date-display"
-         data-target="deadline">—</div>
-    <span class="date-icon">📅</span>
+         data-target="deadline">вЂ”</div>
+    <span class="date-icon">рџ“…</span>
   </div>
 
-  <input type="text" id="taskTitle" placeholder="Задача" required>
+  <input type="text" id="taskTitle" placeholder="Р—Р°РґР°С‡Р°" required>
 
   <select id="taskPriority">
-    <option value="1">Низкий</option>
-    <option value="2" selected>Нормальный</option>
-    <option value="3">Высокий</option>
+    <option value="1">РќРёР·РєРёР№</option>
+    <option value="2" selected>РќРѕСЂРјР°Р»СЊРЅС‹Р№</option>
+    <option value="3">Р’С‹СЃРѕРєРёР№</option>
   </select>
 
-  <input type="text" id="taskComment" placeholder="Комментарий / ссылка">
+  <input type="text" id="taskComment" placeholder="РљРѕРјРјРµРЅС‚Р°СЂРёР№ / СЃСЃС‹Р»РєР°">
 
   <label class="checkbox-recurrence">
     <input type="checkbox" id="taskIsRecurring">
-    <span>🔁</span>
+    <span>рџ”Ѓ</span>
   </label>
 
   <select id="taskRecurrenceType" style="display: none;">
-  <option value="">—</option>
-  <option value="daily">День</option>
-  <option value="weekly">Неделя</option>
-  <option value="monthly_date">Месяц</option>
-  <option value="monthly_weekday">День нед.</option>
-  <option value="yearly">Год</option>
+  <option value="">вЂ”</option>
+  <option value="daily">Р”РµРЅСЊ</option>
+  <option value="weekly">РќРµРґРµР»СЏ</option>
+  <option value="monthly_date">РњРµСЃСЏС†</option>
+  <option value="monthly_weekday">Р”РµРЅСЊ РЅРµРґ.</option>
+  <option value="yearly">Р“РѕРґ</option>
 </select>
 
 </form>
 
-<!-- КНОПКА ДОБАВЛЕНИЯ (ОТДЕЛЬНО) -->
-<button type="submit" form="taskForm" class="habits-btn task-add-btn">+ Добавить задачу</button>
+<!-- РљРќРћРџРљРђ Р”РћР‘РђР’Р›Р•РќРРЇ (РћРўР”Р•Р›Р¬РќРћ) -->
+<button type="submit" form="taskForm" class="habits-btn task-add-btn">+ Р”РѕР±Р°РІРёС‚СЊ Р·Р°РґР°С‡Сѓ</button>
 
-<!-- ПОДСКАЗКА ПОД КНОПКОЙ -->
+<!-- РџРћР”РЎРљРђР—РљРђ РџРћР” РљРќРћРџРљРћР™ -->
 <div id="recurrenceHintWrapper" class="recurrence-hint-wrapper" style="display: none;">
   <span id="recurrenceHint" class="recurrence-hint"></span>
 </div>
 
-            <!-- ПОМИДОРО -->
+            <!-- РџРћРњРР”РћР Рћ -->
             <div class="pomodoro-panel">
-              <div class="pomodoro-label">Фокус‑сессия:</div>
+              <div class="pomodoro-label">Р¤РѕРєСѓСЃвЂ‘СЃРµСЃСЃРёСЏ:</div>
               <select id="pomodoroTaskSelect" style="min-width:220px;"></select>
 
               <div class="pomodoro-label">
-                Длительность (мин):
+                Р”Р»РёС‚РµР»СЊРЅРѕСЃС‚СЊ (РјРёРЅ):
                 <input type="number" id="pomodoroDuration" value="25" min="1" max="120" style="width:70px;">
               </div>
 
               <div class="pomodoro-timer" id="pomodoroTimer">25:00</div>
 
-              <button id="pomodoroToggleBtn" class="habits-btn">Старт</button>
-              <button id="pomodoroResetBtn" class="habits-btn habits-btn--secondary">Сброс</button>
+              <button id="pomodoroToggleBtn" class="habits-btn">РЎС‚Р°СЂС‚</button>
+              <button id="pomodoroResetBtn" class="habits-btn habits-btn--secondary">РЎР±СЂРѕСЃ</button>
 
               <div class="pomodoro-current" id="pomodoroCurrentInfo"></div>
             </div>
 
-            <!-- КНОПКА ПОКАЗА ВЫПОЛНЕННЫХ -->
+            <!-- РљРќРћРџРљРђ РџРћРљРђР—Рђ Р’Р«РџРћР›РќР•РќРќР«РҐ -->
             <div style="margin-bottom:10px;">
               <button id="toggleDoneTasks"
                       class="habits-btn habits-btn--secondary toggle-done">
-                Показать выполненные
+                РџРѕРєР°Р·Р°С‚СЊ РІС‹РїРѕР»РЅРµРЅРЅС‹Рµ
               </button>
             </div>
 
-            <!-- ТАБЛИЦА ЗАДАЧ -->
+            <!-- РўРђР‘Р›РР¦Рђ Р—РђР”РђР§ -->
             <div class="tasks-table-wrapper">
               <div class="tasks-table-scroll">
                 <table id="tasksTable" class="habits-table">
                   <thead>
                   <tr>
-                    <th style="width:110px;">Дата</th>
-                    <th style="width:110px;">Срок</th>
-                    <th style="text-align:left;min-width:260px;">Задача</th>
-                    <th style="width:120px;">Приоритет</th>
-                    <th style="text-align:left;min-width:260px;">Комментарий</th>
-                    <th style="width:80px;">Фокус</th>
-                    <th style="width:100px;">Факт</th>
-                    <th style="width:80px;">Статус</th>
-                    <th style="width:70px;">Готово</th>
+                    <th style="width:110px;">Р”Р°С‚Р°</th>
+                    <th style="width:110px;">РЎСЂРѕРє</th>
+                    <th style="text-align:left;min-width:260px;">Р—Р°РґР°С‡Р°</th>
+                    <th style="width:120px;">РџСЂРёРѕСЂРёС‚РµС‚</th>
+                    <th style="text-align:left;min-width:260px;">РљРѕРјРјРµРЅС‚Р°СЂРёР№</th>
+                    <th style="width:80px;">Р¤РѕРєСѓСЃ</th>
+                    <th style="width:100px;">Р¤Р°РєС‚</th>
+                    <th style="width:80px;">РЎС‚Р°С‚СѓСЃ</th>
+                    <th style="width:70px;">Р“РѕС‚РѕРІРѕ</th>
                   </tr>
                   </thead>
                   <tbody></tbody>
@@ -172,37 +186,37 @@
           </div>
         </section>
 
-        <!-- КОНТЕКСТНОЕ МЕНЮ -->
+        <!-- РљРћРќРўР•РљРЎРўРќРћР• РњР•РќР® -->
         <div id="taskContextMenu" class="task-context-menu">
-          <button type="button" data-action="delete">Удалить задачу</button>
+          <button type="button" data-action="delete">РЈРґР°Р»РёС‚СЊ Р·Р°РґР°С‡Сѓ</button>
         </div>
 
-        <!-- МОДАЛКА УДАЛЕНИЯ -->
+        <!-- РњРћР”РђР›РљРђ РЈР”РђР›Р•РќРРЇ -->
         <div id="deleteModalBackdrop" class="modal-backdrop">
           <div class="modal">
-            <div class="modal-title">Удалить задачу?</div>
+            <div class="modal-title">РЈРґР°Р»РёС‚СЊ Р·Р°РґР°С‡Сѓ?</div>
             <div class="modal-text">
-              Задача будет удалена из списка. Её можно будет вернуть
-              в течение 20 секунд через «Восстановить».
+              Р—Р°РґР°С‡Р° Р±СѓРґРµС‚ СѓРґР°Р»РµРЅР° РёР· СЃРїРёСЃРєР°. Р•С‘ РјРѕР¶РЅРѕ Р±СѓРґРµС‚ РІРµСЂРЅСѓС‚СЊ
+              РІ С‚РµС‡РµРЅРёРµ 20 СЃРµРєСѓРЅРґ С‡РµСЂРµР· В«Р’РѕСЃСЃС‚Р°РЅРѕРІРёС‚СЊВ».
             </div>
             <div class="modal-actions">
               <button type="button" id="deleteCancelBtn"
-                      class="habits-btn habits-btn--secondary">Отмена</button>
+                      class="habits-btn habits-btn--secondary">РћС‚РјРµРЅР°</button>
               <button type="button" id="deleteConfirmBtn"
-                      class="habits-btn habits-btn--danger">Удалить</button>
+                      class="habits-btn habits-btn--danger">РЈРґР°Р»РёС‚СЊ</button>
             </div>
           </div>
         </div>
 
-        <!-- UNDO-ТОСТ -->
+        <!-- UNDO-РўРћРЎРў -->
         <div id="undoToast" class="undo-toast">
-          <span>Задача удалена.</span>
+          <span>Р—Р°РґР°С‡Р° СѓРґР°Р»РµРЅР°.</span>
           <span class="undo-toast__timer" id="undoTimer">20</span>
           <button type="button" id="undoBtn"
-                  class="habits-btn habits-btn--secondary">Восстановить</button>
+                  class="habits-btn habits-btn--secondary">Р’РѕСЃСЃС‚Р°РЅРѕРІРёС‚СЊ</button>
         </div>
 
-        <!-- МИНИ‑КАЛЕНДАРЬ -->
+        <!-- РњРРќРвЂ‘РљРђР›Р•РќР”РђР Р¬ -->
         <div id="miniCalendarPopover" class="mini-calendar-popover">
           <div class="mini-calendar-header">
             <button type="button" class="mini-calendar-nav-btn" id="miniCalPrev">&lt;</button>
@@ -224,13 +238,13 @@
         tasks: 'tasks-tracker-tasks-v3'
     };
 
-   // ❌ localStorage полностью отключен
+   // вќЊ localStorage РїРѕР»РЅРѕСЃС‚СЊСЋ РѕС‚РєР»СЋС‡РµРЅ
 function save(key, data) {
-    // Только логируем, но не сохраняем в localStorage
-    console.log('💾 Data prepared for sync (localStorage disabled)');
+    // РўРѕР»СЊРєРѕ Р»РѕРіРёСЂСѓРµРј, РЅРѕ РЅРµ СЃРѕС…СЂР°РЅСЏРµРј РІ localStorage
+    console.log('рџ’ѕ Data prepared for sync (localStorage disabled)');
 }
 function load(key) {
-    // Не загружаем из localStorage, только с сервера
+    // РќРµ Р·Р°РіСЂСѓР¶Р°РµРј РёР· localStorage, С‚РѕР»СЊРєРѕ СЃ СЃРµСЂРІРµСЂР°
     return null;
 }
 
@@ -275,7 +289,7 @@ function formatDateDisplay(iso) {
     }
 
     function getMonthLabel(year, monthIndex) {
-        const months = ['ЯНВАРЬ','ФЕВРАЛЬ','МАРТ','АПРЕЛЬ','МАЙ','ИЮНЬ','ИЮЛЬ','АВГУСТ','СЕНТЯБРЬ','ОКТЯБРЬ','НОЯБРЬ','ДЕКАБРЬ'];
+        const months = ['РЇРќР’РђР Р¬','Р¤Р•Р’Р РђР›Р¬','РњРђР Рў','РђРџР Р•Р›Р¬','РњРђР™','РР®РќР¬','РР®Р›Р¬','РђР’Р“РЈРЎРў','РЎР•РќРўРЇР‘Р Р¬','РћРљРўРЇР‘Р Р¬','РќРћРЇР‘Р Р¬','Р”Р•РљРђР‘Р Р¬'];
         return months[monthIndex] + ' ' + year;
     }
 
@@ -328,7 +342,7 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
     const pomodoroResetBtn = document.getElementById('pomodoroResetBtn');
     const pomodoroCurrentInfo = document.getElementById('pomodoroCurrentInfo');
 
-    // Мини‑календарь
+    // РњРёРЅРёвЂ‘РєР°Р»РµРЅРґР°СЂСЊ
     const miniCalPopover = document.getElementById('miniCalendarPopover');
     const miniCalMonthLabel = document.getElementById('miniCalMonthLabel');
     const miniCalGrid = document.getElementById('miniCalGrid');
@@ -359,7 +373,7 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
     function updateTaskStats() {
     const today = getTodayISO();
     
-    // СЕГОДНЯ: только задачи ВЫПОЛНЕННЫЕ СЕГОДНЯ
+    // РЎР•Р“РћР”РќРЇ: С‚РѕР»СЊРєРѕ Р·Р°РґР°С‡Рё Р’Р«РџРћР›РќР•РќРќР«Р• РЎР•Р“РћР”РќРЇ
     let todayDone = 0;
     tasksData.forEach(t => {
         if (t.done && t.doneDate === today) {
@@ -367,10 +381,10 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
         }
     });
     
-    // НЕДЕЛЯ: Понедельник этой недели → Воскресенье
+    // РќР•Р”Р•Р›РЇ: РџРѕРЅРµРґРµР»СЊРЅРёРє СЌС‚РѕР№ РЅРµРґРµР»Рё в†’ Р’РѕСЃРєСЂРµСЃРµРЅСЊРµ
     const weekStart = new Date(today);
     const day = weekStart.getDay();
-    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1); // Понедельник
+    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1); // РџРѕРЅРµРґРµР»СЊРЅРёРє
     weekStart.setDate(diff);
     weekStart.setHours(0, 0, 0, 0);
     const weekStartISO = weekStart.toISOString().slice(0, 10);
@@ -382,7 +396,7 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
         }
     });
     
-    // МЕСЯЦ: 1-го числа → конец месяца
+    // РњР•РЎРЇР¦: 1-РіРѕ С‡РёСЃР»Р° в†’ РєРѕРЅРµС† РјРµСЃСЏС†Р°
     const monthStart = new Date(today);
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
@@ -395,7 +409,7 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
         }
     });
     
-    // ГОД: 1 января → 31 декабря
+    // Р“РћР”: 1 СЏРЅРІР°СЂСЏ в†’ 31 РґРµРєР°Р±СЂСЏ
     const yearStart = new Date(today.split('-')[0], 0, 1);
     yearStart.setHours(0, 0, 0, 0);
     const yearStartISO = yearStart.toISOString().slice(0, 10);
@@ -407,7 +421,7 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
         }
     });
     
-    // ПРОСРОЧЕНО (активные): deadline < сегодня И не выполнены
+    // РџР РћРЎР РћР§Р•РќРћ (Р°РєС‚РёРІРЅС‹Рµ): deadline < СЃРµРіРѕРґРЅСЏ Р РЅРµ РІС‹РїРѕР»РЅРµРЅС‹
     let overdueActive = 0;
     tasksData.forEach(t => {
         if (!t.done) {
@@ -418,14 +432,14 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
         }
     });
     
-    // Обновляем HTML
+    // РћР±РЅРѕРІР»СЏРµРј HTML
     todayDoneCountEl.textContent = todayDone;
     weekDoneCountEl.textContent = weekDone;
     monthDoneCountEl.textContent = monthDone;
     yearDoneCountEl.textContent = yearDone;
     
     
-    // СКРЫВАЕМ "Просрочено ✓"
+    // РЎРљР Р«Р’РђР•Рњ "РџСЂРѕСЃСЂРѕС‡РµРЅРѕ вњ“"
     const overdueDoneSection = overdueDoneCountEl.closest('.stat-item');
     if (overdueDoneSection) {
         overdueDoneSection.style.display = 'none';
@@ -436,20 +450,20 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
     function getRecurrenceLabel(type, value) {
         switch (type) {
             case 'daily':
-                return 'Каждый день';
+                return 'РљР°Р¶РґС‹Р№ РґРµРЅСЊ';
             case 'weekly':
-                return 'Каждую неделю';
+                return 'РљР°Р¶РґСѓСЋ РЅРµРґРµР»СЋ';
             case 'monthly_date':
-                return `Каждое ${value}-е число месяца`;
+                return `РљР°Р¶РґРѕРµ ${value}-Рµ С‡РёСЃР»Рѕ РјРµСЃСЏС†Р°`;
             case 'monthly_weekday':
                 const [week, weekday] = value.split(',').map(Number);
-                const weekNames = {'1': 'первый', '2': 'второй', '3': 'третий', '4': 'четвёртый', '-1': 'последний'};
-                const dayNames = ['воскресенье', 'понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу'];
-                return `Каждый ${weekNames[week.toString()]} ${dayNames[weekday]} месяца`;
+                const weekNames = {'1': 'РїРµСЂРІС‹Р№', '2': 'РІС‚РѕСЂРѕР№', '3': 'С‚СЂРµС‚РёР№', '4': 'С‡РµС‚РІС‘СЂС‚С‹Р№', '-1': 'РїРѕСЃР»РµРґРЅРёР№'};
+                const dayNames = ['РІРѕСЃРєСЂРµСЃРµРЅСЊРµ', 'РїРѕРЅРµРґРµР»СЊРЅРёРє', 'РІС‚РѕСЂРЅРёРє', 'СЃСЂРµРґСѓ', 'С‡РµС‚РІРµСЂРі', 'РїСЏС‚РЅРёС†Сѓ', 'СЃСѓР±Р±РѕС‚Сѓ'];
+                return `РљР°Р¶РґС‹Р№ ${weekNames[week.toString()]} ${dayNames[weekday]} РјРµСЃСЏС†Р°`;
             case 'yearly':
-                return 'Каждый год в ту же дату';
+                return 'РљР°Р¶РґС‹Р№ РіРѕРґ РІ С‚Сѓ Р¶Рµ РґР°С‚Сѓ';
             default:
-                return 'Настроено повторение';
+                return 'РќР°СЃС‚СЂРѕРµРЅРѕ РїРѕРІС‚РѕСЂРµРЅРёРµ';
         }
     }
 
@@ -492,14 +506,14 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
             if (task.isRecurring && task.recurrenceType) {
     const indicator = document.createElement('span');
     indicator.className = 'recurring-indicator';
-    indicator.textContent = '🔁';
+    indicator.textContent = 'рџ”Ѓ';
     
     const tooltip = document.createElement('div');
     tooltip.className = 'recurring-tooltip';
     
     const label = document.createElement('span');
     label.className = 'recurring-tooltip-label';
-    label.textContent = '🔁 Повторяется';
+    label.textContent = 'рџ”Ѓ РџРѕРІС‚РѕСЂСЏРµС‚СЃСЏ';
     
     const desc = document.createElement('span');
     desc.className = 'recurring-tooltip-desc';
@@ -543,7 +557,7 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
             const sessions = task.focusSessions || 0;
             const fb = document.createElement('span');
             fb.className = 'focus-badge';
-            fb.textContent = sessions ? `${sessions}×` : '0×';
+            fb.textContent = sessions ? `${sessions}Г—` : '0Г—';
             focusCell.appendChild(fb);
 
             const factCell = document.createElement('td');
@@ -551,12 +565,12 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
 
             const statusCell = document.createElement('td');
             if (task.done) {
-                statusCell.textContent = 'Готово';
+                statusCell.textContent = 'Р“РѕС‚РѕРІРѕ';
             } else {
                 const logicalDeadline = getDeadlineForLogic(task);
-                if (logicalDeadline && logicalDeadline < today) statusCell.textContent = 'Просрочено';
-                else if (logicalDeadline === today) statusCell.textContent = 'Сегодня';
-                else statusCell.textContent = 'В работе';
+                if (logicalDeadline && logicalDeadline < today) statusCell.textContent = 'РџСЂРѕСЃСЂРѕС‡РµРЅРѕ';
+                else if (logicalDeadline === today) statusCell.textContent = 'РЎРµРіРѕРґРЅСЏ';
+                else statusCell.textContent = 'Р’ СЂР°Р±РѕС‚Рµ';
             }
 
             const doneCell = document.createElement('td');
@@ -581,20 +595,20 @@ const overdueDoneCountEl = document.getElementById('overdueDoneCount');
     }
 
     function getPriorityText(p) {
-        if (p === 3) return 'Высокий';
-        if (p === 2) return 'Нормальный';
-        return 'Низкий';
+        if (p === 3) return 'Р’С‹СЃРѕРєРёР№';
+        if (p === 2) return 'РќРѕСЂРјР°Р»СЊРЅС‹Р№';
+        return 'РќРёР·РєРёР№';
     }
-// Рассчитывает новый deadline для повторяющейся задачи
+// Р Р°СЃСЃС‡РёС‚С‹РІР°РµС‚ РЅРѕРІС‹Р№ deadline РґР»СЏ РїРѕРІС‚РѕСЂСЏСЋС‰РµР№СЃСЏ Р·Р°РґР°С‡Рё
 function calculateNextDeadline(template, newDate) {
     if (!template.deadline) return '';
 
-    // Разница в днях между датой и deadline шаблона
+    // Р Р°Р·РЅРёС†Р° РІ РґРЅСЏС… РјРµР¶РґСѓ РґР°С‚РѕР№ Рё deadline С€Р°Р±Р»РѕРЅР°
     const templateDate = new Date(template.date);
     const templateDeadline = new Date(template.deadline);
     const daysDiff = Math.floor((templateDeadline - templateDate) / (1000 * 60 * 60 * 24));
 
-    // Добавляем эту разницу к новой дате
+    // Р”РѕР±Р°РІР»СЏРµРј СЌС‚Сѓ СЂР°Р·РЅРёС†Сѓ Рє РЅРѕРІРѕР№ РґР°С‚Рµ
     const newDateObj = new Date(newDate);
     newDateObj.setDate(newDateObj.getDate() + daysDiff);
 
@@ -602,7 +616,7 @@ function calculateNextDeadline(template, newDate) {
 }
 
 
-    // Генерирует будущие повторения на месяц вперёд
+    // Р“РµРЅРµСЂРёСЂСѓРµС‚ Р±СѓРґСѓС‰РёРµ РїРѕРІС‚РѕСЂРµРЅРёСЏ РЅР° РјРµСЃСЏС† РІРїРµСЂС‘Рґ
     function checkRecurringTasks() {
         const today = getTodayISO();
         const oneMonthLater = addDaysISO(today, 30);
@@ -632,7 +646,7 @@ function calculateNextDeadline(template, newDate) {
                     const newTask = {
     id: Date.now() + Math.floor(Math.random() * 1000000),
     date: currentDate,
-    deadline: calculateNextDeadline(template, currentDate),  // ✅ НОВАЯ ФУНКЦИЯ!
+    deadline: calculateNextDeadline(template, currentDate),  // вњ… РќРћР’РђРЇ Р¤РЈРќРљР¦РРЇ!
                         title: template.title,
                         priority: template.priority,
                         comment: template.comment,
@@ -652,7 +666,7 @@ function calculateNextDeadline(template, newDate) {
                 const nextDate = calculateNextRecurrence(template, currentDate);
 
                 if (nextDate === currentDate) {
-                    console.error('Бесконечный цикл предотвращён:', template);
+                    console.error('Р‘РµСЃРєРѕРЅРµС‡РЅС‹Р№ С†РёРєР» РїСЂРµРґРѕС‚РІСЂР°С‰С‘РЅ:', template);
                     break;
                 }
 
@@ -660,7 +674,7 @@ function calculateNextDeadline(template, newDate) {
             }
 
             if (safetyCounter >= MAX_ITERATIONS) {
-                console.warn('Достигнут лимит итераций для задачи:', template.title);
+                console.warn('Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ РёС‚РµСЂР°С†РёР№ РґР»СЏ Р·Р°РґР°С‡Рё:', template.title);
             }
         });
 
@@ -669,7 +683,7 @@ function calculateNextDeadline(template, newDate) {
         }
     }
 
-    // ОДНА ВЕРСИЯ calculateNextRecurrence
+    // РћР”РќРђ Р’Р•Р РЎРРЇ calculateNextRecurrence
     function calculateNextRecurrence(task, lastDateISO) {
         const lastDate = new Date(lastDateISO);
 
@@ -689,7 +703,7 @@ function calculateNextDeadline(template, newDate) {
     const nextMonth = new Date(lastDate);
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     
-    // Если в следующем месяце меньше дней (например, 31 → 28 февраля)
+    // Р•СЃР»Рё РІ СЃР»РµРґСѓСЋС‰РµРј РјРµСЃСЏС†Рµ РјРµРЅСЊС€Рµ РґРЅРµР№ (РЅР°РїСЂРёРјРµСЂ, 31 в†’ 28 С„РµРІСЂР°Р»СЏ)
     const maxDay = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
     nextMonth.setDate(Math.min(day, maxDay));
     
@@ -714,7 +728,7 @@ function calculateNextDeadline(template, newDate) {
         }
     }
 
-    // Получить N-й день недели в месяце
+    // РџРѕР»СѓС‡РёС‚СЊ N-Р№ РґРµРЅСЊ РЅРµРґРµР»Рё РІ РјРµСЃСЏС†Рµ
     function getNthWeekdayOfMonth(year, month, n, weekday) {
         const firstDay = new Date(year, month, 1);
         const firstWeekday = firstDay.getDay();
@@ -733,13 +747,13 @@ function calculateNextDeadline(template, newDate) {
         }
     }
 
-  // Сохранение задач (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+  // РЎРѕС…СЂР°РЅРµРЅРёРµ Р·Р°РґР°С‡ (РРЎРџР РђР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ)
 async function saveTasks() {
     save(STORAGE.tasks, tasksData);
 
     const token = localStorage.getItem('app-auth-token');
     if (!token) {
-        console.log('📱 Нет токена — используется только localStorage');
+        console.log('рџ“± РќРµС‚ С‚РѕРєРµРЅР° вЂ” РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ С‚РѕР»СЊРєРѕ localStorage');
         return;
     }
 
@@ -754,12 +768,12 @@ async function saveTasks() {
         });
 
         if (response.ok) {
-            console.log('✅ Задачи синхронизированы с сервером');
+            console.log('вњ… Р—Р°РґР°С‡Рё СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°РЅС‹ СЃ СЃРµСЂРІРµСЂРѕРј');
         } else {
-            console.warn('⚠️ Sync вернул ошибку:', response.status);
+            console.warn('вљ пёЏ Sync РІРµСЂРЅСѓР» РѕС€РёР±РєСѓ:', response.status);
         }
     } catch (err) {
-        console.log('📱 Синхронизация недоступна (используется localStorage)');
+        console.log('рџ“± РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ РЅРµРґРѕСЃС‚СѓРїРЅР° (РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ localStorage)');
     }
 }
 
@@ -770,7 +784,7 @@ async function saveTasks() {
         active.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t.id;
-            opt.textContent = t.title || '(без названия)';
+            opt.textContent = t.title || '(Р±РµР· РЅР°Р·РІР°РЅРёСЏ)';
             pomodoroTaskSelect.appendChild(opt);
         });
         if (pomodoroActiveTaskId && !active.some(t => t.id === pomodoroActiveTaskId)) {
@@ -795,7 +809,7 @@ async function saveTasks() {
         }
         const sessions = task.focusSessions || 0;
         pomodoroCurrentInfo.textContent =
-            `Фокус на: ${task.title || '(без названия)'} · сессий: ${sessions}`;
+            `Р¤РѕРєСѓСЃ РЅР°: ${task.title || '(Р±РµР· РЅР°Р·РІР°РЅРёСЏ)'} В· СЃРµСЃСЃРёР№: ${sessions}`;
     }
 
     function formatSecondsToMMSS(totalSeconds) {
@@ -809,7 +823,7 @@ async function saveTasks() {
         taskDateDisplay.dataset.iso = today;
         taskDateDisplay.textContent = formatDateDisplay(today);
         taskDeadlineDisplay.dataset.iso = '';
-        taskDeadlineDisplay.textContent = '—';
+        taskDeadlineDisplay.textContent = 'вЂ”';
     }
     
   function showNotification(message, type = 'success') {
@@ -840,9 +854,9 @@ async function saveTasks() {
   async function addTaskFromForm(e) {
   e.preventDefault();
 
-  // Проверка авторизации
+  // РџСЂРѕРІРµСЂРєР° Р°РІС‚РѕСЂРёР·Р°С†РёРё
   if (!window.isUserLoggedIn?.() && !localStorage.getItem('app-auth-token')) {
-    showNotification('Пожалуйста, войдите в аккаунт', 'error');
+    showNotification('РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РІРѕР№РґРёС‚Рµ РІ Р°РєРєР°СѓРЅС‚', 'error');
     if (window.openAuthModal) {
       window.openAuthModal();
     }
@@ -878,7 +892,7 @@ async function saveTasks() {
   }
 
   if (!title) {
-    alert('Введите название задачи');
+    alert('Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ Р·Р°РґР°С‡Рё');
     return;
   }
 
@@ -896,7 +910,7 @@ async function saveTasks() {
     recurrenceValue
   };
 
-  console.log('📤 ОТПРАВЛЯЕМ НА СЕРВЕР:', {
+  console.log('рџ“¤ РћРўРџР РђР’Р›РЇР•Рњ РќРђ РЎР•Р Р’Р•Р :', {
     isRecurring,
     recurrenceType,
     recurrenceValue,
@@ -907,7 +921,7 @@ async function saveTasks() {
   try {
     const token = localStorage.getItem('app-auth-token');
     if (!token) {
-      showNotification('Необходима авторизация', 'error');
+      showNotification('РќРµРѕР±С…РѕРґРёРјР° Р°РІС‚РѕСЂРёР·Р°С†РёСЏ', 'error');
       return;
     }
 
@@ -922,14 +936,14 @@ async function saveTasks() {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Ошибка добавления задачи');
+      throw new Error(error.error || 'РћС€РёР±РєР° РґРѕР±Р°РІР»РµРЅРёСЏ Р·Р°РґР°С‡Рё');
     }
 
     const savedTask = await response.json();
     
-    console.log('📥 ПОЛУЧЕНО С СЕРВЕРА:', savedTask);
+    console.log('рџ“Ґ РџРћР›РЈР§Р•РќРћ РЎ РЎР•Р Р’Р•Р Рђ:', savedTask);
 
-    // Нормализуем ответ
+    // РќРѕСЂРјР°Р»РёР·СѓРµРј РѕС‚РІРµС‚
     const normalizedTask = {
       id: savedTask.id || Date.now(),
       date: savedTask.date ? savedTask.date.split('T')[0] : dateIso,
@@ -947,16 +961,16 @@ async function saveTasks() {
       templateId: savedTask.templateId || savedTask.template_id || null
     };
 
-    // Добавляем в массив
+    // Р”РѕР±Р°РІР»СЏРµРј РІ РјР°СЃСЃРёРІ
     tasksData.push(normalizedTask);
 
-    // Если повторяющаяся - генерируем будущие задачи
+    // Р•СЃР»Рё РїРѕРІС‚РѕСЂСЏСЋС‰Р°СЏСЃСЏ - РіРµРЅРµСЂРёСЂСѓРµРј Р±СѓРґСѓС‰РёРµ Р·Р°РґР°С‡Рё
     if (normalizedTask.isRecurring && normalizedTask.recurrenceType) {
-      console.log('🔁 Генерируем повторяющиеся задачи...');
+      console.log('рџ”Ѓ Р“РµРЅРµСЂРёСЂСѓРµРј РїРѕРІС‚РѕСЂСЏСЋС‰РёРµСЃСЏ Р·Р°РґР°С‡Рё...');
       checkRecurringTasks();
     }
 
-    // Очищаем форму
+    // РћС‡РёС‰Р°РµРј С„РѕСЂРјСѓ
     taskTitleInput.value = '';
     taskCommentInput.value = '';
     isRecurringCheckbox.checked = false;
@@ -965,15 +979,15 @@ async function saveTasks() {
     recurrenceHintWrapper.style.display = 'none';
     resetFormDates();
 
-    // Перерисовываем
+    // РџРµСЂРµСЂРёСЃРѕРІС‹РІР°РµРј
     renderTasks();
     renderPomodoroTaskSelect();
     updateTaskStats();
-    showNotification('Задача добавлена!', 'success');
+    showNotification('Р—Р°РґР°С‡Р° РґРѕР±Р°РІР»РµРЅР°!', 'success');
 
   } catch (error) {
-    console.error('❌ Ошибка добавления задачи:', error);
-    showNotification('Ошибка: ' + error.message, 'error');
+    console.error('вќЊ РћС€РёР±РєР° РґРѕР±Р°РІР»РµРЅРёСЏ Р·Р°РґР°С‡Рё:', error);
+    showNotification('РћС€РёР±РєР°: ' + error.message, 'error');
   }
 }
 
@@ -1057,7 +1071,7 @@ async function setTaskDone(task, done) {
         }
     }
 
-  // Удаление задачи (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+  // РЈРґР°Р»РµРЅРёРµ Р·Р°РґР°С‡Рё (РРЎРџР РђР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ)
 async function deleteTaskById(id) {
     const idx = tasksData.findIndex(t => t.id === id);
     if (idx === -1) return;
@@ -1068,7 +1082,7 @@ async function deleteTaskById(id) {
     await saveTasks();
 
     
-    // Удаляем на сервере
+    // РЈРґР°Р»СЏРµРј РЅР° СЃРµСЂРІРµСЂРµ
     const token = localStorage.getItem('app-auth-token');
     if (token) {
         try {
@@ -1082,12 +1096,12 @@ async function deleteTaskById(id) {
             });
             
             if (response.ok) {
-                console.log(`✅ Задача удалена на сервере: ${id}`);
+                console.log(`вњ… Р—Р°РґР°С‡Р° СѓРґР°Р»РµРЅР° РЅР° СЃРµСЂРІРµСЂРµ: ${id}`);
             } else {
-                console.warn(`⚠️ Не удалось удалить на сервере: ${response.status}`);
+                console.warn(`вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РЅР° СЃРµСЂРІРµСЂРµ: ${response.status}`);
             }
         } catch (err) {
-            console.log('📱 Не удалось синхронизировать удаление');
+            console.log('рџ“± РќРµ СѓРґР°Р»РѕСЃСЊ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°С‚СЊ СѓРґР°Р»РµРЅРёРµ');
         }
     }
     
@@ -1116,7 +1130,7 @@ async function restoreLastDeleted() {
         if (!pomodoroTaskSelect.value) {
             const active = tasksData.filter(t => !t.done);
             if (!active.length) {
-                alert('Нет активных задач для фокуса');
+                alert('РќРµС‚ Р°РєС‚РёРІРЅС‹С… Р·Р°РґР°С‡ РґР»СЏ С„РѕРєСѓСЃР°');
                 return;
             }
             pomodoroActiveTaskId = active[0].id;
@@ -1137,7 +1151,7 @@ async function restoreLastDeleted() {
             }
         }, 1000);
 
-        pomodoroToggleBtn.textContent = 'Пауза';
+        pomodoroToggleBtn.textContent = 'РџР°СѓР·Р°';
     }
 
 async function stopPomodoro(finished) {
@@ -1156,7 +1170,7 @@ async function stopPomodoro(finished) {
     }
 
     updatePomodoroTimerUI();
-    pomodoroToggleBtn.textContent = 'Старт';
+    pomodoroToggleBtn.textContent = 'РЎС‚Р°СЂС‚';
 }
 
 
@@ -1168,7 +1182,7 @@ async function stopPomodoro(finished) {
         const durationMin = Math.max(1, Math.min(120, Number(pomodoroDurationInput.value || '25')));
         pomodoroRemaining = durationMin * 60;
         updatePomodoroTimerUI();
-        pomodoroToggleBtn.textContent = 'Старт';
+        pomodoroToggleBtn.textContent = 'РЎС‚Р°СЂС‚';
     }
 
     function updatePomodoroTimerUI() {
@@ -1200,12 +1214,12 @@ async function stopPomodoro(finished) {
         const newVal = commit ? cell.textContent.trim() : (cell.dataset.oldValue || '');
         cell.textContent = newVal;
         task[field] = newVal;
-        await saveTasks();  // ← С AWAIT!
+        await saveTasks();  // в†ђ РЎ AWAIT!
         renderTasks();
     }
 
 
-// Создание ISO даты без проблем с timezone
+// РЎРѕР·РґР°РЅРёРµ ISO РґР°С‚С‹ Р±РµР· РїСЂРѕР±Р»РµРј СЃ timezone
     function makeISODate(year, monthIndex, day) {
       const y = String(year);
       const m = String(monthIndex + 1).padStart(2, '0');
@@ -1213,12 +1227,12 @@ async function stopPomodoro(finished) {
       return `${y}-${m}-${d}`;
     }
     
-    // Мини‑календарь
+    // РњРёРЅРёвЂ‘РєР°Р»РµРЅРґР°СЂСЊ
 
 function buildMiniCalendarGrid() {
   miniCalGrid.innerHTML = '';
   
-  const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const weekdays = ['РџРЅ', 'Р’С‚', 'РЎСЂ', 'Р§С‚', 'РџС‚', 'РЎР±', 'Р’СЃ'];
   weekdays.forEach(w => {
     const div = document.createElement('div');
     div.className = 'mini-calendar-weekday';
@@ -1231,25 +1245,25 @@ function buildMiniCalendarGrid() {
   miniCalMonthLabel.textContent = getMonthLabel(year, monthIndex);
 
   const firstDay = new Date(year, monthIndex, 1);
-  const firstWeekday = (firstDay.getDay() + 6) % 7; // Понедельник = 0
+  const firstWeekday = (firstDay.getDay() + 6) % 7; // РџРѕРЅРµРґРµР»СЊРЅРёРє = 0
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
   const todayIso = getTodayISO();
   const selectedIso = miniCalState.selectedIso || null;
 
-  // Пустые ячейки перед первым днём
+  // РџСѓСЃС‚С‹Рµ СЏС‡РµР№РєРё РїРµСЂРµРґ РїРµСЂРІС‹Рј РґРЅС‘Рј
   for (let i = 0; i < firstWeekday; i++) {
     const cell = document.createElement('div');
     cell.className = 'mini-calendar-cell mini-calendar-cell--empty';
     miniCalGrid.appendChild(cell);
   }
 
-  // Дни месяца
+  // Р”РЅРё РјРµСЃСЏС†Р°
   for (let d = 1; d <= daysInMonth; d++) {
     const cell = document.createElement('div');
     cell.className = 'mini-calendar-cell';
     cell.textContent = d;
 
-    // ИСПОЛЬЗУЕМ ИСПРАВЛЕННУЮ ФУНКЦИЮ
+    // РРЎРџРћР›Р¬Р—РЈР•Рњ РРЎРџР РђР’Р›Р•РќРќРЈР® Р¤РЈРќРљР¦РР®
     const iso = makeISODate(year, monthIndex, d);
 
     if (iso === todayIso) {
@@ -1305,7 +1319,7 @@ function buildMiniCalendarGrid() {
     if (!role) return;
 
     if (!taskId) {
-        // Форма добавления
+        // Р¤РѕСЂРјР° РґРѕР±Р°РІР»РµРЅРёСЏ
         if (role === 'date') {
             taskDateDisplay.dataset.iso = iso;
             taskDateDisplay.textContent = formatDateDisplay(iso);
@@ -1318,7 +1332,7 @@ function buildMiniCalendarGrid() {
             taskDeadlineDisplay.textContent = formatDateDisplay(iso);
         }
     } else {
-        // Редактирование задачи
+        // Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ Р·Р°РґР°С‡Рё
         const task = tasksData.find(t => t.id === taskId);
         if (!task) return;
         if (role === 'date') {
@@ -1326,12 +1340,12 @@ function buildMiniCalendarGrid() {
         } else if (role === 'deadline') {
             task.deadline = iso;
         }
-        await saveTasks();  // ← ТОЛЬКО ОДИН await
+        await saveTasks();  // в†ђ РўРћР›Р¬РљРћ РћР”РРќ await
         renderTasks();
     }
 }
 
-    // Обновить подсказку повторения
+    // РћР±РЅРѕРІРёС‚СЊ РїРѕРґСЃРєР°Р·РєСѓ РїРѕРІС‚РѕСЂРµРЅРёСЏ
     function updateRecurrenceHint() {
         const dateIso = taskDateDisplay.dataset.iso || getTodayISO();
         const type = recurrenceTypeSelect.value;
@@ -1346,28 +1360,28 @@ function buildMiniCalendarGrid() {
         const day = date.getDate();
         const month = date.getMonth();
         const weekday = date.getDay();
-        const weekdayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-        const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 
-                            'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+        const weekdayNames = ['Р’СЃ', 'РџРЅ', 'Р’С‚', 'РЎСЂ', 'Р§С‚', 'РџС‚', 'РЎР±'];
+        const monthNames = ['СЏРЅРІ', 'С„РµРІ', 'РјР°СЂ', 'Р°РїСЂ', 'РјР°Р№', 'РёСЋРЅ', 
+                            'РёСЋР»', 'Р°РІРі', 'СЃРµРЅ', 'РѕРєС‚', 'РЅРѕСЏ', 'РґРµРє'];
 
         let hint = '';
 
         switch (type) {
             case 'daily':
-                hint = '📅 Задача будет повторяться ежедневно';
+                hint = 'рџ“… Р—Р°РґР°С‡Р° Р±СѓРґРµС‚ РїРѕРІС‚РѕСЂСЏС‚СЊСЃСЏ РµР¶РµРґРЅРµРІРЅРѕ';
                 break;
             case 'weekly':
-                hint = `📅 Каждый ${weekdayNames[weekday]} недели`;
+                hint = `рџ“… РљР°Р¶РґС‹Р№ ${weekdayNames[weekday]} РЅРµРґРµР»Рё`;
                 break;
             case 'monthly_date':
-                hint = `📅 Каждое ${day}-е число месяца`;
+                hint = `рџ“… РљР°Р¶РґРѕРµ ${day}-Рµ С‡РёСЃР»Рѕ РјРµСЃСЏС†Р°`;
                 break;
             case 'monthly_weekday':
                 const weekOfMonth = Math.ceil(day / 7);
-                hint = `📅 Каждый ${weekOfMonth}-й ${weekdayNames[weekday]} месяца`;
+                hint = `рџ“… РљР°Р¶РґС‹Р№ ${weekOfMonth}-Р№ ${weekdayNames[weekday]} РјРµСЃСЏС†Р°`;
                 break;
             case 'yearly':
-                hint = `📅 Ежегодно ${day} ${monthNames[month]}`;
+                hint = `рџ“… Р•Р¶РµРіРѕРґРЅРѕ ${day} ${monthNames[month]}`;
                 break;
         }
 
@@ -1375,13 +1389,13 @@ function buildMiniCalendarGrid() {
         recurrenceHintWrapper.style.display = 'block';
     }
 
-// При загрузке страницы
+// РџСЂРё Р·Р°РіСЂСѓР·РєРµ СЃС‚СЂР°РЅРёС†С‹
 async function loadTasksFromServer() {
   try {
     const response = await fetch('http://mindandmotion.ru:5000/api/tasks');
     const serverTasks = await response.json();
     
-    console.log('✅ Tasks from server:', serverTasks);
+    console.log('вњ… Tasks from server:', serverTasks);
     console.log('First task structure:', serverTasks[0]);
     
     tasksData = serverTasks.map(t => ({
@@ -1394,27 +1408,27 @@ async function loadTasksFromServer() {
     done: Boolean(t.done),
     doneDate: t.doneDate ? t.doneDate.split('T')[0] : null,
     focusSessions: Number(t.focusSessions || 0),
-    isRecurring: Boolean(t.isRecurring),         // ← ВАЖНО!
-    recurrenceType: t.recurrenceType || '',      // ← ВАЖНО!
-    recurrenceValue: t.recurrenceValue || '',    // ← ВАЖНО!
-    isGenerated: Boolean(t.isGenerated),         // ← ВАЖНО!
-    templateId: t.templateId || null             // ← ВАЖНО!
+    isRecurring: Boolean(t.isRecurring),         // в†ђ Р’РђР–РќРћ!
+    recurrenceType: t.recurrenceType || '',      // в†ђ Р’РђР–РќРћ!
+    recurrenceValue: t.recurrenceValue || '',    // в†ђ Р’РђР–РќРћ!
+    isGenerated: Boolean(t.isGenerated),         // в†ђ Р’РђР–РќРћ!
+    templateId: t.templateId || null             // в†ђ Р’РђР–РќРћ!
 }));
     
     renderTasks();
   } catch (err) {
-    console.error('❌ Ошибка загрузки:', err);
+    console.error('вќЊ РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё:', err);
   }
 }
 
 
 async function initializeApp() {
-    console.log('📱 Инициализация...');
+    console.log('рџ“± РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ...');
 
     const token = localStorage.getItem('app-auth-token');
 
     if (!token) {
-        console.log('⚠️ Нет токена. Пустой список.');
+        console.log('вљ пёЏ РќРµС‚ С‚РѕРєРµРЅР°. РџСѓСЃС‚РѕР№ СЃРїРёСЃРѕРє.');
         tasksData = [];
         renderTasks();
         renderPomodoroTaskSelect();
@@ -1434,7 +1448,7 @@ async function initializeApp() {
         if (response.ok) {
     const serverTasks = await response.json();
     
-    // ✅ НОРМАЛИЗУЕМ ВСЕ ДАТЫ
+    // вњ… РќРћР РњРђР›РР—РЈР•Рњ Р’РЎР• Р”РђРўР«
 tasksData = serverTasks.map(t => ({
     id: t.id,
     date: t.date ? t.date.split('T')[0] : '',
@@ -1445,21 +1459,21 @@ tasksData = serverTasks.map(t => ({
     done: Boolean(t.done),
     doneDate: t.doneDate ? t.doneDate.split('T')[0] : null,
     focusSessions: Number(t.focusSessions || 0),
-    isRecurring: Boolean(t.isRecurring),         // ← ВАЖНО!
-    recurrenceType: t.recurrenceType || '',      // ← ВАЖНО!
-    recurrenceValue: t.recurrenceValue || '',    // ← ВАЖНО!
-    isGenerated: Boolean(t.isGenerated),         // ← ВАЖНО!
-    templateId: t.templateId || null             // ← ВАЖНО!
+    isRecurring: Boolean(t.isRecurring),         // в†ђ Р’РђР–РќРћ!
+    recurrenceType: t.recurrenceType || '',      // в†ђ Р’РђР–РќРћ!
+    recurrenceValue: t.recurrenceValue || '',    // в†ђ Р’РђР–РќРћ!
+    isGenerated: Boolean(t.isGenerated),         // в†ђ Р’РђР–РќРћ!
+    templateId: t.templateId || null             // в†ђ Р’РђР–РќРћ!
 }));
     
-    console.log(`✅ Загружено ${tasksData.length} задач`);
+    console.log(`вњ… Р—Р°РіСЂСѓР¶РµРЅРѕ ${tasksData.length} Р·Р°РґР°С‡`);
 }
  else {
-            console.warn(`⚠️ Ошибка сервера: ${response.status}`);
+            console.warn(`вљ пёЏ РћС€РёР±РєР° СЃРµСЂРІРµСЂР°: ${response.status}`);
             tasksData = [];
         }
     } catch (err) {
-        console.error('❌ Ошибка загрузки:', err);
+        console.error('вќЊ РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё:', err);
         tasksData = [];
     }
 
@@ -1469,11 +1483,11 @@ tasksData = serverTasks.map(t => ({
     checkRecurringTasks();
 }
 
-// ✅ ДЛЯ ОТЛАДКИ
+// вњ… Р”Р›РЇ РћРўР›РђР”РљР
 window.debugTasksData = function() {
-    console.log('📦 Всего задач:', tasksData.length);
+    console.log('рџ“¦ Р’СЃРµРіРѕ Р·Р°РґР°С‡:', tasksData.length);
     tasksData.forEach((t, i) => {
-        console.log(`Задача ${i}:`, {
+        console.log(`Р—Р°РґР°С‡Р° ${i}:`, {
             id: t.id,
             title: t.title,
             date: t.date,
@@ -1485,17 +1499,17 @@ window.debugTasksData = function() {
     });
 };
 
-// ✅ ВЫЗОВ ИНИЦИАЛИЗАЦИИ + ВСЕ СОБЫТИЯ
+// вњ… Р’Р«Р—РћР’ РРќРР¦РРђР›РР—РђР¦РР + Р’РЎР• РЎРћР‘Р«РўРРЇ
 (async function() {
     await initializeApp();
 
-    // ========== СОБЫТИЯ ==========
+    // ========== РЎРћР‘Р«РўРРЇ ==========
     taskForm.addEventListener('submit', addTaskFromForm);
 
     toggleDoneTasksBtn.addEventListener('click', function(e){
         e.preventDefault();
         showDone = !showDone;
-        toggleDoneTasksBtn.textContent = showDone ? 'Скрыть выполненные' : 'Показать выполненные';
+        toggleDoneTasksBtn.textContent = showDone ? 'РЎРєСЂС‹С‚СЊ РІС‹РїРѕР»РЅРµРЅРЅС‹Рµ' : 'РџРѕРєР°Р·Р°С‚СЊ РІС‹РїРѕР»РЅРµРЅРЅС‹Рµ';
         renderTasks();
     });
 
@@ -1699,7 +1713,7 @@ window.debugTasksData = function() {
     });
 })();
 
-})(); // Закрываем (function(){
+})(); // Р—Р°РєСЂС‹РІР°РµРј (function(){
 </script>
 </body>
 </html>
