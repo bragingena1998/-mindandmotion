@@ -1,0 +1,283 @@
+/* ===== Global styles from habits-app/common.css ===== */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg-main);
+  background-attachment: fixed;
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+/* App container */
+#root {
+  min-height: 100vh;
+}
+
+.app-root {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 24px;
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 768px) {
+  .app-root {
+    padding: 12px;
+  }
+}
+
+/* Контейнер, ограничивающий общую ширину интерфейса */
+.app-shell {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ===== Page structure ===== */
+.page-content {
+  padding: 0;
+}
+
+.page-inner {
+  width: 100%;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 18px;
+  }
+}
+
+/* ===== Block component ===== */
+.block {
+  background:
+    radial-gradient(circle at top left, #1e1b4b 0, #020617 60%);
+  border-radius: 18px;
+  padding: 18px 18px 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(167, 139, 250, 0.6);
+  box-shadow:
+    0 0 24px var(--accent-soft),
+    0 0 0 1px rgba(15, 23, 42, 0.9) inset;
+}
+
+.block-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e5e7eb;
+}
+
+/* ===== Buttons ===== */
+.habits-btn {
+  padding: 6px 18px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: radial-gradient(circle at top, var(--accent-1), #020617 75%);
+  color: var(--accent-text);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow:
+    0 0 18px var(--accent-soft),
+    0 0 0 1px rgba(55, 48, 163, 0.8) inset;
+  transition: 0.18s ease-out;
+}
+
+.habits-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 24px var(--accent-soft),
+    0 0 0 1px rgba(55, 48, 163, 0.9) inset;
+}
+
+.habits-btn:active {
+  transform: translateY(0);
+}
+
+/* ===== Life progress bars ===== */
+.life-time-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .life-time-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.life-time-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at top left, rgba(30, 64, 175, 0.35) 0, #020617 65%);
+  box-shadow:
+    0 0 0 1px rgba(30, 64, 175, 0.7),
+    0 16px 32px rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.life-time-item__label {
+  font-size: 11px;
+  color: #c4b5fd;
+  margin-bottom: 4px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.life-time-item__value {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #fbbf24;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.8);
+}
+
+.life-time-item__bar,
+.personal-year-bar {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  border-radius: 999px;
+  overflow: hidden;
+  background:
+    linear-gradient(#020617, #020617) padding-box,
+    linear-gradient(90deg, #4c1d95, #1e293b) border-box;
+  border: 1px solid transparent;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 12px 22px rgba(0, 0, 0, 0.85) inset;
+  transition: box-shadow 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.life-time-item__bar-fill,
+.personal-year-bar__fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  box-shadow: 0 0 26px var(--accent-soft);
+  transition: width 0.35s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.life-time-item__bar-fill span,
+.personal-year-bar__fill span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #020617;
+}
+
+/* ===== AUTH STYLES ===== */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: radial-gradient(circle at top left, #1e1b4b 0, #020617 60%);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--accent-soft);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95);
+  padding: 32px;
+}
+
+.auth-title {
+  margin: 0 0 24px 0;
+  font-size: 22px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-text);
+}
+
+.auth-error {
+  padding: 12px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(251, 113, 133, 0.2);
+  border: 1px solid rgba(251, 113, 133, 0.4);
+  color: #fb7185;
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.auth-link {
+  color: var(--accent-border);
+  text-decoration: none;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+/* ===== Utility classes ===== */
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: var(--text-main);
+  font-size: 18px;
+}
+
+.page-placeholder {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.page-placeholder h1 {
+  font-size: 24px;
+  margin-bottom: 16px;
+  color: var(--text-main);
+}
