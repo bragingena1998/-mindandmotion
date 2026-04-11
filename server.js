@@ -9,9 +9,10 @@ const app = express();
 
 app.use(express.json());
 app.use(cors({
-  origin: '*',
+  origin: ['http://localhost:3001', 'https://mindandmotion.ru'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 // Логирование всех запросов
