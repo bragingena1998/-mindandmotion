@@ -70,6 +70,7 @@ function priorityNumberToText(num: number): 'low' | 'medium' | 'high' {
 
 // API → Frontend
 export function adaptTaskFromAPI(dbTask: any): Task {
+  console.log('[DEBUG adaptTask]', JSON.stringify(dbTask).slice(0, 300));
   return {
     id: dbTask.id,
     title: dbTask.title || '',
@@ -204,6 +205,7 @@ export async function deleteTask(taskId: number): Promise<void> {
 export async function fetchFolders(): Promise<Folder[]> {
   const response = await apiClient.get('/folders');
   const data = response.data;
+  console.log('[DEBUG folders]', JSON.stringify(data.folders || data).slice(0, 300));
   return data.folders || data;
 }
 

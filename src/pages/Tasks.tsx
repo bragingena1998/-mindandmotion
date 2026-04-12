@@ -36,8 +36,8 @@ function calculateStats(allTasks: Task[]) {
   const today = new Date()
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
 
-  // СЕГОДНЯ: все задачи с датой <= сегодня (просрочка + сегодня)
-  const todayPool = allTasks.filter(t => t.date && t.date.substring(0,10) <= todayStr)
+  // [3] ФИКС: СЕГОДНЯ — только сегодня, без просроченных
+  const todayPool = allTasks.filter(t => t.date && t.date.substring(0,10) === todayStr)
   const todayDone = todayPool.filter(t => t.done === true).length
   const todayTotal = todayPool.length
 
@@ -198,6 +198,7 @@ export default function Tasks() {
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null);
   const [scrollToSection, setScrollToSection] = useState<string | null>(null);
   // БАГ 5 FIX: Состояние текущего месяца для архива
   const [currentMonth, setCurrentMonth] = useState<string>(getCurrentMonth());
@@ -225,7 +226,11 @@ export default function Tasks() {
       const folderId = selectedFolder === 'all' ? undefined : selectedFolder;
       // БАГ 5 FIX: Передаем текущий месяц для загрузки архива
       const data = await fetchTasks(folderId, currentMonth);
-      setTasks(data);
+      // [2] ФИКС: клиентская фильтрация как страховка
+      const filtered = folderId
+        ? data.filter((t: Task) => t.folderId === folderId)
+        : data;
+      setTasks(filtered);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка загрузки');
     } finally {
@@ -302,12 +307,20 @@ export default function Tasks() {
     }
   };
 
-  const handleDeleteTask = async (id: number) => {
+  // [4] ФИКС: показываем модалку подтверждения вместо immediate delete
+  const handleDeleteTask = (id: number) => {
+    setDeletingTaskId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingTaskId) return;
     try {
-      await deleteTask(id);
-      setTasks(prev => prev.filter(task => task.id !== id));
-    } catch (err) {
+      await deleteTask(deletingTaskId);
+      setTasks(prev => prev.filter(task => task.id !== deletingTaskId));
+    } catch {
       alert('Не удалось удалить задачу');
+    } finally {
+      setDeletingTaskId(null);
     }
   };
 
@@ -493,6 +506,48 @@ export default function Tasks() {
         folders={folders}
         editingTask={editingTask}
       />
+
+      {/* [4] ФИКС: модалка подтверждения удаления */}
+      {deletingTaskId !== null && (
+        <div className="modal-overlay" onClick={() => setDeletingTaskId(null)}>
+          <div className="modal-content modal-confirm" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Удалить задачу?</h2>
+              <button className="modal-close" onClick={() => setDeletingTaskId(null)}>✕</button>
+            </div>
+            <p style={{ color: 'var(--text-muted)', margin: '12px 0 20px', fontSize: '14px', lineHeight: 1.5 }}>
+              Это действие нельзя отменить.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setDeletingTaskId(null)}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px',
+                  border: '1px solid var(--accent-border)',
+                  background: 'transparent', color: 'var(--text-muted)',
+                  cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: '0.05em'
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={confirmDelete}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px',
+                  border: 'none',
+                  background: 'rgba(251,113,133,0.18)',
+                  color: '#fb7185',
+                  cursor: 'pointer', fontSize: '13px', fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.05em'
+                }}
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

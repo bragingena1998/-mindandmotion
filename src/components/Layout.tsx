@@ -111,19 +111,32 @@ export default function Layout() {
           <Outlet />
         </main>
 
-        {/* Mobile bottom nav (alternative to hamburger) */}
+        {/* [5] ФИКС: Mobile bottom nav с центральной кнопкой Дашборд */}
         {isMobile && !isMobileMenuOpen && (
           <nav className="mobile-bottom-nav">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`mobile-bottom-nav__item ${isActive(item.path) ? 'active' : ''}`}
-              >
-                <item.icon size={20} />
-                <span>{item.label}</span>
-              </Link>
-            ))}
+            <Link to="/tasks" className={`mobile-bottom-nav__item ${isActive('/tasks') ? 'active' : ''}`}>
+              <CheckSquare size={20} />
+              <span>Задачи</span>
+            </Link>
+            <Link to="/habits" className={`mobile-bottom-nav__item ${isActive('/habits') ? 'active' : ''}`}>
+              <Zap size={20} />
+              <span>Привычки</span>
+            </Link>
+
+            <Link to="/" className="mobile-bottom-nav__center-wrap">
+              <div className={`mobile-bottom-nav__center-btn ${isActive('/') ? 'active' : ''}`}>
+                <LayoutDashboard size={26} />
+              </div>
+            </Link>
+
+            <Link to="/calendar" className={`mobile-bottom-nav__item ${isActive('/calendar') ? 'active' : ''}`}>
+              <Calendar size={20} />
+              <span>Календарь</span>
+            </Link>
+            <Link to="/profile" className={`mobile-bottom-nav__item ${isActive('/profile') ? 'active' : ''}`}>
+              <User size={20} />
+              <span>Профиль</span>
+            </Link>
           </nav>
         )}
       </div>
