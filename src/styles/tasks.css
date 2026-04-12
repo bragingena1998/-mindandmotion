@@ -50,6 +50,7 @@
 }
 
 .stat-card-number {
+  font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif;
   font-size: 24px;
   font-weight: 700;
   color: var(--text-main);
@@ -58,6 +59,7 @@
 }
 
 .stat-card-label {
+  font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif;
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
@@ -214,9 +216,9 @@
 /* Checkbox */
 .task-checkbox {
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
   border: 2px solid var(--border-subtle);
   background: transparent;
   cursor: pointer;
@@ -224,6 +226,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease-out;
+  margin-top: 1px;
 }
 
 .task-checkbox:hover {
@@ -238,7 +241,7 @@
 .task-checkbox.checked::after {
   content: '✓';
   color: #000;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
 }
 
@@ -535,11 +538,12 @@
 }
 
 .page-title {
+  font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--accent-text);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   margin: 0 0 12px;
 }
 
@@ -572,6 +576,7 @@
 }
 
 .month-display {
+  font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-main);
@@ -930,6 +935,26 @@
   user-select: none;
 }
 
+/* ФАЙЛ 4 FIX: линии разделители для drum picker — на высоте 44px и 88px */
+.time-picker-line {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: var(--accent-border);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.time-picker-line-top {
+  top: 44px; /* Первая линия — после верхней строки */
+}
+
+.time-picker-line-bottom {
+  top: 88px; /* Вторая линия — после центральной строки */
+}
+
+/* Legacy center line — для совместимости */
 .time-picker-center-line {
   position: absolute;
   top: 50%;
@@ -1286,4 +1311,159 @@
 .date-picker-today-btn:hover {
   border-color: var(--accent-border);
   color: var(--accent-text);
+}
+
+/* ===== COMPACT TASK CARD (File 1) ===== */
+.task-card-compact {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.15s ease-out;
+}
+
+.task-card-compact:hover {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 12px var(--accent-soft);
+}
+
+.task-card-compact.completed {
+  opacity: 0.6;
+}
+
+.task-card-compact.overdue {
+  border-left: 3px solid var(--danger-1);
+}
+
+.task-content-compact {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-header-compact {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-title-compact {
+  flex: 1;
+  margin: 0;
+  font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.task-card-compact.completed .task-title-compact {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.task-actions-compact {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.task-action-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease-out;
+}
+
+.task-action-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--accent-text);
+}
+
+.task-status-compact {
+  display: flex;
+}
+
+/* Meta row — всё в одной строке */
+.task-meta-compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.task-meta-compact > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.meta-date {
+  color: var(--text-muted);
+}
+
+.meta-time {
+  color: var(--accent-1);
+}
+
+.meta-folder {
+  padding: 2px 6px;
+  background: rgba(139, 92, 246, 0.15);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* Приоритет badge — компактный в строке */
+.meta-priority {
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.meta-priority.low {
+  background: rgba(107, 114, 128, 0.3);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.5);
+}
+
+.meta-priority.medium {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.meta-priority.high {
+  background: rgba(251, 113, 133, 0.2);
+  color: #fb7185;
+  border: 1px solid rgba(251, 113, 133, 0.4);
+}
+
+/* Иконка повторения */
+.meta-recurrence {
+  color: var(--accent-border);
+  font-size: 12px;
 }

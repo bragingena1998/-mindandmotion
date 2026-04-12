@@ -1,4 +1,4 @@
-import { Trash2, Pencil, Repeat } from 'lucide-react';
+import { Trash2, Pencil, RefreshCw } from 'lucide-react';
 import type { Task, Folder } from '../api/tasks';
 
 interface TaskCardProps {
@@ -11,24 +11,22 @@ interface TaskCardProps {
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const taskDate = new Date(dateStr);
-  taskDate.setHours(0, 0, 0, 0);
-
-  const diffDays = Math.round((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Сегодня';
-  if (diffDays === 1) return 'Завтра';
-  if (diffDays === -1) return 'Вчера';
-
-  return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+  // Берём только дату без времени
+  const datePart = dateStr.substring(0, 10);
+  const [year, month, day] = datePart.split('-');
+  if (!year || !month || !day) return '';
+  return `${day}.${month}`;
 }
 
 function formatTime(timeStr?: string): string {
   if (!timeStr) return '';
+  // Если ISO datetime — извлекаем время в локальном timezone
+  if (timeStr.includes('T')) {
+    const d = new Date(timeStr);
+    if (!isNaN(d.getTime())) {
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+  }
   return timeStr.slice(0, 5); // HH:MM
 }
 
@@ -64,23 +62,17 @@ function getFolderEmoji(folderName?: string): string {
   return '📁';
 }
 
-function getTaskStatus(task: Task): { label: string; className: string } {
-  if (task.done) return { label: '✓ Выполнено', className: 'status-done' };
+function getTaskStatus(task: Task, todayStr: string): { label: string; className: string } {
+  if (task.done) return { label: '', className: '' };
 
   if (task.date) {
-    const taskDate = new Date(task.date);
-    taskDate.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const diffDays = Math.round((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) return { label: '🔥 ПРОСРОЧЕНО', className: 'status-overdue' };
-    if (diffDays === 0) return { label: '⚡ СЕГОДНЯ', className: 'status-today' };
-    if (diffDays === 1) return { label: '📅 ЗАВТРА', className: 'status-tomorrow' };
+    const taskDate = task.date.substring(0, 10);
+    // Сравниваем строки YYYY-MM-DD
+    if (taskDate < todayStr) return { label: '🔥 ПРОСРОЧЕНО', className: 'status-overdue' };
+    if (taskDate === todayStr) return { label: '⚡ СЕГОДНЯ', className: 'status-today' };
   }
 
-  return { label: '📅 В ПЛАНЕ', className: 'status-planned' };
+  return { label: '', className: '' };
 }
 
 export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: TaskCardProps) {
@@ -98,73 +90,68 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
     onEdit?.(task);
   };
 
+  // Получаем сегодняшнюю дату как строку YYYY-MM-DD
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
   const dateStr = formatDate(task.date);
-  const isOverdue = !task.done && task.date && new Date(task.date) < new Date();
-  const status = getTaskStatus(task);
-  const hasRecurrence = task.recurrence && task.recurrence !== 'none';
+  const isOverdue = !task.done && task.date && task.date.substring(0, 10) < todayStr;
+  const status = getTaskStatus(task, todayStr);
+
+  // Проверяем оба поля для recurrence
+  const hasRecurrence = (task.recurrence && task.recurrence !== 'none') ||
+                       (task.recurrenceType && task.recurrenceType !== 'none');
 
   return (
-    <div className={`task-card ${task.done ? 'completed' : ''} ${isOverdue ? 'task-card--overdue' : ''}`}>
-      {/* Left: Checkbox */}
+    <div className={`task-card-compact ${task.done ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}`}>
+      {/* Checkbox */}
       <div
         className={`task-checkbox ${task.done ? 'checked' : ''}`}
         onClick={handleToggle}
       />
 
-      {/* Center: Content */}
-      <div className="task-content">
+      {/* Content */}
+      <div className="task-content-compact">
         {/* Row 1: Title + Actions */}
-        <div className="task-header-row">
-          <h3 className="task-title">{task.title}</h3>
-          <div className="task-actions">
+        <div className="task-header-compact">
+          <h3 className="task-title-compact">{task.title}</h3>
+          <div className="task-actions-compact">
             {onEdit && (
-              <button className="task-edit" onClick={handleEdit}>
-                <Pencil size={14} />
+              <button className="task-action-btn" onClick={handleEdit}>
+                <Pencil size={12} />
               </button>
             )}
-            <button className="task-delete" onClick={handleDelete}>
-              <Trash2 size={14} />
+            <button className="task-action-btn" onClick={handleDelete}>
+              <Trash2 size={12} />
             </button>
           </div>
         </div>
 
-        {/* Row 2: Status badge */}
-        <div className="task-status-row">
-          <span className={`task-status ${status.className}`}>{status.label}</span>
-        </div>
+        {/* Row 2: Status (if not empty) */}
+        {status.label && (
+          <div className="task-status-compact">
+            <span className={`task-status-badge ${status.className}`}>{status.label}</span>
+          </div>
+        )}
 
-        {/* Row 3: Meta info */}
-        <div className="task-meta">
-          <span className={`task-date ${isOverdue ? 'overdue' : ''}`}>
-            {dateStr}
-          </span>
-          {task.time && (
-            <span className="task-time">
-              {formatTime(task.time)}
-            </span>
-          )}
+        {/* Row 3: Meta info — всё в одной строке */}
+        <div className="task-meta-compact">
+          {dateStr && <span className="meta-date">{dateStr}</span>}
+          {task.time && <span className="meta-time">{formatTime(task.time)}</span>}
           {folder && (
-            <span className="task-folder">
-              {getFolderEmoji(folder.name)} {folder.name}
+            <span className="meta-folder">
+              {/* ФАЙЛ 6: используем folder.icon из API, или fallback на emoji по названию */}
+              {folder.icon || getFolderEmoji(folder.name)} {folder.name}
             </span>
           )}
-          {hasRecurrence && (
-            <span className="task-recurrence" title="Повторяющаяся задача">
-              <Repeat size={12} />
-            </span>
-          )}
-          {task.subtasksCount > 0 && (
-            <span className="task-subtasks">
-              📋 {task.subtasksCount}
-            </span>
-          )}
-        </div>
-
-        {/* Row 4: Priority badge */}
-        <div className="task-priority-row">
-          <span className={`task-priority ${getPriorityClass(task.priority)}`}>
+          <span className={`meta-priority ${getPriorityClass(task.priority)}`}>
             {getPriorityLabel(task.priority)}
           </span>
+          {hasRecurrence && (
+            <span className="meta-recurrence" title="Повторяющаяся задача">
+              ↻
+            </span>
+          )}
         </div>
       </div>
     </div>

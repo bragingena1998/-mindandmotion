@@ -32,6 +32,7 @@ export interface Task {
 export interface Folder {
   id: number;
   name: string;
+  icon?: string; // ФАЙЛ 6: emoji иконка папки
 }
 
 export interface CreateTaskData {
@@ -91,6 +92,31 @@ export function adaptTaskFromAPI(dbTask: any): Task {
   };
 }
 
+// ФАЙЛ 5 FIX: Конвертация локального времени в UTC для API
+function localTimeToUTC(timeStr: string): string {
+  if (!timeStr) return '';
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const now = new Date();
+  // Создаём дату с локальным временем
+  const localDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+  // Конвертируем в UTC
+  const utcHours = localDate.getUTCHours();
+  const utcMinutes = localDate.getUTCMinutes();
+  return `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`;
+}
+
+// ФАЙЛ 5 FIX: Извлечение локального времени из ISO или HH:MM
+export function extractLocalTime(isoOrTime: string): string {
+  if (!isoOrTime) return '';
+  if (isoOrTime.includes('T')) {
+    // ISO строка — извлекаем время в локальном timezone
+    const d = new Date(isoOrTime);
+    if (isNaN(d.getTime())) return isoOrTime;
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+  return isoOrTime; // уже HH:MM
+}
+
 // Frontend → API
 export function adaptTaskForAPI(localTask: Partial<Task> | CreateTaskData): any {
   // БАГ 6 FIX: Определяем is_recurring из recurrence поля
@@ -98,11 +124,14 @@ export function adaptTaskForAPI(localTask: Partial<Task> | CreateTaskData): any 
   const isRecurring = recurrence !== 'none';
   const recurrenceType = isRecurring ? recurrence : '';
 
+  // ФАЙЛ 5 FIX: Конвертируем время в UTC если оно есть
+  const utcTime = localTask.time ? localTimeToUTC(localTask.time) : null;
+
   return {
     title: localTask.title,
     description: localTask.comment || '',
     date: (localTask as Task).date,
-    time: localTask.time || null,
+    time: utcTime, // UTC время для бэкенда
     due_date: localTask.deadline || null,
     priority: priorityNumberToText(localTask.priority || 2),
     completed: (localTask as Task).done,

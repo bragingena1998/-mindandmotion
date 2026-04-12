@@ -16,6 +16,18 @@ function getTodayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// ФАЙЛ 3 FIX: Нормализация ISO даты в YYYY-MM-DD
+function normalizeDate(raw: string): string {
+  if (!raw) return '';
+  // Если ISO с T — берём только дату в локальном времени
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getFolderEmoji(folderName: string): string {
   const lower = folderName.toLowerCase();
   if (lower.includes('дом')) return '🏠';
@@ -58,9 +70,10 @@ export default function TaskModal({ isOpen, onClose, onSubmit, folders, editingT
     if (editingTask) {
       setTitle(editingTask.title);
       setComment(editingTask.comment);
-      setDate(editingTask.date || getTodayISO());
+      // ФАЙЛ 3 FIX: Нормализуем дату из ISO в YYYY-MM-DD
+      setDate(normalizeDate(editingTask.date) || getTodayISO());
       setTime(editingTask.time || '');
-      setDeadline(editingTask.deadline || '');
+      setDeadline(normalizeDate(editingTask.deadline));
       setPriority(editingTask.priority);
       setFolderId(editingTask.folderId || undefined);
       setRecurrence(editingTask.recurrence || 'none');

@@ -15,7 +15,7 @@ const generateNumbers = (max: number): string[] => {
   return Array.from({ length: max + 1 }, (_, i) => i.toString().padStart(2, '0'));
 };
 
-// Mobile drum picker component
+// Mobile drum picker component — ФАЙЛ 4 FIX: 3 строки, selected в центре
 function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
   const [hours, minutes] = value ? value.split(':') : ['12', '00'];
   const [selectedHour, setSelectedHour] = useState(hours);
@@ -24,95 +24,66 @@ function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
   const hoursList = generateNumbers(23);
   const minutesList = generateNumbers(59);
 
-  // Touch handling for hours column
-  const hoursContainerRef = useRef<HTMLDivElement>(null);
-  const hoursStartY = useRef<number>(0);
-  const hoursCurrentTranslate = useRef<number>(-parseInt(hours) * ITEM_HEIGHT);
-  const hoursPrevTranslate = useRef<number>(-parseInt(hours) * ITEM_HEIGHT);
-  const [hoursTranslate, setHoursTranslate] = useState(-parseInt(hours) * ITEM_HEIGHT);
+  const CENTER_OFFSET = ITEM_HEIGHT; // 44px — смещение чтобы selected был в центре (вторая строка)
 
-  const constrainHours = useCallback((translate: number) => {
-    const min = -(hoursList.length - 1) * ITEM_HEIGHT;
-    const max = 0;
-    return Math.max(min, Math.min(max, translate));
-  }, [hoursList.length]);
+  // Правильная формула: translateY = -selectedIndex * 44 + 44
+  const getTranslateY = (index: number) => -index * ITEM_HEIGHT + CENTER_OFFSET;
+
+  // Touch handling for hours column
+  const hoursStartY = useRef<number>(0);
+  const hoursCurrentIndex = useRef<number>(parseInt(hours));
+  const [hoursTranslate, setHoursTranslate] = useState(getTranslateY(parseInt(hours)));
 
   const handleHoursTouchStart = (e: React.TouchEvent) => {
     hoursStartY.current = e.touches[0].clientY;
-    hoursPrevTranslate.current = hoursCurrentTranslate.current;
   };
 
   const handleHoursTouchMove = (e: React.TouchEvent) => {
     const currentY = e.touches[0].clientY;
     const diff = currentY - hoursStartY.current;
-    const newTranslate = constrainHours(hoursPrevTranslate.current + diff);
-    hoursCurrentTranslate.current = newTranslate;
-    setHoursTranslate(newTranslate);
+    // Предпросмотр без snap
+    const newIndex = Math.max(0, Math.min(23, hoursCurrentIndex.current - Math.round(diff / ITEM_HEIGHT)));
+    setHoursTranslate(getTranslateY(newIndex));
   };
 
-  const handleHoursTouchEnd = () => {
-    // Snap to nearest item
-    const index = Math.round(-hoursCurrentTranslate.current / ITEM_HEIGHT);
-    const clampedIndex = Math.max(0, Math.min(hoursList.length - 1, index));
-    const snapTranslate = -clampedIndex * ITEM_HEIGHT;
-    hoursCurrentTranslate.current = snapTranslate;
-    setHoursTranslate(snapTranslate);
-    setSelectedHour(hoursList[clampedIndex]);
+  const handleHoursTouchEnd = (e: React.TouchEvent) => {
+    const currentY = e.changedTouches[0].clientY;
+    const diff = currentY - hoursStartY.current;
+    // Snap к ближайшему
+    const newIndex = Math.max(0, Math.min(23, hoursCurrentIndex.current - Math.round(diff / ITEM_HEIGHT)));
+    hoursCurrentIndex.current = newIndex;
+    setHoursTranslate(getTranslateY(newIndex));
+    setSelectedHour(hoursList[newIndex]);
   };
 
   // Touch handling for minutes column
-  const minutesContainerRef = useRef<HTMLDivElement>(null);
   const minutesStartY = useRef<number>(0);
-  const minutesCurrentTranslate = useRef<number>(-parseInt(minutes) * ITEM_HEIGHT);
-  const minutesPrevTranslate = useRef<number>(-parseInt(minutes) * ITEM_HEIGHT);
-  const [minutesTranslate, setMinutesTranslate] = useState(-parseInt(minutes) * ITEM_HEIGHT);
-
-  const constrainMinutes = useCallback((translate: number) => {
-    const min = -(minutesList.length - 1) * ITEM_HEIGHT;
-    const max = 0;
-    return Math.max(min, Math.min(max, translate));
-  }, [minutesList.length]);
+  const minutesCurrentIndex = useRef<number>(parseInt(minutes));
+  const [minutesTranslate, setMinutesTranslate] = useState(getTranslateY(parseInt(minutes)));
 
   const handleMinutesTouchStart = (e: React.TouchEvent) => {
     minutesStartY.current = e.touches[0].clientY;
-    minutesPrevTranslate.current = minutesCurrentTranslate.current;
   };
 
   const handleMinutesTouchMove = (e: React.TouchEvent) => {
     const currentY = e.touches[0].clientY;
     const diff = currentY - minutesStartY.current;
-    const newTranslate = constrainMinutes(minutesPrevTranslate.current + diff);
-    minutesCurrentTranslate.current = newTranslate;
-    setMinutesTranslate(newTranslate);
+    const newIndex = Math.max(0, Math.min(59, minutesCurrentIndex.current - Math.round(diff / ITEM_HEIGHT)));
+    setMinutesTranslate(getTranslateY(newIndex));
   };
 
-  const handleMinutesTouchEnd = () => {
-    const index = Math.round(-minutesCurrentTranslate.current / ITEM_HEIGHT);
-    const clampedIndex = Math.max(0, Math.min(minutesList.length - 1, index));
-    const snapTranslate = -clampedIndex * ITEM_HEIGHT;
-    minutesCurrentTranslate.current = snapTranslate;
-    setMinutesTranslate(snapTranslate);
-    setSelectedMinute(minutesList[clampedIndex]);
+  const handleMinutesTouchEnd = (e: React.TouchEvent) => {
+    const currentY = e.changedTouches[0].clientY;
+    const diff = currentY - minutesStartY.current;
+    const newIndex = Math.max(0, Math.min(59, minutesCurrentIndex.current - Math.round(diff / ITEM_HEIGHT)));
+    minutesCurrentIndex.current = newIndex;
+    setMinutesTranslate(getTranslateY(newIndex));
+    setSelectedMinute(minutesList[newIndex]);
   };
 
   const handleSave = () => {
     onChange(`${selectedHour}:${selectedMinute}`);
     onClose();
-  };
-
-  // Calculate opacity based on distance from center
-  const getItemStyle = (index: number, translate: number) => {
-    const itemCenter = -index * ITEM_HEIGHT - translate;
-    const distance = Math.abs(itemCenter);
-    const isCenter = distance < ITEM_HEIGHT / 2;
-    const isAdjacent = distance < ITEM_HEIGHT * 1.5 && !isCenter;
-
-    return {
-      opacity: isCenter ? 1 : isAdjacent ? 0.4 : 0,
-      transform: `scale(${isCenter ? 1 : isAdjacent ? 0.9 : 0.8})`,
-      fontSize: isCenter ? '20px' : '16px',
-      fontWeight: isCenter ? 600 : 400,
-    };
   };
 
   return (
@@ -126,32 +97,29 @@ function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
           <div className="time-picker-column">
             <div className="time-picker-label">ЧАСЫ</div>
             <div
-              ref={hoursContainerRef}
               className="time-picker-drum"
-              onTouchStart={handleHoursTouchStart}
-              onTouchMove={handleHoursTouchMove}
-              onTouchEnd={handleHoursTouchEnd}
-              style={{ height: VISIBLE_ITEMS * ITEM_HEIGHT }}
+              style={{ height: VISIBLE_ITEMS * ITEM_HEIGHT, overflow: 'hidden', position: 'relative' }}
             >
               <div
                 className="time-picker-drum-inner"
-                style={{ transform: `translateY(${hoursTranslate}px)` }}
+                style={{
+                  transform: `translateY(${hoursTranslate}px)`,
+                  transition: 'transform 150ms ease-out',
+                }}
               >
-                {hoursList.map((hour, index) => (
+                {hoursList.map((hour) => (
                   <div
                     key={hour}
                     className="time-picker-item"
-                    style={{
-                      height: ITEM_HEIGHT,
-                      ...getItemStyle(index, hoursTranslate),
-                    }}
+                    style={{ height: ITEM_HEIGHT }}
                   >
                     {hour}
                   </div>
                 ))}
               </div>
-              {/* Center highlight line */}
-              <div className="time-picker-center-line" />
+              {/* Линии разделители — до и после центральной строки */}
+              <div className="time-picker-line time-picker-line-top" />
+              <div className="time-picker-line time-picker-line-bottom" />
             </div>
           </div>
 
@@ -162,32 +130,29 @@ function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
           <div className="time-picker-column">
             <div className="time-picker-label">МИНУТЫ</div>
             <div
-              ref={minutesContainerRef}
               className="time-picker-drum"
-              onTouchStart={handleMinutesTouchStart}
-              onTouchMove={handleMinutesTouchMove}
-              onTouchEnd={handleMinutesTouchEnd}
-              style={{ height: VISIBLE_ITEMS * ITEM_HEIGHT }}
+              style={{ height: VISIBLE_ITEMS * ITEM_HEIGHT, overflow: 'hidden', position: 'relative' }}
             >
               <div
                 className="time-picker-drum-inner"
-                style={{ transform: `translateY(${minutesTranslate}px)` }}
+                style={{
+                  transform: `translateY(${minutesTranslate}px)`,
+                  transition: 'transform 150ms ease-out',
+                }}
               >
-                {minutesList.map((minute, index) => (
+                {minutesList.map((minute) => (
                   <div
                     key={minute}
                     className="time-picker-item"
-                    style={{
-                      height: ITEM_HEIGHT,
-                      ...getItemStyle(index, minutesTranslate),
-                    }}
+                    style={{ height: ITEM_HEIGHT }}
                   >
                     {minute}
                   </div>
                 ))}
               </div>
-              {/* Center highlight line */}
-              <div className="time-picker-center-line" />
+              {/* Линии разделители */}
+              <div className="time-picker-line time-picker-line-top" />
+              <div className="time-picker-line time-picker-line-bottom" />
             </div>
           </div>
         </div>

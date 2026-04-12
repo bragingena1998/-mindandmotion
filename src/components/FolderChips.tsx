@@ -17,12 +17,13 @@ export default function FolderChips({ folders, selectedId, onSelect }: FolderChi
       </button>
       
       {folders.map(folder => (
-        <button 
+        <button
           key={folder.id}
           className={`folder-chip ${selectedId === folder.id ? 'active' : ''}`}
           onClick={() => onSelect(folder.id)}
         >
-          📁 {folder.name}
+          {/* ФАЙЛ 6: используем folder.icon из API */}
+          {folder.icon || '📁'} {folder.name}
         </button>
       ))}
     </div>

@@ -31,84 +31,68 @@ function calculateNextDate(taskDate: string, recurrence: string): string {
   return date.toISOString().split('T')[0];
 }
 
-// Calculate statistics from tasks
+// Calculate statistics from tasks — ФАЙЛ 2 FIX
 function calculateStats(allTasks: Task[]) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
 
-  // Start of week (Monday)
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay() + 1);
-  weekStart.setHours(0, 0, 0, 0);
+  // СЕГОДНЯ: все задачи с датой <= сегодня (просрочка + сегодня)
+  const todayPool = allTasks.filter(t => t.date && t.date.substring(0,10) <= todayStr)
+  const todayDone = todayPool.filter(t => t.done === true).length
+  const todayTotal = todayPool.length
 
-  // Start of month
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // НЕДЕЛЯ: выполненные за текущую неделю (Пн-Вс)
+  const weekStart = new Date(today)
+  weekStart.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1))
+  const weekStartStr = weekStart.toISOString().split('T')[0]
+  const weekDone = allTasks.filter(t => t.done && t.date && t.date.substring(0,10) >= weekStartStr).length
 
-  // БАГ 2 FIX: Y = все задачи с date <= today (включая просроченные)
-  const todayAndOverdue = allTasks.filter(t => t.date && t.date <= today);
-  const Y = todayAndOverdue.length;
-  const X = todayAndOverdue.filter(t => t.done === true).length;
+  // МЕСЯЦ: выполненные в текущем месяце
+  const monthStr = todayStr.substring(0,7) // 'YYYY-MM'
+  const monthDone = allTasks.filter(t => t.done && t.date && t.date.substring(0,7) === monthStr).length
 
-  // Week completed: done за текущую неделю
-  const weekCompleted = allTasks.filter(t => {
-    if (!t.done) return false;
-    if (t.doneDate) {
-      const doneDate = new Date(t.doneDate);
-      return doneDate >= weekStart;
-    }
-    return false;
-  }).length;
-
-  // Month completed: done за текущий месяц
-  const monthCompleted = allTasks.filter(t => {
-    if (!t.done) return false;
-    if (t.doneDate) {
-      const doneDate = new Date(t.doneDate);
-      return doneDate >= monthStart;
-    }
-    return false;
-  }).length;
-
-  // БАГ 3 FIX: ВСЕГО = все задачи за всё время
-  const total = allTasks.length;
-  const totalDone = allTasks.filter(t => t.done).length;
+  // ВСЕГО: все задачи загруженные (за выбранный месяц)
+  const totalDone = allTasks.filter(t => t.done).length
+  const totalAll = allTasks.length
 
   return {
-    today: { completed: X, total: Y },  // X/Y format
-    week: weekCompleted,
-    month: monthCompleted,
-    total: totalDone,  // total done / total
-    all: total
-  };
+    today: { completed: todayDone, total: todayTotal },
+    week: weekDone,
+    month: monthDone,
+    total: totalDone,
+    all: totalAll
+  }
 }
 
-// Group tasks by date
+// Group tasks by date — ФАЙЛ 2 FIX: подсветка сегодня/просрочка
 function groupTasksByDate(tasks: Task[], showDone: boolean): TaskSection[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().split('T')[0];
+  // Получаем сегодня как строку YYYY-MM-DD
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
 
   const sections: TaskSection[] = [];
 
   // БАГ 1 FIX: Фильтруем пустые задачи (без title или id)
   const validTasks = tasks.filter(t => t.id && t.title && t.title.trim());
 
-  // Overdue tasks (before today)
+  // Overdue tasks (before today) — красные
   const overdue = validTasks.filter(t => {
     if (!t.date) return false;
     if (!showDone && t.done) return false;
-    return t.date < todayStr;
+    const taskDate = t.date.substring(0, 10);
+    return taskDate < todayStr; // строго меньше = просроченные
   });
 
   if (overdue.length > 0) {
     sections.push({ title: '🔥 ПРОСРОЧЕННЫЕ', icon: '🔥', tasks: overdue });
   }
 
-  // Today tasks
+  // Today tasks — зелёные
   const todaysTasks = validTasks.filter(t => {
     if (!t.date) return false;
     if (!showDone && t.done) return false;
-    return t.date === todayStr;
+    const taskDate = t.date.substring(0, 10);
+    return taskDate === todayStr; // = сегодня
   });
 
   if (todaysTasks.length > 0) {
@@ -116,13 +100,14 @@ function groupTasksByDate(tasks: Task[], showDone: boolean): TaskSection[] {
   }
 
   // Tomorrow tasks
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth()+1).padStart(2,'0')}-${String(tomorrow.getDate()).padStart(2,'0')}`
   const tomorrowTasks = validTasks.filter(t => {
     if (!t.date) return false;
     if (!showDone && t.done) return false;
-    return t.date === tomorrowStr;
+    const taskDate = t.date.substring(0, 10);
+    return taskDate === tomorrowStr;
   });
 
   if (tomorrowTasks.length > 0) {
@@ -133,7 +118,8 @@ function groupTasksByDate(tasks: Task[], showDone: boolean): TaskSection[] {
   const futureTasks = validTasks.filter(t => {
     if (!t.date) return false;
     if (!showDone && t.done) return false;
-    return t.date > tomorrowStr;
+    const taskDate = t.date.substring(0, 10);
+    return taskDate > tomorrowStr;
   });
 
   // Group future tasks by date
@@ -190,19 +176,17 @@ function formatMonthDisplay(monthStr: string): string {
   return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase();
 }
 
-// Helper to get next/prev month
-function getNextMonth(monthStr: string): string {
-  const [year, month] = monthStr.split('-').map(Number);
-  const date = new Date(year, month - 1, 1);
-  date.setMonth(date.getMonth() + 1);
-  return date.toISOString().slice(0, 7);
+// ФАЙЛ 2 FIX: правильная реализация без setMonth багов
+function getNextMonth(current: string): string {
+  const [year, month] = current.split('-').map(Number)
+  const d = new Date(year, month - 1 + 1, 1) // -1 для 0-based, +1 для next
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
 }
 
-function getPrevMonth(monthStr: string): string {
-  const [year, month] = monthStr.split('-').map(Number);
-  const date = new Date(year, month - 1, 1);
-  date.setMonth(date.getMonth() - 1);
-  return date.toISOString().slice(0, 7);
+function getPrevMonth(current: string): string {
+  const [year, month] = current.split('-').map(Number)
+  const d = new Date(year, month - 1 - 1, 1) // -1 для 0-based, ещё -1 для prev
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
 }
 
 export default function Tasks() {
@@ -275,9 +259,14 @@ export default function Tasks() {
       const doneDate = done ? new Date().toISOString() : null;
       await updateTask(id, { done, doneDate });
 
+      // ФАЙЛ 7 FIX: Проверяем оба поля recurrence и recurrence_type
+      const hasRecurrence = (task.recurrence && task.recurrence !== 'none') ||
+                           (task.recurrenceType && task.recurrenceType !== 'none');
+      const recurrenceValue = task.recurrence || task.recurrenceType || 'none';
+
       // If task is recurring and being marked as done, create next occurrence
-      if (done && task.recurrence && task.recurrence !== 'none' && task.date) {
-        const nextDate = calculateNextDate(task.date, task.recurrence);
+      if (done && hasRecurrence && task.date) {
+        const nextDate = calculateNextDate(task.date, recurrenceValue);
 
         // Create new task with same properties but new date
         const newTaskData: CreateTaskData = {
@@ -287,7 +276,7 @@ export default function Tasks() {
           time: task.time,
           priority: task.priority,
           folderId: task.folderId,
-          recurrence: task.recurrence
+          recurrence: recurrenceValue
         };
 
         await createTask(newTaskData);
@@ -425,16 +414,15 @@ export default function Tasks() {
           onSelect={setSelectedFolder}
         />
 
-        <label className="filter-toggle">
+        {/* ФАЙЛ 3 FIX: убран нативный input, оставлена только иконка */}
+        <div
+          className="filter-toggle"
+          onClick={() => setShowDone(!showDone)}
+          style={{ cursor: 'pointer' }}
+        >
           {showDone ? <CheckSquare size={16} /> : <Square size={16} />}
-          <input
-            type="checkbox"
-            checked={showDone}
-            onChange={e => setShowDone(e.target.checked)}
-            style={{ marginLeft: '4px' }}
-          />
-          <span>Показывать выполненные</span>
-        </label>
+          <span style={{ marginLeft: '8px' }}>Показывать выполненные</span>
+        </div>
 
         {isLoading ? (
           <div className="loading-spinner">Загрузка...</div>
