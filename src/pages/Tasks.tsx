@@ -311,29 +311,37 @@ export default function Tasks() {
     }
   };
 
-  const handleCreateTask = async (taskData: CreateTaskData) => {
+  // [1] ФИКС: переименовано в handleSaveTask, добавлен id параметр для update
+  const handleSaveTask = async (taskData: CreateTaskData, id?: number) => {
     try {
-      await createTask(taskData);
-      setIsModalOpen(false);
-
-      // Reload tasks
-      await loadTasks();
-
-      // Determine which section to scroll to
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (taskData.date) {
-        if (taskData.date < todayStr) {
-          setScrollToSection('🔥 ПРОСРОЧЕННЫЕ');
-        } else if (taskData.date === todayStr) {
-          setScrollToSection('⚡ СЕГОДНЯ');
-        } else if (taskData.date > todayStr) {
-          setScrollToSection('📅');
-        }
+      if (id) {
+        // UPDATE существующей задачи
+        await updateTask(id, taskData);
+        setTasks(prev => prev.map(t =>
+          t.id === id ? { ...t, ...taskData, id } as Task : t
+        ));
       } else {
-        setScrollToSection('📝 БЕЗ ДАТЫ');
+        // CREATE новой задачи
+        await createTask(taskData);
+        await loadTasks();
+
+        // Determine which section to scroll to
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (taskData.date) {
+          if (taskData.date < todayStr) {
+            setScrollToSection('🔥 ПРОСРОЧЕННЫЕ');
+          } else if (taskData.date === todayStr) {
+            setScrollToSection('⚡ СЕГОДНЯ');
+          } else if (taskData.date > todayStr) {
+            setScrollToSection('📅');
+          }
+        } else {
+          setScrollToSection('📝 БЕЗ ДАТЫ');
+        }
       }
+      setIsModalOpen(false);
     } catch (err) {
-      alert('Не удалось создать задачу');
+      alert(id ? 'Не удалось обновить задачу' : 'Не удалось создать задачу');
     }
   };
 
@@ -482,7 +490,7 @@ export default function Tasks() {
           setIsModalOpen(false);
           setEditingTask(null);
         }}
-        onSubmit={handleCreateTask}
+        onSubmit={handleSaveTask}
         folders={folders}
         editingTask={editingTask}
       />

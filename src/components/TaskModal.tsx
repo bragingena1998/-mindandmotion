@@ -7,7 +7,7 @@ import DatePicker from './DatePicker';
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateTaskData) => void;
+  onSubmit: (data: CreateTaskData, id?: number) => void;
   folders: Folder[];
   editingTask?: Task | null;
 }
@@ -16,16 +16,11 @@ function getTodayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// ФАЙЛ 3 FIX: Нормализация ISO даты в YYYY-MM-DD
+// [5] ФИКС: парсинг без Date объекта для избежания UTC-1 day бага
 function normalizeDate(raw: string): string {
   if (!raw) return '';
-  // Если ISO с T — берём только дату в локальном времени
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return raw;
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const datePart = raw.includes('T') ? raw.split('T')[0] : raw;
+  return datePart.substring(0, 10);
 }
 
 function getFolderEmoji(folderName: string): string {
@@ -97,6 +92,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, folders, editingT
     e.preventDefault();
     if (!title.trim()) return;
 
+    // [1] ФИКС: передаём editingTask.id вторым аргументом для update
     onSubmit({
       title: title.trim(),
       comment: comment.trim(),
@@ -106,7 +102,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, folders, editingT
       priority,
       folderId: folderId || undefined,
       recurrence: recurrence !== 'none' ? recurrence : undefined
-    });
+    }, editingTask?.id);
 
     if (!editingTask) {
       // Reset form only for new tasks

@@ -75,7 +75,8 @@ export function adaptTaskFromAPI(dbTask: any): Task {
     title: dbTask.title || '',
     comment: dbTask.description || dbTask.comment || '',
     date: dbTask.date || getTodayISO(),
-    time: dbTask.time || '',
+    // [4] ФИКС: конвертируем UTC время обратно в локальное
+    time: extractLocalTime(dbTask.time || ''),
     deadline: dbTask.due_date || dbTask.deadline || '',
     priority: priorityTextToNumber(dbTask.priority),
     done: !!(dbTask.completed || dbTask.done),

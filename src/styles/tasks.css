@@ -1398,6 +1398,29 @@
   display: flex;
 }
 
+/* [3] ФИКС: добавлены отсутствующие классы .task-status-badge */
+.task-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.task-status-badge.status-overdue {
+  background: rgba(251, 113, 133, 0.2);
+  color: #fb7185;
+  border: 1px solid rgba(251, 113, 133, 0.4);
+}
+
+.task-status-badge.status-today {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
 /* Meta row — всё в одной строке */
 .task-meta-compact {
   display: flex;

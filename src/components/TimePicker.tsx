@@ -54,6 +54,8 @@ function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
     hoursCurrentIndex.current = newIndex;
     setHoursTranslate(getTranslateY(newIndex));
     setSelectedHour(hoursList[newIndex]);
+    // [2] ФИКС: обновляем startY для следующего свайпа
+    hoursStartY.current = currentY;
   };
 
   // Touch handling for minutes column
@@ -79,6 +81,8 @@ function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
     minutesCurrentIndex.current = newIndex;
     setMinutesTranslate(getTranslateY(newIndex));
     setSelectedMinute(minutesList[newIndex]);
+    // [2] ФИКС: обновляем startY для следующего свайпа
+    minutesStartY.current = currentY;
   };
 
   const handleSave = () => {
@@ -206,7 +210,10 @@ function DesktopTimeInput({ value, onChange, onClose }: TimePickerProps) {
 
 // Main component with responsive behavior
 export default function TimePicker(props: TimePickerProps) {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  // [2] ФИКС: безопасный доступ к window
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : true
+  );
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
