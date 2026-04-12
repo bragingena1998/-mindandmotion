@@ -106,7 +106,7 @@ function localTimeToUTC(timeStr: string): string {
   return `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`;
 }
 
-// ФАЙЛ 5 FIX: Извлечение локального времени из ISO или HH:MM
+// [B] ФИКС: Конвертация UTC HH:MM → локальное время
 export function extractLocalTime(isoOrTime: string): string {
   if (!isoOrTime) return '';
   if (isoOrTime.includes('T')) {
@@ -115,7 +115,14 @@ export function extractLocalTime(isoOrTime: string): string {
     if (isNaN(d.getTime())) return isoOrTime;
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }
-  return isoOrTime; // уже HH:MM
+  // [B] HH:MM из UTC (бэкенд) → конвертируем в локальное время
+  const [h, m] = isoOrTime.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return isoOrTime;
+  const today = new Date();
+  const utcDate = new Date(Date.UTC(
+    today.getFullYear(), today.getMonth(), today.getDate(), h, m
+  ));
+  return `${String(utcDate.getHours()).padStart(2, '0')}:${String(utcDate.getMinutes()).padStart(2, '0')}`;
 }
 
 // Frontend → API

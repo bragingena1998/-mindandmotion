@@ -315,11 +315,9 @@ export default function Tasks() {
   const handleSaveTask = async (taskData: CreateTaskData, id?: number) => {
     try {
       if (id) {
-        // UPDATE существующей задачи
+        // [C] ФИКС: полная перезагрузка безопаснее чем ручной merge
         await updateTask(id, taskData);
-        setTasks(prev => prev.map(t =>
-          t.id === id ? { ...t, ...taskData, id } as Task : t
-        ));
+        await loadTasks();
       } else {
         // CREATE новой задачи
         await createTask(taskData);
@@ -340,6 +338,7 @@ export default function Tasks() {
         }
       }
       setIsModalOpen(false);
+      setEditingTask(null);
     } catch (err) {
       alert(id ? 'Не удалось обновить задачу' : 'Не удалось создать задачу');
     }

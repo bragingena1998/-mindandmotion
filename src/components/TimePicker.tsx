@@ -54,7 +54,7 @@ function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
     hoursCurrentIndex.current = newIndex;
     setHoursTranslate(getTranslateY(newIndex));
     setSelectedHour(hoursList[newIndex]);
-    // [2] ФИКС: обновляем startY для следующего свайпа
+    // [2][D] ФИКС: обновляем startY для следующего свайпа
     hoursStartY.current = currentY;
   };
 
