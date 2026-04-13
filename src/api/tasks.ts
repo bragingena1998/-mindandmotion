@@ -14,7 +14,7 @@ export interface Task {
   comment: string;
   date: string;
   time?: string;
-  deadline: string;
+  deadline: string | null;
   priority: 1 | 2 | 3; // 1=low, 2=medium, 3=high
   done: boolean;
   doneDate: string | null;
@@ -40,7 +40,7 @@ export interface CreateTaskData {
   comment?: string;
   date?: string;
   time?: string;
-  deadline?: string;
+  deadline?: string | null;
   priority?: 1 | 2 | 3;
   folderId?: number | null;
   recurrence?: string;
@@ -126,33 +126,37 @@ export function extractLocalTime(isoOrTime: string): string {
   return `${String(utcDate.getHours()).padStart(2, '0')}:${String(utcDate.getMinutes()).padStart(2, '0')}`;
 }
 
-// Frontend → API
 export function adaptTaskForAPI(localTask: Partial<Task> | CreateTaskData): any {
-  // БАГ 6 FIX: Определяем is_recurring из recurrence поля
-  const recurrence = localTask.recurrence || 'none';
+  const recurrence = localTask.recurrence ?? 'none';
   const isRecurring = recurrence !== 'none';
-  // [2] ФИКС: явно сбрасываем recurrence_type если 'none'
   const recurrenceType = isRecurring ? recurrence : '';
-
-  // ФАЙЛ 5 FIX: Конвертируем время в UTC если оно есть
   const utcTime = localTask.time ? localTimeToUTC(localTask.time) : null;
+
+  // Deadline: принимаем и string и null
+  const deadlineRaw = (localTask as any).deadline;
+  const dueDate = deadlineRaw != null && deadlineRaw !== '' ? deadlineRaw : null;
+
+  // folderId: 0 тоже допустим, поэтому ?? вместо ||
+  const folderId = (localTask as any).folderId ?? null;
 
   return {
     title: localTask.title,
-    description: localTask.comment || '',
+    description: (localTask as any).comment || '',
     date: (localTask as Task).date,
-    time: utcTime, // UTC время для бэкенда
-    due_date: localTask.deadline || null,
+    time: utcTime,
+    due_date: dueDate,
     priority: priorityNumberToText(localTask.priority || 2),
     completed: (localTask as Task).done,
-    donedate: (localTask as Task).doneDate || null,
+    donedate: (localTask as Task).doneDate ?? null,
     focussessions: (localTask as Task).focusSessions || 0,
-    // [2] ФИКС: явно передаём false для 'none', true для других значений
+    // ВАЖНО: используем ТОЛЬКО вычисленные значения, НЕ старые поля задачи
+    // (localTask as Task).isRecurring и .recurrenceType — это старые данные из БД,
+    // они НЕ должны перезаписывать то что пользователь выбрал в форме
     is_recurring: isRecurring,
     recurrence_type: recurrenceType,
-    recurrence_value: (localTask as Task).recurrenceValue || '',
+    recurrence_value: '',
     recurrence: recurrence,
-    folder_id: localTask.folderId || null
+    folder_id: folderId
   };
 }
 
