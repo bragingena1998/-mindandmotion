@@ -131,6 +131,7 @@ export function adaptTaskForAPI(localTask: Partial<Task> | CreateTaskData): any 
   // БАГ 6 FIX: Определяем is_recurring из recurrence поля
   const recurrence = localTask.recurrence || 'none';
   const isRecurring = recurrence !== 'none';
+  // [2] ФИКС: явно сбрасываем recurrence_type если 'none'
   const recurrenceType = isRecurring ? recurrence : '';
 
   // ФАЙЛ 5 FIX: Конвертируем время в UTC если оно есть
@@ -146,8 +147,9 @@ export function adaptTaskForAPI(localTask: Partial<Task> | CreateTaskData): any 
     completed: (localTask as Task).done,
     donedate: (localTask as Task).doneDate || null,
     focussessions: (localTask as Task).focusSessions || 0,
-    is_recurring: (localTask as Task).isRecurring || isRecurring,
-    recurrence_type: (localTask as Task).recurrenceType || recurrenceType,
+    // [2] ФИКС: явно передаём false для 'none', true для других значений
+    is_recurring: isRecurring,
+    recurrence_type: recurrenceType,
     recurrence_value: (localTask as Task).recurrenceValue || '',
     recurrence: recurrence,
     folder_id: localTask.folderId || null

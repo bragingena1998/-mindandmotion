@@ -98,10 +98,10 @@ export default function TaskModal({ isOpen, onClose, onSubmit, folders, editingT
       comment: comment.trim(),
       date,
       time: time || undefined,
-      deadline: deadline || undefined,
+      deadline: deadline || null,  // null явно сбрасывает deadline на сервере
       priority,
       folderId: folderId || undefined,
-      recurrence: recurrence !== 'none' ? recurrence : undefined
+      recurrence: recurrence  // всегда отправляем recurrence (даже 'none')
     }, editingTask?.id);
 
     if (!editingTask) {
