@@ -6,6 +6,7 @@ import {
   createTask,
   updateTask,
   deleteTask,
+  fetchTotalCompletedCount,
   type Task,
   type Folder,
   type CreateTaskData
@@ -202,6 +203,8 @@ export default function Tasks() {
   const [scrollToSection, setScrollToSection] = useState<string | null>(null);
   // БАГ 5 FIX: Состояние текущего месяца для архива
   const [currentMonth, setCurrentMonth] = useState<string>(getCurrentMonth());
+  // ШАГ 2: Общий счётчик выполненных за всё время
+  const [totalCompleted, setTotalCompleted] = useState(0);
 
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -241,6 +244,13 @@ export default function Tasks() {
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
+
+  // ШАГ 2: Загружаем общий счётчик выполненных (один раз при маунте)
+  useEffect(() => {
+    fetchTotalCompletedCount()
+      .then(setTotalCompleted)
+      .catch(() => { /* silently ignore */ });
+  }, []);
 
   // Scroll to section after tasks load
   useEffect(() => {
@@ -423,7 +433,8 @@ export default function Tasks() {
             <div className="stat-card-label">МЕСЯЦ</div>
           </div>
           <div className="stat-card">
-            <div className="stat-card-number">{stats.total}/{stats.all}</div>
+            {/* ШАГ 3: ВСЕГО — выполненные за всё время, не зависит от месяца */}
+            <div className="stat-card-number">{totalCompleted}</div>
             <div className="stat-card-label">ВСЕГО</div>
           </div>
         </div>
