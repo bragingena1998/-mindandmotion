@@ -127,31 +127,27 @@ export function extractLocalTime(isoOrTime: string): string {
 }
 
 export function adaptTaskForAPI(localTask: Partial<Task> | CreateTaskData): any {
-  const recurrence = localTask.recurrence ?? 'none';
+  const recurrence = (localTask as any).recurrence ?? 'none';
   const isRecurring = recurrence !== 'none';
   const recurrenceType = isRecurring ? recurrence : '';
   const utcTime = localTask.time ? localTimeToUTC(localTask.time) : null;
 
-  // Deadline: принимаем и string и null
   const deadlineRaw = (localTask as any).deadline;
-  const dueDate = deadlineRaw != null && deadlineRaw !== '' ? deadlineRaw : null;
+  const dueDate = (deadlineRaw !== undefined && deadlineRaw !== '') ? deadlineRaw : null;
 
-  // folderId: 0 тоже допустим, поэтому ?? вместо ||
-  const folderId = (localTask as any).folderId ?? null;
+  const folderIdRaw = (localTask as any).folderId;
+  const folderId = (folderIdRaw !== undefined) ? folderIdRaw : null;
 
   return {
     title: localTask.title,
-    description: (localTask as any).comment || '',
-    date: (localTask as Task).date,
+    description: (localTask as any).comment ?? '',
+    date: (localTask as any).date ?? null,
     time: utcTime,
     due_date: dueDate,
-    priority: priorityNumberToText(localTask.priority || 2),
-    completed: (localTask as Task).done,
-    donedate: (localTask as Task).doneDate ?? null,
-    focussessions: (localTask as Task).focusSessions || 0,
-    // ВАЖНО: используем ТОЛЬКО вычисленные значения, НЕ старые поля задачи
-    // (localTask as Task).isRecurring и .recurrenceType — это старые данные из БД,
-    // они НЕ должны перезаписывать то что пользователь выбрал в форме
+    priority: priorityNumberToText((localTask as any).priority ?? 2),
+    completed: (localTask as any).done ?? false,
+    donedate: (localTask as any).doneDate ?? null,
+    focussessions: (localTask as any).focusSessions ?? 0,
     is_recurring: isRecurring,
     recurrence_type: recurrenceType,
     recurrence_value: '',

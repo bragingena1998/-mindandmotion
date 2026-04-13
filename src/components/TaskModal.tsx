@@ -92,20 +92,18 @@ export default function TaskModal({ isOpen, onClose, onSubmit, folders, editingT
     e.preventDefault();
     if (!title.trim()) return;
 
-    // [1] ФИКС: передаём editingTask.id вторым аргументом для update
     onSubmit({
       title: title.trim(),
       comment: comment.trim(),
-      date,
+      date: date,
       time: time || undefined,
-      deadline: deadline || null,  // null явно сбрасывает deadline на сервере
+      deadline: deadline !== '' ? deadline : null,
       priority,
-      folderId: folderId || undefined,
-      recurrence: recurrence  // всегда отправляем recurrence (даже 'none')
+      folderId: folderId !== undefined ? folderId : null,
+      recurrence: recurrence
     }, editingTask?.id);
 
     if (!editingTask) {
-      // Reset form only for new tasks
       setTitle('');
       setComment('');
       setDate(getTodayISO());

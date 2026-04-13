@@ -339,7 +339,7 @@ export default function Tasks() {
     try {
       if (id) {
         // [C] ФИКС: полная перезагрузка безопаснее чем ручной merge
-        await updateTask(id, taskData);
+        await updateTask(id, taskData as Partial<Task>);
         await loadTasks();
       } else {
         // CREATE новой задачи
