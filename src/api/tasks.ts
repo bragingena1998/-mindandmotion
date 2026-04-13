@@ -129,30 +129,29 @@ export function extractLocalTime(isoOrTime: string): string {
 export function adaptTaskForAPI(localTask: Partial<Task> | CreateTaskData): any {
   const recurrence = (localTask as any).recurrence ?? 'none';
   const isRecurring = recurrence !== 'none';
-  const recurrenceType = isRecurring ? recurrence : '';
+  const recurrenceType = isRecurring ? recurrence : null;
   const utcTime = localTask.time ? localTimeToUTC(localTask.time) : null;
 
   const deadlineRaw = (localTask as any).deadline;
-  const dueDate = (deadlineRaw !== undefined && deadlineRaw !== '') ? deadlineRaw : null;
+  const deadline = (deadlineRaw !== undefined && deadlineRaw !== '') ? deadlineRaw : null;
 
   const folderIdRaw = (localTask as any).folderId;
   const folderId = (folderIdRaw !== undefined) ? folderIdRaw : null;
 
   return {
-    title: localTask.title,
-    description: (localTask as any).comment ?? '',
-    date: (localTask as any).date ?? null,
-    time: utcTime,
-    due_date: dueDate,
-    priority: priorityNumberToText((localTask as any).priority ?? 2),
-    completed: (localTask as any).done ?? false,
-    donedate: (localTask as any).doneDate ?? null,
-    focussessions: (localTask as any).focusSessions ?? 0,
-    is_recurring: isRecurring,
-    recurrence_type: recurrenceType,
-    recurrence_value: '',
-    recurrence: recurrence,
-    folder_id: folderId
+    title:           localTask.title,
+    comment:         (localTask as any).comment ?? '',
+    date:            (localTask as any).date ?? null,
+    time:            utcTime,
+    deadline:        deadline,
+    priority:        priorityNumberToText((localTask as any).priority ?? 2),
+    done:            (localTask as any).done ?? false,
+    doneDate:        (localTask as any).doneDate ?? null,
+    focusSessions:   (localTask as any).focusSessions ?? 0,
+    isRecurring:     isRecurring,
+    recurrenceType:  recurrenceType,
+    recurrenceValue: '',
+    folderId:        folderId
   };
 }
 
