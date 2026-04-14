@@ -23,39 +23,6 @@ type TaskSection = {
   tasks: Task[];
 };
 
-// ФАЙЛ 1: Вычисление следующей даты для повторяющихся задач
-function getNextDate(dateStr: string, recurrenceType: string, recurrenceValue?: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dt = new Date(y, m - 1, d); // локальная дата клиента
-
-  if (recurrenceType === 'daily') {
-    dt.setDate(dt.getDate() + 1);
-  } else if (recurrenceType === 'weekly') {
-    dt.setDate(dt.getDate() + 7);
-  } else if (recurrenceType === 'monthly') {
-    dt.setMonth(dt.getMonth() + 1);
-  } else if (recurrenceType === 'custom' && recurrenceValue) {
-    try {
-      const days = JSON.parse(recurrenceValue);
-      if (Array.isArray(days) && days.length > 0) {
-        for (let i = 1; i <= 7; i++) {
-          dt.setDate(dt.getDate() + 1);
-          if (days.includes(dt.getDay())) break;
-        }
-      } else {
-        dt.setDate(dt.getDate() + 1);
-      }
-    } catch {
-      dt.setDate(dt.getDate() + 1);
-    }
-  }
-
-  const yy = dt.getFullYear();
-  const mm = String(dt.getMonth() + 1).padStart(2, '0');
-  const dd = String(dt.getDate()).padStart(2, '0');
-  return `${yy}-${mm}-${dd}`;
-}
-
 // Calculate statistics from tasks — ФАЙЛ 2 FIX
 function calculateStats(allTasks: Task[]) {
   const today = new Date()
@@ -289,20 +256,45 @@ export default function Tasks() {
     }
   }, [scrollToSection, isLoading]);
 
-  // Handle task toggle — передаём полный объект задачи
   const handleToggleTask = async (id: number, done: boolean) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
 
     try {
-      // ФАЙЛ 1: вычисляем nextDate на фронте для повторяющихся задач
-      let nextDate: string | undefined;
-      if (done && task.isRecurring && task.date) {
-        nextDate = getNextDate(task.date, task.recurrenceType, task.recurrenceValue);
+      const hasRecurrence = task.isRecurring === true;
+      const recurrenceType = task.recurrenceType ?? null;
+      const recurrenceValue = task.recurrenceValue ?? null;
+
+      // Вычисляем nextDate на фронте (только если задача с повторением и отмечается выполненной)
+      let nextDate: string | undefined = undefined;
+      if (done && hasRecurrence && task.date && recurrenceType) {
+        const [y, m, d] = task.date.substring(0,10).split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        if (recurrenceType === 'daily') {
+          dt.setDate(dt.getDate() + 1);
+        } else if (recurrenceType === 'weekly') {
+          dt.setDate(dt.getDate() + 7);
+        } else if (recurrenceType === 'monthly') {
+          dt.setMonth(dt.getMonth() + 1);
+        } else if (recurrenceType === 'custom' && recurrenceValue) {
+          try {
+            const days = JSON.parse(recurrenceValue);
+            if (Array.isArray(days) && days.length > 0) {
+              for (let i = 1; i <= 7; i++) {
+                dt.setDate(dt.getDate() + 1);
+                if (days.includes(dt.getDay())) break;
+              }
+            } else { dt.setDate(dt.getDate() + 1); }
+          } catch { dt.setDate(dt.getDate() + 1); }
+        }
+        const yy = dt.getFullYear();
+        const mm = String(dt.getMonth() + 1).padStart(2, '0');
+        const dd = String(dt.getDate()).padStart(2, '0');
+        nextDate = `${yy}-${mm}-${dd}`;
       }
 
+      // Передаём ВСЕ поля задачи + nextDate бэкенду
       await updateTask(id, {
-        // Все существующие поля задачи
         title:           task.title,
         date:            task.date,
         time:            task.time ?? null,
@@ -310,21 +302,18 @@ export default function Tasks() {
         priority:        task.priority,
         comment:         task.comment ?? '',
         folderId:        task.folderId ?? null,
-        // Поля выполнения
         done:            done,
         doneDate:        done ? new Date().toISOString().split('T')[0] : null,
-        // Поля повторения — ОБЯЗАТЕЛЬНО все три
-        recurrence:      task.recurrence,
         isRecurring:     task.isRecurring,
-        recurrenceType:  task.recurrenceType,
-        recurrenceValue: task.recurrenceValue ?? '',
+        recurrenceType:  recurrenceType,
+        recurrenceValue: recurrenceValue ?? '',
         focusSessions:   task.focusSessions ?? 0,
-        // ФАЙЛ 1: передаём nextDate для повторяющихся задач
-        ...(nextDate && { nextDate }),
+        ...(nextDate ? { nextDate } : {}),
       } as Partial<Task>);
 
-      // Бэкенд сам создаёт следующую задачу для повторяющихся — просто перезагружаем список
+      // Просто перезагружаем список — бэкенд сам создал следующую задачу
       await loadTasks();
+
     } catch (err) {
       alert('Не удалось обновить задачу');
     }
