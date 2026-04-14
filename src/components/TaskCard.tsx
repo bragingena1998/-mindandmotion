@@ -9,13 +9,27 @@ interface TaskCardProps {
   onEdit?: (task: Task) => void;
 }
 
-function formatDate(dateStr: string): string {
-  if (!dateStr) return '';
-  // Берём только дату без времени
-  const datePart = dateStr.substring(0, 10);
-  const [year, month, day] = datePart.split('-');
-  if (!year || !month || !day) return '';
-  return `${day}.${month}`;
+function formatTaskDateRange(date: string, deadline?: string | null): string {
+  const parseDate = (d: string) => {
+    const [year, month, day] = d.split('-');
+    return { day: parseInt(day), month: parseInt(month), year: parseInt(year) };
+  };
+  const fmt2 = (n: number) => String(n).padStart(2, '0');
+  const d = parseDate(date);
+
+  if (!deadline) {
+    return `${fmt2(d.day)}.${fmt2(d.month)}.${String(d.year).slice(2)}`;
+  }
+
+  const dl = parseDate(deadline);
+
+  if (d.month === dl.month && d.year === dl.year) {
+    // Одинаковый месяц: 13-15.03.26
+    return `${fmt2(d.day)}-${fmt2(dl.day)}.${fmt2(d.month)}.${String(d.year).slice(2)}`;
+  } else {
+    // Разные месяцы: 13.04-14.05.26
+    return `${fmt2(d.day)}.${fmt2(d.month)}-${fmt2(dl.day)}.${fmt2(dl.month)}.${String(dl.year).slice(2)}`;
+  }
 }
 
 function formatTime(timeStr?: string): string {
@@ -94,7 +108,7 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-  const dateStr = formatDate(task.date);
+  const dateStr = formatTaskDateRange(task.date, task.deadline);
   const isOverdue = !task.done && task.date && task.date.substring(0, 10) < todayStr;
   const status = getTaskStatus(task, todayStr);
 

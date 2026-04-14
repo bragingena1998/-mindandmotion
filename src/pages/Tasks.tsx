@@ -23,15 +23,6 @@ type TaskSection = {
   tasks: Task[];
 };
 
-// Calculate next date based on recurrence
-function calculateNextDate(taskDate: string, recurrence: string): string {
-  const date = new Date(taskDate);
-  if (recurrence === 'daily') date.setDate(date.getDate() + 1);
-  if (recurrence === 'weekly') date.setDate(date.getDate() + 7);
-  if (recurrence === 'monthly') date.setMonth(date.getMonth() + 1);
-  return date.toISOString().split('T')[0];
-}
-
 // Calculate statistics from tasks — ФАЙЛ 2 FIX
 function calculateStats(allTasks: Task[]) {
   const today = new Date()
@@ -265,53 +256,34 @@ export default function Tasks() {
     }
   }, [scrollToSection, isLoading]);
 
-  // Handle task toggle with recurrence logic
+  // Handle task toggle — передаём полный объект задачи
   const handleToggleTask = async (id: number, done: boolean) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
 
     try {
-      const doneDate = done ? new Date().toISOString() : null;
-      await updateTask(id, { done, doneDate });
+      await updateTask(id, {
+        // Все существующие поля задачи
+        title:           task.title,
+        date:            task.date,
+        time:            task.time ?? null,
+        deadline:        task.deadline ?? null,
+        priority:        task.priority,
+        comment:         task.comment ?? '',
+        folderId:        task.folderId ?? null,
+        // Поля выполнения
+        done:            done,
+        doneDate:        done ? new Date().toISOString().split('T')[0] : null,
+        // Поля повторения — ОБЯЗАТЕЛЬНО все три
+        recurrence:      task.recurrence,
+        isRecurring:     task.isRecurring,
+        recurrenceType:  task.recurrenceType,
+        recurrenceValue: task.recurrenceValue ?? '',
+        focusSessions:   task.focusSessions ?? 0,
+      } as Partial<Task>);
 
-      // ФАЙЛ 7 FIX: Проверяем оба поля recurrence и recurrence_type
-      const hasRecurrence = (task.recurrence && task.recurrence !== 'none') ||
-                           (task.recurrenceType && task.recurrenceType !== 'none');
-      const recurrenceValue = task.recurrence || task.recurrenceType || 'none';
-
-      // If task is recurring and being marked as done, create next occurrence
-      if (done && hasRecurrence && task.date) {
-        const nextDate = calculateNextDate(task.date, recurrenceValue);
-
-        // Create new task with same properties but new date
-        const newTaskData: CreateTaskData = {
-          title: task.title,
-          comment: task.comment,
-          date: nextDate,
-          time: task.time,
-          priority: task.priority,
-          folderId: task.folderId,
-          recurrence: recurrenceValue
-        };
-
-        await createTask(newTaskData);
-
-        // Reload tasks to show the new recurring task
-        await loadTasks();
-
-        // Scroll to the section of the new task date
-        const todayStr = new Date().toISOString().split('T')[0];
-        if (nextDate === todayStr) {
-          setScrollToSection('⚡ СЕГОДНЯ');
-        } else if (nextDate > todayStr) {
-          setScrollToSection('📅'); // Future date section
-        }
-      } else {
-        // Just update local state
-        setTasks(prev => prev.map(t =>
-          t.id === id ? { ...t, done, doneDate } : t
-        ));
-      }
+      // Бэкенд сам создаёт следующую задачу для повторяющихся — просто перезагружаем список
+      await loadTasks();
     } catch (err) {
       alert('Не удалось обновить задачу');
     }
