@@ -303,6 +303,7 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
     <>
       <div
         className={`task-card-compact ${task.done ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}`}
+        onClick={() => { if (task.subtasksCount > 0) setExpanded(true); }}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
@@ -369,10 +370,7 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
               <span className="meta-recurrence" title="Повторяющаяся задача">↻</span>
             )}
             {task.subtasksCount > 0 && (
-              <span
-                className="meta-subtasks"
-                onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
-              >
+              <span className="meta-subtasks">
                 ☰ {task.subtasksCount}
               </span>
             )}
@@ -426,14 +424,18 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
           {/* Bottom Sheet */}
           <div
             style={{
-              position: 'fixed', bottom: 0, left: 0, right: 0,
+              position: 'fixed',
+              bottom: 'var(--nav-height, 64px)',
+              left: 0, right: 0,
               zIndex: 201,
               background: 'var(--color-surface)',
               borderRadius: '16px 16px 0 0',
-              padding: '16px',
-              maxHeight: '60vh',
+              padding: '16px 16px 20px',
+              maxHeight: 'calc(70vh - 64px)',
               overflowY: 'auto',
-              boxShadow: '0 -4px 24px rgba(0,0,0,0.3)'
+              boxShadow: '0 -4px 24px rgba(0,0,0,0.3)',
+              maxWidth: 600,
+              margin: '0 auto'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -491,12 +493,18 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
                   ))}
                 </div>
 
-                <form className="subtask-add" onSubmit={handleAddSubtask}>
+                <form className="subtask-add" onSubmit={handleAddSubtask} style={{ marginTop: 12, paddingBottom: 8 }}>
                   <input
                     type="text"
                     placeholder="Новая подзадача..."
                     value={newSubtaskTitle}
                     onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddSubtask();
+                      }
+                    }}
                   />
                   <button type="submit" disabled={!newSubtaskTitle.trim()}>
                     <Plus size={16} />
