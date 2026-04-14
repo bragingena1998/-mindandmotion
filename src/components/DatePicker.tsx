@@ -14,6 +14,35 @@ const MONTHS = [
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
+const RF_HOLIDAYS: Set<string> = new Set([
+  // 2025
+  '2025-01-01','2025-01-02','2025-01-03','2025-01-06','2025-01-07','2025-01-08',
+  '2025-02-23','2025-02-24',
+  '2025-03-08','2025-03-10',
+  '2025-04-30',
+  '2025-05-01','2025-05-02','2025-05-08','2025-05-09',
+  '2025-06-12','2025-06-13',
+  '2025-11-03','2025-11-04',
+  '2025-12-31',
+  // 2026
+  '2026-01-01','2026-01-02','2026-01-05','2026-01-06','2026-01-07','2026-01-08','2026-01-09',
+  '2026-02-23',
+  '2026-03-09',
+  '2026-05-01','2026-05-04','2026-05-05','2026-05-11',
+  '2026-06-12',
+  '2026-11-04',
+]);
+
+function isWeekend(year: number, month: number, day: number): boolean {
+  const dow = new Date(year, month, day).getDay();
+  return dow === 0 || dow === 6;
+}
+
+function isHoliday(year: number, month: number, day: number): boolean {
+  const str = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return RF_HOLIDAYS.has(str);
+}
+
 function formatDateForDisplay(dateStr: string): string {
   if (!dateStr) return '';
   const [year, month, day] = dateStr.split('-');
@@ -150,8 +179,9 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
 
           {/* Weekday headers */}
           <div className="date-picker-weekdays">
-            {WEEKDAYS.map(day => (
-              <div key={day} className="date-picker-weekday">
+            {WEEKDAYS.map((day, i) => (
+              <div key={day} className="date-picker-weekday"
+                style={i >= 5 ? { color: '#f87171' } : undefined}>
                 {day}
               </div>
             ))}
@@ -172,6 +202,7 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
               const isToday = dateStr === todayStr;
               const dateObj = new Date(viewYear, viewMonth, day);
               const isPast = dateObj < new Date(todayStr);
+              const isRed = (isWeekend(viewYear, viewMonth, day) || isHoliday(viewYear, viewMonth, day)) && !isSelected;
 
               return (
                 <button
@@ -181,6 +212,7 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
                     isSelected ? 'selected' : ''
                   } ${isToday ? 'today' : ''} ${isPast ? 'past' : ''}`}
                   onClick={() => handleDateSelect(day)}
+                  style={isRed ? { color: '#f87171' } : undefined}
                 >
                   {day}
                 </button>

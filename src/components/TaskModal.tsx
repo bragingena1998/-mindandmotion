@@ -250,7 +250,8 @@ export default function TaskModal({ isOpen, onClose, onSubmit, folders, editingT
               value={comment}
               onChange={e => setComment(e.target.value)}
               placeholder="Дополнительная информация..."
-              rows={3}
+              rows={2}
+              style={{ resize: 'none', minHeight: 'unset' }}
             />
           </div>
 

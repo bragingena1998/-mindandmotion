@@ -198,25 +198,78 @@ function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
 
 // ─── Desktop input ───────────────────────────────────────────────────────────
 function DesktopTimeInput({ value, onChange, onClose }: TimePickerProps) {
+  const [localValue, setLocalValue] = useState(value || '');
+
   return (
-    <div className="time-picker-overlay" onClick={onClose}>
-      <div className="time-picker-modal" onClick={e => e.stopPropagation()}>
-        <div className="time-picker-modal-header">
-          <h3 className="time-picker-title">ВЫБЕРИТЕ ВРЕМЯ</h3>
-          <button className="time-picker-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="time-picker-input-wrapper">
-          <input
-            type="time"
-            className="time-picker-desktop-input"
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            autoFocus
-          />
-        </div>
-        <div className="time-picker-actions">
-          <button className="time-picker-btn time-picker-btn-primary" onClick={onClose}>
-            ГОТОВО
+    <div
+      className="time-picker-overlay"
+      style={{ background: 'rgba(0,0,0,0.75)' }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--color-bg)',
+          borderRadius: 16,
+          padding: '32px 36px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          minWidth: 320,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 24,
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <h3 style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: 0 }}>
+          ВЫБЕРИТЕ ВРЕМЯ
+        </h3>
+
+        {/* Большое поле ввода */}
+        <input
+          type="time"
+          value={localValue}
+          onChange={e => setLocalValue(e.target.value)}
+          autoFocus
+          style={{
+            fontSize: 48,
+            fontWeight: 700,
+            color: 'var(--color-text)',
+            background: 'var(--color-surface)',
+            border: '2px solid var(--color-border)',
+            borderRadius: 12,
+            padding: '12px 20px',
+            outline: 'none',
+            letterSpacing: '0.05em',
+            textAlign: 'center',
+            width: '100%',
+            cursor: 'text',
+          }}
+          onFocus={e => (e.target.style.borderColor = 'var(--color-primary)')}
+          onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+        />
+
+        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+          <button
+            style={{
+              flex: 1, padding: '11px', borderRadius: 10,
+              border: '1.5px solid var(--color-border)',
+              background: 'transparent', color: 'var(--color-text)',
+              fontWeight: 600, fontSize: 14, cursor: 'pointer',
+            }}
+            onClick={onClose}
+          >
+            Отмена
+          </button>
+          <button
+            style={{
+              flex: 1, padding: '11px', borderRadius: 10,
+              border: 'none',
+              background: 'var(--color-primary)', color: '#fff',
+              fontWeight: 700, fontSize: 14, cursor: 'pointer',
+            }}
+            onClick={() => { onChange(localValue); onClose(); }}
+          >
+            Готово
           </button>
         </div>
       </div>

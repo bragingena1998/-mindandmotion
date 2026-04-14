@@ -116,7 +116,16 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
   const [confirmDelete, setConfirmDelete] = useState<'task' | 'subtask' | null>(null);
   const [deletingSubtaskId, setDeletingSubtaskId] = useState<number | null>(null);
 
+  // ── Mobile detection ────────────────────────────────────────────────────
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : true);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+
   const handlePointerDown = () => {
+    if (!isMobile) return;
     isLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
       isLongPress.current = true;
@@ -322,6 +331,15 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
           <div className="task-header-compact">
             <h3 className="task-title-compact">{task.title}</h3>
             <div className="task-actions-compact">
+              {!isMobile && (
+                <button
+                  className="task-action-btn task-action-focus"
+                  onClick={(e) => { e.stopPropagation(); setShowFocus(true); }}
+                  title="Фокус-сессия"
+                >
+                  🎯
+                </button>
+              )}
               {onEdit && (
                 <button className="task-action-btn" onClick={handleEdit}>
                   <Pencil size={12} />
@@ -338,6 +356,21 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
             <div className="task-status-compact">
               <span className={`task-status-badge ${status.className}`}>{status.label}</span>
             </div>
+          )}
+
+          {task.comment && (
+            <p style={{
+              fontSize: 12,
+              color: 'var(--color-text-muted)',
+              margin: '2px 0 4px',
+              lineHeight: 1.4,
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+            }}>
+              {task.comment}
+            </p>
           )}
 
           {/* Row 3: Meta info */}
@@ -417,25 +450,33 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
           <div
             style={{
               position: 'fixed', inset: 0, zIndex: 200,
-              background: 'rgba(0,0,0,0.5)'
+              background: 'rgba(0,0,0,0.75)'
             }}
             onClick={() => setExpanded(false)}
           />
-          {/* Bottom Sheet */}
+          {/* Subtasks panel */}
           <div
-            style={{
+            style={isMobile ? {
               position: 'fixed',
-              bottom: 'var(--nav-height, 64px)',
+              bottom: 0,
               left: 0, right: 0,
               zIndex: 201,
-              background: 'var(--color-surface)',
-              borderRadius: '16px 16px 0 0',
-              padding: '16px 16px 20px',
-              maxHeight: 'calc(70vh - 64px)',
+              background: 'var(--color-bg)',
+              borderRadius: '20px 20px 0 0',
+              padding: '12px 16px',
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
+              maxHeight: '72vh',
               overflowY: 'auto',
-              boxShadow: '0 -4px 24px rgba(0,0,0,0.3)',
-              maxWidth: 600,
-              margin: '0 auto'
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.5)'
+            } : {
+              position: 'fixed',
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 500, maxHeight: '80vh', overflowY: 'auto',
+              zIndex: 201,
+              background: 'var(--color-bg)', borderRadius: 16,
+              padding: '24px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -445,6 +486,21 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
               background: 'var(--color-border)',
               borderRadius: 2, margin: '0 auto 12px'
             }} />
+
+            {task.comment && (
+              <div style={{
+                background: 'var(--color-surface)',
+                borderRadius: 10,
+                padding: '10px 12px',
+                marginBottom: 12,
+                fontSize: 13,
+                color: 'var(--color-text-muted)',
+                lineHeight: 1.5,
+                borderLeft: '3px solid var(--color-primary)',
+              }}>
+                💬 {task.comment}
+              </div>
+            )}
 
             <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: 'var(--color-text)' }}>
               Подзадачи · {task.title}
@@ -520,28 +576,63 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
       {confirmDelete && (
         <>
           <div
-            style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.6)' }}
+            style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.75)' }}
             onClick={() => setConfirmDelete(null)}
           />
-          <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 301,
-            background: 'var(--color-surface)',
-            borderRadius: '16px 16px 0 0',
-            padding: '24px 20px 32px',
-            boxShadow: '0 -4px 24px rgba(0,0,0,0.3)'
+          <div style={isMobile ? {
+            position: 'fixed',
+            zIndex: 301,
+            bottom: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '100%',
+            maxWidth: 480,
+            background: 'var(--color-bg)',
+            borderRadius: '20px 20px 0 0',
+            padding: '28px 24px',
+            paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
+            boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
+          } : {
+            position: 'fixed',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 420, zIndex: 301,
+            background: 'var(--color-bg)', borderRadius: 16,
+            padding: '32px 28px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
           }}>
-            <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--color-text)' }}>
+            {/* Иконка удаления */}
+            <div style={{
+              width: 52, height: 52,
+              borderRadius: '50%',
+              background: 'rgba(161, 44, 123, 0.18)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 14px', fontSize: 24,
+            }}>
+              🗑️
+            </div>
+
+            <p style={{ fontSize: 17, fontWeight: 700, textAlign: 'center', marginBottom: 6, color: 'var(--color-text)' }}>
               {confirmDelete === 'task' ? 'Удалить задачу?' : 'Удалить подзадачу?'}
             </p>
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 20 }}>
-              {confirmDelete === 'task' ? task.title : subtasks.find(s=>s.id===deletingSubtaskId)?.title}
+
+            <p style={{
+              fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center',
+              marginBottom: 24, maxWidth: '32ch', margin: '0 auto 24px', lineHeight: 1.5,
+            }}>
+              {confirmDelete === 'task'
+                ? `«${task.title}» будет удалена без возможности восстановления`
+                : `Подзадача будет удалена`
+              }
             </p>
-            <div style={{ display: 'flex', gap: 12 }}>
+
+            <div style={{ display: 'flex', gap: 10 }}>
               <button
                 style={{
-                  flex:1, padding:'12px', borderRadius:8, border:'none',
-                  background:'var(--color-surface-offset)', color:'var(--color-text)',
-                  fontWeight:600, fontSize:15
+                  flex: 1, padding: '13px 0', borderRadius: 12,
+                  border: '1.5px solid var(--color-border)',
+                  background: 'transparent', color: 'var(--color-text)',
+                  fontWeight: 600, fontSize: 15, cursor: 'pointer',
                 }}
                 onClick={() => setConfirmDelete(null)}
               >
@@ -549,9 +640,10 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
               </button>
               <button
                 style={{
-                  flex:1, padding:'12px', borderRadius:8, border:'none',
-                  background:'var(--color-error)', color:'#fff',
-                  fontWeight:600, fontSize:15
+                  flex: 1, padding: '13px 0', borderRadius: 12,
+                  border: 'none',
+                  background: 'var(--color-error)', color: '#fff',
+                  fontWeight: 700, fontSize: 15, cursor: 'pointer',
                 }}
                 onClick={confirmDeleteActual}
               >
