@@ -54,8 +54,8 @@ export default function Layout() {
           <header className="mobile-header">
             <div className="mobile-header__top">
               <h1 className="mobile-header__logo">Mind&Motion</h1>
-              <button 
-                className="mobile-header__menu-btn"
+              <button
+                className="mobile-header__menu-btn desktop-only"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}

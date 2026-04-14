@@ -2062,3 +2062,13 @@
     font-size: 13px;
   }
 }
+
+/* Utility: Desktop-only elements */
+.desktop-only {
+  display: none;
+}
+@media (min-width: 768px) {
+  .desktop-only {
+    display: flex;
+  }
+}

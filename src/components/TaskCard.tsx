@@ -112,6 +112,10 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
   const [timerTimeLeft, setTimerTimeLeft] = useState(0);
   const [timerTaskTitle, setTimerTaskTitle] = useState('');
 
+  // ── Confirmation modal state ────────────────────────────────────────────
+  const [confirmDelete, setConfirmDelete] = useState<'task' | 'subtask' | null>(null);
+  const [deletingSubtaskId, setDeletingSubtaskId] = useState<number | null>(null);
+
   const handlePointerDown = () => {
     isLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
@@ -200,9 +204,23 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Удалить задачу?')) {
+    setConfirmDelete('task');
+  };
+
+  const confirmDeleteActual = async () => {
+    if (confirmDelete === 'task') {
       onDelete(task.id);
+    } else if (confirmDelete === 'subtask' && deletingSubtaskId !== null) {
+      try {
+        await deleteSubtask(task.id, deletingSubtaskId);
+        setSubtasks(subtasks.filter(s => s.id !== deletingSubtaskId));
+        task.subtasksCount = subtasks.length - 1;
+      } catch {
+        // silent fail
+      }
     }
+    setConfirmDelete(null);
+    setDeletingSubtaskId(null);
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -239,14 +257,8 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
   };
 
   const handleDeleteSubtask = async (subtaskId: number) => {
-    if (!confirm('Удалить подзадачу?')) return;
-    try {
-      await deleteSubtask(task.id, subtaskId);
-      setSubtasks(subtasks.filter(s => s.id !== subtaskId));
-      task.subtasksCount = subtasks.length - 1;
-    } catch {
-      alert('Не удалось удалить подзадачу');
-    }
+    setDeletingSubtaskId(subtaskId);
+    setConfirmDelete('subtask');
   };
 
   const startEditSubtask = (subtask: Subtask) => {
@@ -289,25 +301,8 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
 
   return (
     <>
-      {/* Minimized timer banner */}
-      {timerMinimized && (
-        <div className="timer-banner" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-          background: '#1a1a2e', color: '#4fc3f7',
-          padding: '10px 16px', display: 'flex', alignItems: 'center',
-          gap: 12, fontSize: 14, fontWeight: 600,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
-        }}>
-          <span>🎯 {timerTaskTitle}</span>
-          <span style={{ flex: 1 }}>— {formatTimerDisplay(timerTimeLeft)}</span>
-          <button onClick={handleTimerSave}>Сохранить</button>
-          <button onClick={handleTimerStop}>Стоп</button>
-        </div>
-      )}
-
-      <div 
-        className={`task-card-compact ${task.done ? 'completed' : ''} ${isOverdue ? 'overdue' : ''} ${expanded ? 'expanded' : ''}`}
-        onClick={toggleExpanded}
+      <div
+        className={`task-card-compact ${task.done ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}`}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
@@ -373,94 +368,18 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
             {hasRecurrence && (
               <span className="meta-recurrence" title="Повторяющаяся задача">↻</span>
             )}
+            {task.subtasksCount > 0 && (
+              <span
+                className="meta-subtasks"
+                onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+              >
+                ☰ {task.subtasksCount}
+              </span>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Subtasks panel */}
-      <div 
-        className={`subtasks-panel ${expanded ? 'open' : 'closed'}`} 
-        onClick={(e) => e.stopPropagation()}
-      >
-          {loadingSubtasks ? (
-            <div className="subtasks-loading">Загрузка...</div>
-          ) : (
-            <>
-              {/* Subtasks list */}
-              <div className="subtasks-list">
-                {subtasks.length === 0 ? (
-                  <div className="subtasks-empty">Нет подзадач</div>
-                ) : (
-                  subtasks.map(subtask => (
-                    <div key={subtask.id} className={`subtask-item ${subtask.done ? 'done' : ''}`}>
-                      <div 
-                        className={`subtask-checkbox ${subtask.done ? 'checked' : ''}`}
-                        onClick={() => handleToggleSubtask(subtask)}
-                      />
-                      
-                      {editingSubtaskId === subtask.id ? (
-                        <div className="subtask-edit">
-                          <input
-                            type="text"
-                            value={editingSubtaskTitle}
-                            onChange={(e) => setEditingSubtaskTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveEditSubtask();
-                              if (e.key === 'Escape') cancelEditSubtask();
-                            }}
-                            autoFocus
-                          />
-                          <button onClick={saveEditSubtask}><Check size={14} /></button>
-                          <button onClick={cancelEditSubtask}><X size={14} /></button>
-                        </div>
-                      ) : (
-                        <span 
-                          className="subtask-title"
-                          onClick={() => startEditSubtask(subtask)}
-                        >
-                          {subtask.title}
-                        </span>
-                      )}
-                      
-                      <button 
-                        className="subtask-delete"
-                        onClick={() => handleDeleteSubtask(subtask.id)}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Add subtask form */}
-              <form className="subtask-add" onSubmit={handleAddSubtask}>
-                <input
-                  type="text"
-                  placeholder="Новая подзадача..."
-                  value={newSubtaskTitle}
-                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                />
-                <button type="submit" disabled={!newSubtaskTitle.trim()}>
-                  <Plus size={16} />
-                </button>
-              </form>
-            </>
-          )}
-        </div>
       </div>
-
-      {/* Subtasks overlay for closing */}
-      {expanded && (
-        <div 
-          className="subtasks-overlay"
-          onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 10,
-            background: 'transparent'
-          }}
-        />
-      )}
 
       {/* Focus Modal - always render when showFocus, control visibility via isMinimized */}
       {showFocus && (
@@ -491,6 +410,148 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
           <button onClick={() => setTimerMinimized(false)}>▶ Развернуть</button>
           <button onClick={handleTimerStop}>✕</button>
         </div>
+      )}
+
+      {/* Subtasks Bottom Sheet */}
+      {expanded && (
+        <>
+          {/* Backdrop */}
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 200,
+              background: 'rgba(0,0,0,0.5)'
+            }}
+            onClick={() => setExpanded(false)}
+          />
+          {/* Bottom Sheet */}
+          <div
+            style={{
+              position: 'fixed', bottom: 0, left: 0, right: 0,
+              zIndex: 201,
+              background: 'var(--color-surface)',
+              borderRadius: '16px 16px 0 0',
+              padding: '16px',
+              maxHeight: '60vh',
+              overflowY: 'auto',
+              boxShadow: '0 -4px 24px rgba(0,0,0,0.3)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div style={{
+              width: 40, height: 4,
+              background: 'var(--color-border)',
+              borderRadius: 2, margin: '0 auto 12px'
+            }} />
+
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: 'var(--color-text)' }}>
+              Подзадачи · {task.title}
+            </h3>
+
+            {loadingSubtasks ? (
+              <div style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Загрузка...</div>
+            ) : (
+              <>
+                <div className="subtasks-list">
+                  {subtasks.length === 0 && (
+                    <div style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 8 }}>
+                      Нет подзадач
+                    </div>
+                  )}
+                  {subtasks.map(subtask => (
+                    <div key={subtask.id} className={`subtask-item ${subtask.done ? 'done' : ''}`}>
+                      <div
+                        className={`subtask-checkbox ${subtask.done ? 'checked' : ''}`}
+                        onClick={() => handleToggleSubtask(subtask)}
+                      />
+                      {editingSubtaskId === subtask.id ? (
+                        <div className="subtask-edit">
+                          <input
+                            type="text"
+                            value={editingSubtaskTitle}
+                            onChange={(e) => setEditingSubtaskTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEditSubtask();
+                              if (e.key === 'Escape') cancelEditSubtask();
+                            }}
+                            autoFocus
+                          />
+                          <button onClick={saveEditSubtask}><Check size={14} /></button>
+                          <button onClick={cancelEditSubtask}><X size={14} /></button>
+                        </div>
+                      ) : (
+                        <span className="subtask-title" onClick={() => startEditSubtask(subtask)}>
+                          {subtask.title}
+                        </span>
+                      )}
+                      <button className="subtask-delete" onClick={() => handleDeleteSubtask(subtask.id)}>
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <form className="subtask-add" onSubmit={handleAddSubtask}>
+                  <input
+                    type="text"
+                    placeholder="Новая подзадача..."
+                    value={newSubtaskTitle}
+                    onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  />
+                  <button type="submit" disabled={!newSubtaskTitle.trim()}>
+                    <Plus size={16} />
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmDelete && (
+        <>
+          <div
+            style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.6)' }}
+            onClick={() => setConfirmDelete(null)}
+          />
+          <div style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 301,
+            background: 'var(--color-surface)',
+            borderRadius: '16px 16px 0 0',
+            padding: '24px 20px 32px',
+            boxShadow: '0 -4px 24px rgba(0,0,0,0.3)'
+          }}>
+            <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--color-text)' }}>
+              {confirmDelete === 'task' ? 'Удалить задачу?' : 'Удалить подзадачу?'}
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 20 }}>
+              {confirmDelete === 'task' ? task.title : subtasks.find(s=>s.id===deletingSubtaskId)?.title}
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                style={{
+                  flex:1, padding:'12px', borderRadius:8, border:'none',
+                  background:'var(--color-surface-offset)', color:'var(--color-text)',
+                  fontWeight:600, fontSize:15
+                }}
+                onClick={() => setConfirmDelete(null)}
+              >
+                Отмена
+              </button>
+              <button
+                style={{
+                  flex:1, padding:'12px', borderRadius:8, border:'none',
+                  background:'var(--color-error)', color:'#fff',
+                  fontWeight:600, fontSize:15
+                }}
+                onClick={confirmDeleteActual}
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </>
   );

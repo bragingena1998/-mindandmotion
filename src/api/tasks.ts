@@ -72,23 +72,21 @@ function getTodayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function priorityTextToNumber(text: string): 1 | 2 | 3 {
+function priorityTextToNumber(raw: any): 1 | 2 | 3 {
+  // Если уже число
+  const num = Number(raw);
+  if (num === 1 || num === 2 || num === 3) return num as 1 | 2 | 3;
+  // Если строка-текст
   const map: Record<string, 1 | 2 | 3> = {
-    'low': 1, 'Низкий': 1,
-    'medium': 2, 'Нормальный': 2,
-    'high': 3, 'Высокий': 3
+    'low': 1, '1': 1,
+    'medium': 2, '2': 2, 'normal': 2,
+    'high': 3, '3': 3,
   };
-  return map[text] ?? 2;
-}
-
-function priorityNumberToText(num: number): 'low' | 'medium' | 'high' {
-  const map: Record<number, 'low' | 'medium' | 'high'> = { 1: 'low', 2: 'medium', 3: 'high' };
-  return map[num] || 'medium';
+  return map[String(raw)?.toLowerCase()] ?? 2;
 }
 
 // API → Frontend
 export function adaptTaskFromAPI(dbTask: any): Task {
-  console.log('[DEBUG adaptTask]', JSON.stringify(dbTask).slice(0, 300));
   return {
     id: dbTask.id,
     title: dbTask.title || '',
@@ -249,7 +247,6 @@ export async function fetchTotalCompletedCount(): Promise<number> {
 export async function fetchFolders(): Promise<Folder[]> {
   const response = await apiClient.get('/folders');
   const data = response.data;
-  console.log('[DEBUG folders]', JSON.stringify(data.folders || data).slice(0, 300));
   return data.folders || data;
 }
 

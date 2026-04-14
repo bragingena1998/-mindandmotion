@@ -62,8 +62,6 @@ export default function FocusModal({ task, onClose, onSave, onMinimize, isMinimi
     if (isRunning && !isPaused) {
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => {
-          // Notify parent of time update
-          onTimeUpdate?.(prev > 0 ? prev - 1 : 0);
           if (prev <= 1) {
             // Timer completed
             clearInterval(intervalRef.current);
@@ -98,6 +96,11 @@ export default function FocusModal({ task, onClose, onSave, onMinimize, isMinimi
       }
     };
   }, [isRunning, isPaused, selectedMinutes, onSave]);
+
+  // Separate useEffect for onTimeUpdate to avoid setState during render
+  useEffect(() => {
+    onTimeUpdate?.(timeLeft);
+  }, [timeLeft]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
