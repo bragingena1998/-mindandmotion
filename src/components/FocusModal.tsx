@@ -6,6 +6,7 @@ interface FocusModalProps {
   task: Task;
   onClose: () => void;
   onSave: (minutes: number) => void;
+  onMinimize?: () => void;
 }
 
 const TIME_OPTIONS = [5, 15, 25, 45, 60];
@@ -33,12 +34,13 @@ function playBeep() {
   }
 }
 
-export default function FocusModal({ task, onClose, onSave }: FocusModalProps) {
+export default function FocusModal({ task, onClose, onSave, onMinimize }: FocusModalProps) {
   const [selectedMinutes, setSelectedMinutes] = useState(25);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [customMinutes, setCustomMinutes] = useState('');
   
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const totalTime = selectedMinutes * 60;
@@ -157,6 +159,26 @@ export default function FocusModal({ task, onClose, onSave }: FocusModalProps) {
                 {minutes} мин
               </button>
             ))}
+            <div className="focus-custom-input">
+              <input
+                type="number"
+                placeholder="мин"
+                min={1} max={180}
+                value={customMinutes}
+                onChange={(e) => setCustomMinutes(e.target.value)}
+                disabled={isRunning}
+                style={{ width: 60, textAlign: 'center' }}
+              />
+              <button
+                onClick={() => {
+                  const m = parseInt(customMinutes);
+                  if (m > 0 && m <= 180) handleTimeSelect(m);
+                }}
+                disabled={isRunning}
+              >
+                Ок
+              </button>
+            </div>
           </div>
         )}
 
@@ -180,6 +202,13 @@ export default function FocusModal({ task, onClose, onSave }: FocusModalProps) {
             ⏹ СТОП
           </button>
         </div>
+
+        {/* Minimize button */}
+        {onMinimize && (
+          <button className="focus-minimize" onClick={onMinimize}>
+            — Свернуть
+          </button>
+        )}
 
         {/* Close button */}
         <button className="focus-close" onClick={onClose}>✕</button>

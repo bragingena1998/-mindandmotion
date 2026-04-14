@@ -159,6 +159,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 16px;
 }
 
 .task-section-title {
@@ -169,7 +170,6 @@
   color: var(--text-muted);
   margin: 0;
   padding: 8px 4px;
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 /* ===== TASK LIST ===== */
@@ -1524,25 +1524,49 @@
   border-radius: 4px;
 }
 
+/* Subtasks toggle button */
+.subtasks-toggle {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.subtasks-toggle:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--accent-border);
+  color: var(--text-primary);
+}
+
 /* Subtasks panel */
 .subtasks-panel {
-  margin-top: 12px;
-  padding: 12px;
+  width: 100%;
+  overflow: hidden;
+  transition: max-height 0.2s ease, opacity 0.2s ease, padding 0.2s ease;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
   border: 1px solid var(--border-subtle);
-  animation: slideDown 0.2s ease-out;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.subtasks-panel.open {
+  max-height: 500px;
+  padding: 12px;
+  margin-top: 12px;
+  opacity: 1;
+}
+
+.subtasks-panel.closed {
+  max-height: 0;
+  padding: 0 12px;
+  margin-top: 0;
+  opacity: 0;
 }
 
 .subtasks-loading {
@@ -1926,6 +1950,88 @@
 .focus-close:hover {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
+}
+
+/* Minimize button */
+.focus-minimize {
+  position: absolute;
+  top: 16px;
+  right: 56px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.focus-minimize:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+/* Custom time input */
+.focus-custom-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.focus-custom-input input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.focus-custom-input input:focus {
+  border-color: var(--accent-border);
+}
+
+.focus-custom-input button {
+  background: var(--accent-1);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.focus-custom-input button:hover:not(:disabled) {
+  background: var(--accent-2);
+}
+
+.focus-custom-input button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Minimized timer banner */
+.timer-banner {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.timer-banner button {
+  background: rgba(79, 195, 247, 0.2);
+  border: 1px solid rgba(79, 195, 247, 0.4);
+  color: #4fc3f7;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.timer-banner button:hover {
+  background: rgba(79, 195, 247, 0.3);
 }
 
 /* Mobile responsive */

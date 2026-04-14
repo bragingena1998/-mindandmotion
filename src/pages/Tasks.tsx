@@ -28,10 +28,18 @@ function calculateStats(allTasks: Task[]) {
   const today = new Date()
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
 
-  // [3] ФИКС: СЕГОДНЯ — только сегодня, без просроченных
-  const todayPool = allTasks.filter(t => t.date && t.date.substring(0,10) === todayStr)
-  const todayDone = todayPool.filter(t => t.done === true).length
-  const todayTotal = todayPool.length
+  // Сегодня: невыполненные с date=сегодня + выполненные с doneDate=сегодня
+  const todayPool = allTasks.filter(t => {
+    const taskDate = t.date?.substring(0, 10);
+    const doneDateStr = t.doneDate?.substring(0, 10);
+    if (t.done) {
+      return doneDateStr === todayStr; // выполненные — по doneDate
+    } else {
+      return taskDate === todayStr; // невыполненные — по date
+    }
+  });
+  const todayDone = todayPool.filter(t => t.done).length;
+  const todayTotal = todayPool.length;
 
   // НЕДЕЛЯ: выполненные за текущую неделю (Пн-Вс)
   const weekStart = new Date(today)

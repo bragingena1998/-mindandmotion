@@ -106,6 +106,12 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const isLongPress = useRef(false);
 
+  // ── Timer minimize state ─────────────────────────────────────────────────
+  const [timerMinimized, setTimerMinimized] = useState(false);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerTimeLeft, setTimerTimeLeft] = useState(0);
+  const [timerTaskTitle, setTimerTaskTitle] = useState('');
+
   const handlePointerDown = () => {
     isLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
@@ -143,6 +149,36 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
     } catch {
       console.error('Failed to update focus sessions');
     }
+  };
+
+  const handleTimerMinimize = () => {
+    setTimerMinimized(true);
+    setShowFocus(false);
+    setTimerTaskTitle(task.title);
+  };
+
+  const handleTimerSave = async () => {
+    if (timerTimeLeft > 0) {
+      const elapsedMinutes = Math.floor(timerTimeLeft / 60);
+      if (elapsedMinutes > 0) {
+        await handleFocusSave(elapsedMinutes);
+      }
+    }
+    setTimerMinimized(false);
+    setTimerRunning(false);
+    setTimerTimeLeft(0);
+  };
+
+  const handleTimerStop = () => {
+    setTimerMinimized(false);
+    setTimerRunning(false);
+    setTimerTimeLeft(0);
+  };
+
+  const formatTimerDisplay = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
   // ── Load subtasks when expanded ───────────────────────────────────────────
@@ -185,6 +221,8 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
     try {
       const subtask = await createSubtask(task.id, newSubtaskTitle.trim());
       setSubtasks([...subtasks, subtask]);
+      // Обновляем счётчик локально
+      task.subtasksCount = subtasks.length + 1;
       setNewSubtaskTitle('');
     } catch {
       alert('Не удалось создать подзадачу');
@@ -205,6 +243,7 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
     try {
       await deleteSubtask(task.id, subtaskId);
       setSubtasks(subtasks.filter(s => s.id !== subtaskId));
+      task.subtasksCount = subtasks.length - 1;
     } catch {
       alert('Не удалось удалить подзадачу');
     }
@@ -250,6 +289,22 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
 
   return (
     <>
+      {/* Minimized timer banner */}
+      {timerMinimized && (
+        <div className="timer-banner" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
+          background: '#1a1a2e', color: '#4fc3f7',
+          padding: '10px 16px', display: 'flex', alignItems: 'center',
+          gap: 12, fontSize: 14, fontWeight: 600,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+        }}>
+          <span>🎯 {timerTaskTitle}</span>
+          <span style={{ flex: 1 }}>— {formatTimerDisplay(timerTimeLeft)}</span>
+          <button onClick={handleTimerSave}>Сохранить</button>
+          <button onClick={handleTimerStop}>Стоп</button>
+        </div>
+      )}
+
       <div 
         className={`task-card-compact ${task.done ? 'completed' : ''} ${isOverdue ? 'overdue' : ''} ${expanded ? 'expanded' : ''}`}
         onClick={toggleExpanded}
@@ -291,7 +346,21 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
 
           {/* Row 3: Meta info */}
           <div className="task-meta-compact">
-            {dateStr && <span className="meta-date">{dateStr}</span>}
+            {task.deadline && (() => {
+              const today = new Date();
+              const todayStr = today.toISOString().split('T')[0];
+              const dl = task.deadline.substring(0, 10);
+              const [y, m, d] = dl.split('-');
+              const isOverdueDeadline = dl < todayStr;
+              return (
+                <span className="meta-deadline" style={{
+                  color: isOverdueDeadline ? '#f97316' : '#fb7185',
+                  fontWeight: 600, fontSize: '12px'
+                }}>
+                  {isOverdueDeadline ? '⚠ до ' : 'до '}{d}.{m}
+                </span>
+              );
+            })()}
             {task.time && <span className="meta-time">{formatTime(task.time)}</span>}
             {folder && (
               <span className="meta-folder">
@@ -304,18 +373,22 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
             {hasRecurrence && (
               <span className="meta-recurrence" title="Повторяющаяся задача">↻</span>
             )}
-            {task.subtasksCount > 0 && (
-              <span className="meta-subtasks" title="Подзадачи">
-                ☰ {completedSubtasks}/{task.subtasksCount}
-              </span>
-            )}
+            {/* Subtasks toggle button */}
+            <button 
+              className="subtasks-toggle" 
+              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            >
+              {expanded ? '▲' : '▼'} Подзадачи ({subtasks.length})
+            </button>
           </div>
         </div>
       </div>
 
       {/* Subtasks panel */}
-      {expanded && (
-        <div className="subtasks-panel" onClick={(e) => e.stopPropagation()}>
+      <div 
+        className={`subtasks-panel ${expanded ? 'open' : 'closed'}`} 
+        onClick={(e) => e.stopPropagation()}
+      >
           {loadingSubtasks ? (
             <div className="subtasks-loading">Загрузка...</div>
           ) : (
@@ -382,7 +455,6 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
             </>
           )}
         </div>
-      )}
       </div>
 
       {/* Focus Modal */}
@@ -391,6 +463,7 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
           task={task}
           onClose={() => setShowFocus(false)}
           onSave={handleFocusSave}
+          onMinimize={handleTimerMinimize}
         />
       )}
     </>
