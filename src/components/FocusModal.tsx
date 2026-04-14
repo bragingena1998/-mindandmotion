@@ -1,0 +1,189 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { Task } from '../api/tasks';
+import '../styles/tasks.css';
+
+interface FocusModalProps {
+  task: Task;
+  onClose: () => void;
+  onSave: (minutes: number) => void;
+}
+
+const TIME_OPTIONS = [5, 15, 25, 45, 60];
+
+// Web Audio API beep
+function playBeep() {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+  } catch {
+    // Fallback: ignore audio errors
+  }
+}
+
+export default function FocusModal({ task, onClose, onSave }: FocusModalProps) {
+  const [selectedMinutes, setSelectedMinutes] = useState(25);
+  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const totalTime = selectedMinutes * 60;
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  // Timer tick
+  useEffect(() => {
+    if (isRunning && !isPaused) {
+      intervalRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            // Timer completed
+            clearInterval(intervalRef.current);
+            setIsRunning(false);
+            setIsCompleted(true);
+            playBeep();
+            onSave(selectedMinutes);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isRunning, isPaused, selectedMinutes, onSave]);
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  const handleStart = () => {
+    setIsRunning(true);
+    setIsPaused(false);
+  };
+
+  const handlePause = () => {
+    setIsPaused(true);
+  };
+
+  const handleResume = () => {
+    setIsPaused(false);
+  };
+
+  const handleStop = () => {
+    setIsRunning(false);
+    setIsPaused(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    // Calculate elapsed time and save partial session
+    const elapsedMinutes = Math.floor((totalTime - timeLeft) / 60);
+    if (elapsedMinutes > 0) {
+      onSave(elapsedMinutes);
+    }
+    onClose();
+  };
+
+  const handleTimeSelect = (minutes: number) => {
+    if (!isRunning) {
+      setSelectedMinutes(minutes);
+      setTimeLeft(minutes * 60);
+    }
+  };
+
+  const progress = ((totalTime - timeLeft) / totalTime) * 100;
+
+  return (
+    <div className="focus-modal-overlay" onClick={onClose}>
+      <div className="focus-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Progress bar */}
+        <div className="focus-progress">
+          <div 
+            className="focus-progress-bar" 
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* Header */}
+        <h2 className="focus-title">
+          🎯 ФОКУС: <span>{task.title}</span>
+        </h2>
+
+        {/* Timer */}
+        <div className={`focus-timer ${isCompleted ? 'completed' : ''}`}>
+          {formatTime(timeLeft)}
+        </div>
+
+        {/* Time chips */}
+        {!isRunning && (
+          <div className="focus-time-chips">
+            {TIME_OPTIONS.map((minutes) => (
+              <button
+                key={minutes}
+                className={`focus-chip ${selectedMinutes === minutes ? 'active' : ''}`}
+                onClick={() => handleTimeSelect(minutes)}
+              >
+                {minutes} мин
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Controls */}
+        <div className="focus-controls">
+          {!isRunning ? (
+            <button className="focus-btn focus-btn-start" onClick={handleStart}>
+              ▶ СТАРТ
+            </button>
+          ) : isPaused ? (
+            <button className="focus-btn focus-btn-resume" onClick={handleResume}>
+              ▶ ПРОДОЛЖИТЬ
+            </button>
+          ) : (
+            <button className="focus-btn focus-btn-pause" onClick={handlePause}>
+              ⏸ ПАУЗА
+            </button>
+          )}
+          
+          <button className="focus-btn focus-btn-stop" onClick={handleStop}>
+            ⏹ СТОП
+          </button>
+        </div>
+
+        {/* Close button */}
+        <button className="focus-close" onClick={onClose}>✕</button>
+      </div>
+    </div>
+  );
+}

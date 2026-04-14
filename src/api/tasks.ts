@@ -27,6 +27,7 @@ export interface Task {
   templateId: number | null;
   folderId: number | null;
   subtasksCount: number;
+  nextDate?: string;
 }
 
 export interface Folder {
@@ -44,6 +45,23 @@ export interface CreateTaskData {
   priority?: 1 | 2 | 3;
   folderId?: number | null;
   recurrence?: string;
+}
+
+export interface Subtask {
+  id: number;
+  taskId: number;
+  title: string;
+  done: boolean;
+}
+
+// Адаптер подзадачи из API (snake_case → camelCase)
+function adaptSubtaskFromAPI(raw: any): Subtask {
+  return {
+    id: raw.id,
+    taskId: raw.task_id ?? raw.taskId,
+    title: raw.title,
+    done: Boolean(raw.completed ?? raw.done),
+  };
 }
 
 // ========================================
@@ -126,33 +144,42 @@ export function extractLocalTime(isoOrTime: string): string {
   return `${String(utcDate.getHours()).padStart(2, '0')}:${String(utcDate.getMinutes()).padStart(2, '0')}`;
 }
 
-export function adaptTaskForAPI(localTask: Partial<Task> | CreateTaskData): any {
-  const recurrence = (localTask as any).recurrence ?? 'none';
-  const isRecurring = recurrence !== 'none';
-  const recurrenceType = isRecurring ? recurrence : null;
-  const utcTime = localTask.time ? localTimeToUTC(localTask.time) : null;
+export function adaptTaskForAPI(localTask: Partial<Task> | CreateTaskData & { nextDate?: string }): any {
+  const task = localTask as any;
 
-  const deadlineRaw = (localTask as any).deadline;
-  const deadline = (deadlineRaw !== undefined && deadlineRaw !== '') ? deadlineRaw : null;
+  // Определяем isRecurring — приоритет у явного поля isRecurring
+  const isRecurring = task.isRecurring === true
+    ? true
+    : (task.recurrence && task.recurrence !== 'none') ? true : false;
 
-  const folderIdRaw = (localTask as any).folderId;
-  const folderId = (folderIdRaw !== undefined) ? folderIdRaw : null;
+  const recurrenceType = task.recurrenceType
+    || (task.recurrence && task.recurrence !== 'none' ? task.recurrence : null)
+    || null;
 
-  return {
-    title:           localTask.title,
-    comment:         (localTask as any).comment ?? '',
-    date:            (localTask as any).date ?? null,
-    time:            utcTime,
-    deadline:        deadline,
-    priority:        priorityNumberToText((localTask as any).priority ?? 2),
-    done:            (localTask as any).done ?? false,
-    doneDate:        (localTask as any).doneDate ?? null,
-    focusSessions:   (localTask as any).focusSessions ?? 0,
-    isRecurring:     isRecurring,
-    recurrenceType:  recurrenceType,
-    recurrenceValue: '',
-    folderId:        folderId
+  const utcTime = task.time ? localTimeToUTC(task.time) : null;
+
+  const result: any = {
+    title:            task.title,
+    comment:          task.comment || '',
+    date:             task.date || null,
+    time:             utcTime,
+    deadline:         task.deadline || null,
+    priority:         task.priority || 2,
+    done:             task.done === true ? true : false,
+    doneDate:         task.doneDate || null,
+    focusSessions:    task.focusSessions || 0,
+    isRecurring:      isRecurring,
+    recurrenceType:   recurrenceType,
+    recurrenceValue:  task.recurrenceValue || '',
+    folderId:         task.folderId || null,
   };
+
+  // Передаём nextDate если он есть
+  if (task.nextDate) {
+    result.nextDate = task.nextDate;
+  }
+
+  return result;
 }
 
 // ========================================
@@ -230,4 +257,37 @@ export async function createFolder(name: string): Promise<Folder> {
   const response = await apiClient.post('/folders', { name });
   const data = response.data;
   return data.folder || data;
+}
+
+// ========================================
+// ПОДЗАДАЧИ
+// ========================================
+
+export async function fetchSubtasks(taskId: number): Promise<Subtask[]> {
+  const response = await apiClient.get(`/tasks/${taskId}/subtasks`);
+  const data = response.data;
+  return (data.subtasks || data).map(adaptSubtaskFromAPI);
+}
+
+export async function createSubtask(taskId: number, title: string): Promise<Subtask> {
+  const response = await apiClient.post(`/tasks/${taskId}/subtasks`, { title });
+  const data = response.data;
+  return adaptSubtaskFromAPI(data.subtask || data);
+}
+
+export async function updateSubtask(
+  taskId: number,
+  subtaskId: number,
+  data: Partial<Subtask>
+): Promise<Subtask> {
+  const response = await apiClient.put(`/tasks/${taskId}/subtasks/${subtaskId}`, {
+    title: data.title,
+    completed: data.done,
+  });
+  const result = response.data;
+  return adaptSubtaskFromAPI(result.subtask || result);
+}
+
+export async function deleteSubtask(taskId: number, subtaskId: number): Promise<void> {
+  await apiClient.delete(`/tasks/${taskId}/subtasks/${subtaskId}`);
 }

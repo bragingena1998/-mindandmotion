@@ -16,7 +16,7 @@ const generateNumbers = (max: number): string[] =>
 
 const getTranslateY = (index: number) => -index * ITEM_HEIGHT + CENTER_OFFSET;
 
-// ─── Reusable drum column ────────────────────────────────────────────────────
+// ─── Reusable drum column (INFINITE LOOP) ────────────────────────────────────
 interface DrumColumnProps {
   items: string[];
   selectedIndex: number;
@@ -25,23 +25,44 @@ interface DrumColumnProps {
 }
 
 function DrumColumn({ items, selectedIndex, onIndexChange, max }: DrumColumnProps) {
-  const [translate, setTranslate] = useState(getTranslateY(selectedIndex));
-  const currentIndex = useRef(selectedIndex);
+  // Triple the items for infinite scroll illusion
+  const tripleItems = [...items, ...items, ...items];
+  const itemsCount = items.length;
+  
+  // Start in the middle third
+  const initialIndex = itemsCount + selectedIndex;
+  const [translate, setTranslate] = useState(getTranslateY(initialIndex));
+  const currentIndex = useRef(initialIndex);
 
   // sync when parent resets
   useEffect(() => {
-    currentIndex.current = selectedIndex;
-    setTranslate(getTranslateY(selectedIndex));
-  }, [selectedIndex]);
+    const newIndex = itemsCount + selectedIndex;
+    currentIndex.current = newIndex;
+    setTranslate(getTranslateY(newIndex));
+  }, [selectedIndex, itemsCount]);
 
   // ── helpers ──────────────────────────────────────────────────────────────
-  const clamp = (v: number) => Math.max(0, Math.min(max, v));
+  const getRealIndex = (index: number) => {
+    // Modulo to get actual value index (0 to items.length-1)
+    return ((index % itemsCount) + itemsCount) % itemsCount;
+  };
 
   const snap = (newIndex: number) => {
-    const clamped = clamp(newIndex);
-    currentIndex.current = clamped;
-    setTranslate(getTranslateY(clamped));
-    onIndexChange(clamped);
+    const realIndex = getRealIndex(newIndex);
+    
+    // Check if we need to silently jump back to middle
+    if (newIndex < itemsCount * 0.5 || newIndex > itemsCount * 2.5) {
+      // Jump to middle third with same value
+      const middleIndex = itemsCount + realIndex;
+      currentIndex.current = middleIndex;
+      // Jump without animation
+      setTranslate(getTranslateY(middleIndex));
+      onIndexChange(realIndex);
+    } else {
+      currentIndex.current = newIndex;
+      setTranslate(getTranslateY(newIndex));
+      onIndexChange(realIndex);
+    }
   };
 
   // ── touch ────────────────────────────────────────────────────────────────
@@ -52,7 +73,7 @@ function DrumColumn({ items, selectedIndex, onIndexChange, max }: DrumColumnProp
   };
   const onTouchMove = (e: React.TouchEvent) => {
     const diff = e.touches[0].clientY - touchStartY.current;
-    const preview = clamp(currentIndex.current - Math.round(diff / ITEM_HEIGHT));
+    const preview = currentIndex.current - Math.round(diff / ITEM_HEIGHT);
     setTranslate(getTranslateY(preview));
   };
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -73,7 +94,7 @@ function DrumColumn({ items, selectedIndex, onIndexChange, max }: DrumColumnProp
   const onMouseMove = (e: React.MouseEvent) => {
     if (!dragging.current) return;
     const diff = e.clientY - mouseStartY.current;
-    const preview = clamp(currentIndex.current - Math.round(diff / ITEM_HEIGHT));
+    const preview = currentIndex.current - Math.round(diff / ITEM_HEIGHT);
     setTranslate(getTranslateY(preview));
   };
   const onMouseUp = (e: React.MouseEvent) => {
@@ -113,8 +134,8 @@ function DrumColumn({ items, selectedIndex, onIndexChange, max }: DrumColumnProp
         className="time-picker-drum-inner"
         style={{ transform: `translateY(${translate}px)`, transition: 'transform 150ms ease-out' }}
       >
-        {items.map((item) => (
-          <div key={item} className="time-picker-item" style={{ height: ITEM_HEIGHT }}>
+        {tripleItems.map((item, idx) => (
+          <div key={`${item}-${idx}`} className="time-picker-item" style={{ height: ITEM_HEIGHT }}>
             {item}
           </div>
         ))}
@@ -147,25 +168,14 @@ function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
         <h3 className="time-picker-title">ВЫБЕРИТЕ ВРЕМЯ</h3>
 
         {/* columns + colon aligned to drum centre */}
-        <div className="time-picker-columns">
+        <div style={{display:'flex', alignItems:'flex-end', gap:'8px', justifyContent:'center'}}>
           <div className="time-picker-column">
             <div className="time-picker-label">ЧАСЫ</div>
             <DrumColumn items={hoursList} selectedIndex={hourIndex} onIndexChange={setHourIndex} max={23} />
           </div>
 
-          {/* colon: sits at the level of the drum, centred vertically */}
-          <div
-            className="time-picker-divider"
-            style={{
-              height: VISIBLE_ITEMS * ITEM_HEIGHT,
-              display: 'flex',
-              alignItems: 'center',
-              alignSelf: 'flex-end',   /* align with drum, not with label above */
-              paddingBottom: 0,
-            }}
-          >
-            :
-          </div>
+          {/* colon: sits at the level of the drum, centred vertically (132px = 3×44px) */}
+          <div style={{height: 132, display:'flex', alignItems:'center', fontSize:'24px', fontWeight:'bold', color:'var(--text-primary)'}}>:</div>
 
           <div className="time-picker-column">
             <div className="time-picker-label">МИНУТЫ</div>
