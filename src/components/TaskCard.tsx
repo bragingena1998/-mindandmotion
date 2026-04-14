@@ -153,7 +153,7 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
 
   const handleTimerMinimize = () => {
     setTimerMinimized(true);
-    setShowFocus(false);
+    // Не скрываем модалку полностью — она остаётся в DOM для работы таймера
     setTimerTaskTitle(task.title);
   };
 
@@ -373,13 +373,6 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
             {hasRecurrence && (
               <span className="meta-recurrence" title="Повторяющаяся задача">↻</span>
             )}
-            {/* Subtasks toggle button */}
-            <button 
-              className="subtasks-toggle" 
-              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-            >
-              {expanded ? '▲' : '▼'} Подзадачи ({subtasks.length})
-            </button>
           </div>
         </div>
       </div>
@@ -457,14 +450,47 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
         </div>
       </div>
 
-      {/* Focus Modal */}
+      {/* Subtasks overlay for closing */}
+      {expanded && (
+        <div 
+          className="subtasks-overlay"
+          onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 10,
+            background: 'transparent'
+          }}
+        />
+      )}
+
+      {/* Focus Modal - always render when showFocus, control visibility via isMinimized */}
       {showFocus && (
         <FocusModal
           task={task}
-          onClose={() => setShowFocus(false)}
+          isMinimized={timerMinimized}
+          onClose={() => { setShowFocus(false); setTimerMinimized(false); }}
           onSave={handleFocusSave}
-          onMinimize={handleTimerMinimize}
+          onMinimize={() => setTimerMinimized(true)}
+          onTimeUpdate={setTimerTimeLeft}
         />
+      )}
+
+      {/* Timer banner - only when minimized */}
+      {showFocus && timerMinimized && (
+        <div className="timer-banner" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
+          background: '#1a1a2e', color: '#4fc3f7',
+          padding: '10px 16px', display: 'flex', alignItems: 'center',
+          gap: 12, fontSize: 14, fontWeight: 600,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+        }}>
+          <span>🎯 {task.title}</span>
+          <span style={{flex:1}}>
+            {String(Math.floor(timerTimeLeft/60)).padStart(2,'0')}:
+            {String(timerTimeLeft%60).padStart(2,'0')}
+          </span>
+          <button onClick={() => setTimerMinimized(false)}>▶ Развернуть</button>
+          <button onClick={handleTimerStop}>✕</button>
+        </div>
       )}
     </>
   );

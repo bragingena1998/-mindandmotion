@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Minus } from 'lucide-react';
 import type { Task } from '../api/tasks';
 import '../styles/tasks.css';
 
@@ -7,6 +8,8 @@ interface FocusModalProps {
   onClose: () => void;
   onSave: (minutes: number) => void;
   onMinimize?: () => void;
+  isMinimized?: boolean;
+  onTimeUpdate?: (seconds: number) => void;
 }
 
 const TIME_OPTIONS = [5, 15, 25, 45, 60];
@@ -34,7 +37,7 @@ function playBeep() {
   }
 }
 
-export default function FocusModal({ task, onClose, onSave, onMinimize }: FocusModalProps) {
+export default function FocusModal({ task, onClose, onSave, onMinimize, isMinimized, onTimeUpdate }: FocusModalProps) {
   const [selectedMinutes, setSelectedMinutes] = useState(25);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
@@ -59,12 +62,24 @@ export default function FocusModal({ task, onClose, onSave, onMinimize }: FocusM
     if (isRunning && !isPaused) {
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => {
+          // Notify parent of time update
+          onTimeUpdate?.(prev > 0 ? prev - 1 : 0);
           if (prev <= 1) {
             // Timer completed
             clearInterval(intervalRef.current);
             setIsRunning(false);
             setIsCompleted(true);
             playBeep();
+            // Show notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('⏰ Таймер завершён!', {
+                body: `Фокус-сессия "${task.title}" завершена`,
+                icon: '/favicon.ico'
+              });
+            } else {
+              // Fallback — alert if no notifications
+              setTimeout(() => alert(`⏰ Таймер завершён!\nЗадача: ${task.title}`), 100);
+            }
             onSave(selectedMinutes);
             return 0;
           }
@@ -91,6 +106,10 @@ export default function FocusModal({ task, onClose, onSave, onMinimize }: FocusM
   };
 
   const handleStart = () => {
+    // Request notification permission on start
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
     setIsRunning(true);
     setIsPaused(false);
   };
@@ -126,8 +145,11 @@ export default function FocusModal({ task, onClose, onSave, onMinimize }: FocusM
 
   const progress = ((totalTime - timeLeft) / totalTime) * 100;
 
+  // Return null if minimized (after all hooks!)
+  if (isMinimized) return null;
+
   return (
-    <div className="focus-modal-overlay" onClick={onClose}>
+    <div className="focus-modal-overlay" onClick={onMinimize ?? onClose}>
       <div className="focus-modal" onClick={(e) => e.stopPropagation()}>
         {/* Progress bar */}
         <div className="focus-progress">
@@ -205,8 +227,8 @@ export default function FocusModal({ task, onClose, onSave, onMinimize }: FocusM
 
         {/* Minimize button */}
         {onMinimize && (
-          <button className="focus-minimize" onClick={onMinimize}>
-            — Свернуть
+          <button className="focus-minimize" onClick={onMinimize} title="Свернуть">
+            <Minus size={16} />
           </button>
         )}
 

@@ -69,7 +69,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, folders, editingT
       setDate(normalizeDate(editingTask.date) || getTodayISO());
       setTime(editingTask.time || '');
       setDeadline(normalizeDate(editingTask.deadline));
-      setPriority(editingTask.priority);
+      setPriority(Number(editingTask.priority) || 2);
       setFolderId(editingTask.folderId || undefined);
       setRecurrence(editingTask.recurrence || 'none');
     } else {
@@ -98,7 +98,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, folders, editingT
       date: date,
       time: time || undefined,
       deadline: deadline !== '' ? deadline : null,
-      priority,
+      priority: Number(priority),
       folderId: folderId !== undefined ? folderId : null,
       recurrence: recurrence
     }, editingTask?.id);

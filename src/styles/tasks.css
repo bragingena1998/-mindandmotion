@@ -159,17 +159,22 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 12px;
+}
+
+.task-section:first-child {
+  margin-top: 0;
 }
 
 .task-section-title {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
-  margin: 0;
-  padding: 8px 4px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  /* Никаких border, hr, line */
 }
 
 /* ===== TASK LIST ===== */
@@ -1547,6 +1552,8 @@
 
 /* Subtasks panel */
 .subtasks-panel {
+  position: relative;
+  z-index: 11;
   width: 100%;
   overflow: hidden;
   transition: max-height 0.2s ease, opacity 0.2s ease, padding 0.2s ease;

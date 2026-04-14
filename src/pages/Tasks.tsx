@@ -173,7 +173,7 @@ function getCurrentMonth(): string {
 function formatMonthDisplay(monthStr: string): string {
   const [year, month] = monthStr.split('-');
   const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-  return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase();
+  return date.toLocaleDateString('ru-RU', { month: 'long' }).toUpperCase();
 }
 
 // ФАЙЛ 2 FIX: правильная реализация без setMonth багов
