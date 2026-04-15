@@ -13,7 +13,7 @@ import {
   getDaysInMonth,
   isWeekend,
 } from '../utils/habitUtils';
-import HabitTimerBanner from './HabitTimerBanner';
+import { useBanner } from '../context/BannerContext';
 import '../styles/habits.css';
 
 interface HabitTableProps {
@@ -62,8 +62,8 @@ export default function HabitTable({
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   };
 
-  // ── Timer banner state ──────────────────────────────────────────────────
-  const [timerHabit, setTimerHabit] = useState<{ habit: Habit; day: number; existingMinutes: number } | null>(null);
+  // ── Global banner ────────────────────────────────────────────────────────
+  const { showBanner } = useBanner();
 
   // ── Today detection ─────────────────────────────────────────────────────
   const today = useMemo(() => new Date(), []);
@@ -114,7 +114,16 @@ export default function HabitTable({
     // Для привычек с unit='Часы' открываем таймер
     if (habit.unit === 'Часы') {
       const existingValue = getCellValue(records, habit.id, year, month, day);
-      setTimerHabit({ habit, day, existingMinutes: existingValue });
+      showBanner({
+        type: 'habit-timer',
+        habit: { id: habit.id, name: habit.name, plan: habit.plan, unit: habit.unit },
+        day,
+        existingMinutes: existingValue,
+        onSave: (totalMinutes) => {
+          onCellChange(habit.id, day, totalMinutes);
+        },
+        onClose: () => {},
+      });
       return; // НЕ вызываем onCellChange сразу — таймер сам вызовет
     }
 
@@ -290,20 +299,6 @@ export default function HabitTable({
           })}
         </div>
       </div>
-
-      {/* Timer Banner */}
-      {timerHabit && (
-        <HabitTimerBanner
-          habit={timerHabit.habit}
-          day={timerHabit.day}
-          existingMinutes={timerHabit.existingMinutes}
-          onSave={(totalMinutes) => {
-            onCellChange(timerHabit.habit.id, timerHabit.day, totalMinutes);
-            setTimerHabit(null);
-          }}
-          onClose={() => setTimerHabit(null)}
-        />
-      )}
     </div>
   );
 }

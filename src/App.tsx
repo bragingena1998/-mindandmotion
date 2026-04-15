@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 
 // Layout with navigation
 import Layout from './components/Layout'
+import { BannerProvider } from './context/BannerContext'
 
 // Pages
 import Tasks from './pages/Tasks'
@@ -32,30 +33,32 @@ function App() {
   }
 
   return (
-    <Routes>
-      {/* Public routes - accessible without auth */}
-      <Route 
-        path="/login" 
-        element={isAuthenticated ? <Navigate to="/tasks" replace /> : <Login />} 
-      />
-      <Route 
-        path="/register" 
-        element={isAuthenticated ? <Navigate to="/tasks" replace /> : <Register />} 
-      />
+    <BannerProvider>
+      <Routes>
+        {/* Public routes - accessible without auth */}
+        <Route 
+          path="/login" 
+          element={isAuthenticated ? <Navigate to="/tasks" replace /> : <Login />} 
+        />
+        <Route 
+          path="/register" 
+          element={isAuthenticated ? <Navigate to="/tasks" replace /> : <Register />} 
+        />
 
-      {/* Protected routes with Layout */}
-      <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/tasks" element={<Tasks />} />
-        <Route path="/habits" element={<Habits />} />
-        <Route path="/calendar" element={<Calendar />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/secret-chat" element={<SecretChat />} />
-      </Route>
+        {/* Protected routes with Layout */}
+        <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/habits" element={<Habits />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/secret-chat" element={<SecretChat />} />
+        </Route>
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
-    </Routes>
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
+      </Routes>
+    </BannerProvider>
   )
 }
 

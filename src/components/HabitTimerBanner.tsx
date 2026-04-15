@@ -63,11 +63,6 @@ export default function HabitTimerBanner({
     };
   }, []);
 
-  // Auto-start on open
-  useEffect(() => {
-    startTimer();
-  }, []);
-
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <>
@@ -82,14 +77,16 @@ export default function HabitTimerBanner({
       <div className={`habit-timer-banner ${isMinimized ? 'minimized' : 'expanded'}`}>
         {isMinimized ? (
           // === СВЁРНУТЫЙ ВИД ===
-          <button
-            className="timer-pill"
-            onClick={() => setIsMinimized(false)}
-          >
+          <div className="timer-pill">
             <span className="timer-pill-icon">⏱</span>
-            <span className="timer-pill-time">{formattedTime}</span>
-            <span className="timer-pill-status">{isRunning ? '▶' : '⏸'}</span>
-          </button>
+            <span className="timer-pill-time" onClick={() => setIsMinimized(false)}>{formattedTime}</span>
+            <button
+              className="timer-pill-toggle"
+              onClick={(e) => { e.stopPropagation(); isRunning ? pauseTimer() : startTimer(); }}
+            >
+              {isRunning ? '⏸' : '▶'}
+            </button>
+          </div>
         ) : (
           // === РАЗВЁРНУТЫЙ ВИД ===
           <div className="timer-content" onClick={e => e.stopPropagation()}>

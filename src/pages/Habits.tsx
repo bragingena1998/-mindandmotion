@@ -16,7 +16,8 @@ import {
 } from '../api/habits';
 import HabitTable from '../components/HabitTable';
 import HabitModal from '../components/HabitModal';
-import { optimisticUpdateRecords, getCellValue } from '../utils/habitUtils';
+import HabitTrendChart from '../components/HabitTrendChart';
+import { optimisticUpdateRecords, getCellValue, isHabitDayActive, calculateHabitStats } from '../utils/habitUtils';
 import '../styles/habits.css';
 
 // Названия месяцев по-русски
@@ -81,6 +82,44 @@ export default function Habits() {
         total: habits.length,
       }
     : null;
+
+  // ── Progress bars data ────────────────────────────────────────────────
+  // Возраст streak для каждой привычки (дней подряд до сегодня)
+  const getStreakDays = (habit: Habit): number => {
+    const d = today.getDate();
+    let streak = 0;
+    for (let i = d; i >= 1; i--) {
+      if (!isHabitDayActive(habit, year, month, i)) continue;
+      const val = getCellValue(records, habit.id, year, month, i);
+      if (val > 0) streak++;
+      else break;
+    }
+    return streak;
+  };
+
+  const habitsWithStats = habits.map(h => {
+    const { percent, total } = calculateHabitStats(h, records, year, month);
+    return { ...h, percent, total, streak: getStreakDays(h) };
+  });
+
+  // ── Trend chart data ────────────────────────────────────────────────────
+  const getTrendData = () => {
+    const isCurrentMo = today.getFullYear() === year && today.getMonth() + 1 === month;
+    const lastDay = isCurrentMo ? today.getDate() : new Date(year, month, 0).getDate();
+
+    return Array.from({ length: lastDay }, (_, i) => {
+      const day = i + 1;
+      // Привычки которые АКТИВНЫ в этот день
+      const activeHabits = habits.filter(h => isHabitDayActive(h, year, month, day));
+      if (activeHabits.length === 0) return { day, pct: 0, hasPlan: false };
+      const completed = activeHabits.filter(h => getCellValue(records, h.id, year, month, day) > 0).length;
+      return {
+        day,
+        pct: Math.round((completed / activeHabits.length) * 100),
+        hasPlan: true,
+      };
+    });
+  };
 
   // ── Handlers ────────────────────────────────────────────────────────────
   // Оптимистичное обновление ячейки
@@ -192,6 +231,31 @@ export default function Habits() {
         </div>
       )}
 
+      {/* Progress Bars */}
+      {!loading && !error && habits.length > 0 && (
+        <div className="habits-progress-bars">
+          {habitsWithStats.map(h => (
+            <div key={h.id} className="habit-bar-row">
+              <div className="habit-bar-meta">
+                <span className="habit-bar-name">{h.name}</span>
+                <div className="habit-bar-badges">
+                  {h.streak > 0 && (
+                    <span className="habit-streak-badge">🔥 {h.streak}д</span>
+                  )}
+                  <span className="habit-bar-pct">{h.percent}%</span>
+                </div>
+              </div>
+              <div className="habit-bar-track">
+                <div
+                  className="habit-bar-fill"
+                  style={{ width: `${h.percent}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Content States */}
       {loading && (
         <div className="habits-loading">
@@ -233,7 +297,16 @@ export default function Habits() {
         />
       )}
 
-      {/* Modal Placeholder */}
+      {/* Trend Chart */}
+      {!loading && !error && habits.length > 0 && (
+        <HabitTrendChart
+          data={getTrendData()}
+          month={month}
+          year={year}
+        />
+      )}
+
+      {/* Modal */}
       {showHabitModal && (
         <HabitModal
           habit={editingHabit}

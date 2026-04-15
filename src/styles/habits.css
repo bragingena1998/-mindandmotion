@@ -902,8 +902,19 @@
   letter-spacing: 1px;
 }
 
-.timer-pill-status {
-  font-size: 12px;
+.timer-pill-toggle {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.timer-pill-toggle:hover {
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
 }
 
 .habit-timer-banner.expanded .timer-content {
@@ -1066,4 +1077,110 @@
 
 .timer-close-btn:hover {
   color: var(--color-text);
+}
+
+/* ========================================
+   PROGRESS BARS & TREND CHART
+   ======================================== */
+
+/* --- Progress Bars --- */
+.habits-progress-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+.habit-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.habit-bar-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.habit-bar-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60%;
+}
+
+.habit-bar-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.habit-streak-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-border, #fbbf24);
+  background: rgba(var(--accent-1-rgb, 249, 115, 22), 0.12);
+  padding: 2px 7px;
+  border-radius: 9999px;
+}
+
+.habit-bar-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary, var(--accent-1));
+}
+
+.habit-bar-track {
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.habit-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-2, #ec4899), var(--accent-1, #f97316));
+  border-radius: 9999px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --- Trend Chart --- */
+.habit-trend-wrap {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+.habit-trend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.habit-trend-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.habit-trend-subtitle {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.habit-trend-svg {
+  width: 100%;
+  height: auto;
+  display: block;
 }

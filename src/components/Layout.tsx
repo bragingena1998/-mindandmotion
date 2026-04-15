@@ -10,11 +10,14 @@ import {
   Menu,
   X
 } from 'lucide-react'
+import { useBanner } from '../context/BannerContext'
+import GlobalTimerBanner from './GlobalTimerBanner'
 
 export default function Layout() {
   const location = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const { banner } = useBanner()
 
   useEffect(() => {
     const checkMobile = () => {
@@ -140,6 +143,9 @@ export default function Layout() {
           </nav>
         )}
       </div>
+
+      {/* Global Timer Banner — выживает при смене вкладок */}
+      {banner && <GlobalTimerBanner />}
     </div>
   )
 }
