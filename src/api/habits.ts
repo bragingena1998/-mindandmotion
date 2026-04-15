@@ -133,13 +133,20 @@ export async function createHabitRecord(
   day: number,
   value: number
 ): Promise<void> {
-  await apiClient.post('/habits/records', {
-    habit_id: habitId,
-    year,
-    month,
-    day,
-    value,
-  });
+  const payload = { habit_id: habitId, year, month, day, value };
+  console.log('[API createHabitRecord] Request:', { url: '/habits/records', payload });
+  try {
+    const response = await apiClient.post('/habits/records', payload);
+    console.log('[API createHabitRecord] Response:', { status: response.status, data: response.data });
+  } catch (err: any) {
+    console.error('[API createHabitRecord] Error:', {
+      message: err.message,
+      response: err.response?.data,
+      status: err.response?.status,
+      headers: err.response?.headers,
+    });
+    throw err;
+  }
 }
 
 export async function deleteHabitRecord(
@@ -148,7 +155,20 @@ export async function deleteHabitRecord(
   month: number,
   day: number
 ): Promise<void> {
-  await apiClient.delete(`/habits/records/${habitId}/${year}/${month}/${day}`);
+  const url = `/habits/records/${habitId}/${year}/${month}/${day}`;
+  console.log('[API deleteHabitRecord] Request:', { url, habitId, year, month, day });
+  try {
+    const response = await apiClient.delete(url);
+    console.log('[API deleteHabitRecord] Response:', { status: response.status, data: response.data });
+  } catch (err: any) {
+    console.error('[API deleteHabitRecord] Error:', {
+      message: err.message,
+      response: err.response?.data,
+      status: err.response?.status,
+      headers: err.response?.headers,
+    });
+    throw err;
+  }
 }
 
 // ========================================

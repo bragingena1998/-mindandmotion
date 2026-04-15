@@ -124,6 +124,8 @@ export default function Habits() {
   // ── Handlers ────────────────────────────────────────────────────────────
   // Оптимистичное обновление ячейки
   const handleCellChange = async (habitId: number, day: number, newValue: number) => {
+    console.log('[CellChange]', { habitId, day, newValue, year, month });
+
     // 1. Сразу обновляем локальный state
     setRecords(prev => optimisticUpdateRecords(prev, habitId, year, month, day, newValue));
 
@@ -137,7 +139,7 @@ export default function Habits() {
     } catch (err) {
       // Откат при ошибке
       await loadHabits();
-      console.error('Ошибка обновления ячейки:', err);
+      console.error('[CellChange ERROR]', err);
     }
   };
 
