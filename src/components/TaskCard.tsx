@@ -541,73 +541,100 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
               borderRadius: 2, margin: '0 auto 12px'
             }} />
 
-            {/* Комментарий с редактированием */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
-                            marginBottom: 6 }}>
-                <span style={{ fontSize:12, fontWeight:700, letterSpacing:'0.08em',
-                               color:'var(--color-text-muted)', textTransform:'uppercase' }}>
-                  💬 Комментарий
-                </span>
-                {!editingComment && (
-                  <button
-                    onClick={() => { setCommentDraft(task.comment || ''); setEditingComment(true); }}
-                    style={{ fontSize:12, color:'var(--color-primary)', background:'none',
-                             border:'none', cursor:'pointer', padding:'2px 8px',
-                             borderRadius:6, border:'1px solid var(--color-primary)' }}
-                  >
-                    {task.comment ? 'Изменить' : '+ Добавить'}
-                  </button>
-                )}
-              </div>
-
+            {/* ── Комментарий: клик = редактирование ── */}
+            <div style={{ marginBottom: 14 }}>
               {editingComment ? (
-                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <textarea
                     value={commentDraft}
                     onChange={e => setCommentDraft(e.target.value)}
                     autoFocus
                     rows={3}
                     placeholder="Введите комментарий..."
-                    style={{ width:'100%', background:'var(--color-surface)',
-                             border:'1.5px solid var(--color-primary)', borderRadius:10,
-                             padding:'10px 12px', fontSize:13, color:'var(--color-text)',
-                             resize:'none', outline:'none', lineHeight:1.5 }}
+                    style={{
+                      width: '100%',
+                      background: 'var(--color-surface)',
+                      border: '1.5px solid var(--color-primary)',
+                      borderRadius: 10,
+                      padding: '10px 12px',
+                      fontSize: 13,
+                      color: 'var(--color-text)',
+                      resize: 'none',
+                      outline: 'none',
+                      lineHeight: 1.5,
+                      fontFamily: 'inherit',
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Escape') setEditingComment(false);
+                    }}
                   />
-                  <div style={{ display:'flex', gap:8 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       onClick={async () => {
                         try {
                           await updateTask(task.id, { comment: commentDraft } as Partial<Task>);
                           task.comment = commentDraft;
                           setEditingComment(false);
-                        } catch { alert('Не удалось сохранить'); }
+                        } catch {
+                          alert('Не удалось сохранить комментарий');
+                        }
                       }}
-                      style={{ flex:1, padding:'9px', borderRadius:8, border:'none',
-                               background:'var(--color-primary)', color:'#fff',
-                               fontWeight:700, fontSize:13, cursor:'pointer' }}
+                      style={{
+                        flex: 1, padding: '9px', borderRadius: 8, border: 'none',
+                        background: 'var(--color-primary)', color: '#fff',
+                        fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                      }}
                     >
                       Сохранить
                     </button>
                     <button
-                      onClick={() => setEditingComment(false)}
-                      style={{ flex:1, padding:'9px', borderRadius:8,
-                               border:'1px solid var(--color-border)', background:'transparent',
-                               color:'var(--color-text)', fontSize:13, cursor:'pointer' }}
+                      onClick={() => { setCommentDraft(task.comment || ''); setEditingComment(false); }}
+                      style={{
+                        flex: 1, padding: '9px', borderRadius: 8,
+                        border: '1px solid var(--color-border)',
+                        background: 'transparent', color: 'var(--color-text)',
+                        fontSize: 13, cursor: 'pointer',
+                      }}
                     >
                       Отмена
                     </button>
                   </div>
                 </div>
               ) : task.comment ? (
-                <div style={{ background:'var(--color-surface)', borderRadius:10, padding:'10px 12px',
-                              fontSize:13, color:'var(--color-text-muted)', lineHeight:1.5,
-                              borderLeft:'3px solid var(--color-primary)' }}>
-                  {task.comment}
+                /* Есть комментарий — клик для редактирования */
+                <div
+                  onClick={() => { setCommentDraft(task.comment || ''); setEditingComment(true); }}
+                  title="Нажмите для редактирования"
+                  style={{
+                    background: 'var(--color-surface)',
+                    borderRadius: 10,
+                    padding: '10px 12px',
+                    fontSize: 13,
+                    color: 'var(--color-text-muted)',
+                    lineHeight: 1.5,
+                    borderLeft: '3px solid var(--color-primary)',
+                    cursor: 'text',
+                    userSelect: 'none',
+                  }}
+                >
+                  💬 {task.comment}
                 </div>
               ) : (
-                <div style={{ fontSize:13, color:'var(--color-text-faint)', fontStyle:'italic' }}>
-                  Нет комментария
+                /* Нет комментария — клик для добавления */
+                <div
+                  onClick={() => { setCommentDraft(''); setEditingComment(true); }}
+                  style={{
+                    padding: '9px 12px',
+                    borderRadius: 10,
+                    border: '1px dashed var(--color-border)',
+                    fontSize: 13,
+                    color: 'var(--color-text-faint)',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    userSelect: 'none',
+                  }}
+                >
+                  + Добавить комментарий
                 </div>
               )}
             </div>
