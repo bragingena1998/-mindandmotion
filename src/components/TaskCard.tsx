@@ -312,7 +312,14 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
     <>
       <div
         className={`task-card-compact ${task.done ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}`}
-        onClick={() => { if (task.subtasksCount > 0) setExpanded(true); }}
+        onClick={() => {
+          if (isMobile) {
+            // На мобиле: открываем sheet если есть подзадачи ИЛИ комментарий
+            if (task.subtasksCount > 0 || task.comment) setExpanded(true);
+          } else {
+            if (task.subtasksCount > 0) setExpanded(true);
+          }
+        }}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
@@ -358,7 +365,8 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
             </div>
           )}
 
-          {task.comment && (
+          {/* Комментарий: текст в ПК, иконка в мобиле */}
+          {task.comment && !isMobile && (
             <p style={{
               fontSize: 12,
               color: 'var(--color-text-muted)',
@@ -406,6 +414,9 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
               <span className="meta-subtasks">
                 ☰ {task.subtasksCount}
               </span>
+            )}
+            {task.comment && isMobile && (
+              <span title={task.comment} style={{ cursor: 'default' }}>💬</span>
             )}
           </div>
         </div>

@@ -3,20 +3,129 @@ import '../styles/tasks.css';
 
 interface TimePickerProps {
   value: string;
-  onChange: (time: string) => void;
+  onChange: (value: string) => void;
   onClose: () => void;
 }
 
+export default function TimePicker({ value, onChange, onClose }: TimePickerProps) {
+  const [isMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : true);
+  return isMobile
+    ? <MobileTimePicker value={value} onChange={onChange} onClose={onClose} />
+    : <DesktopTimePicker value={value} onChange={onChange} onClose={onClose} />;
+}
+
+function DesktopTimePicker({ value, onChange, onClose }: TimePickerProps) {
+  const [localValue, setLocalValue] = useState(value || '12:00');
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 500,
+        background: 'rgba(0,0,0,0.75)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--color-bg)',
+          borderRadius: 16,
+          padding: '32px 36px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          width: 340,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', gap: 24,
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <h3 style={{
+          fontSize: 12, fontWeight: 700, letterSpacing: '0.12em',
+          color: 'var(--color-text-muted)', margin: 0, textTransform: 'uppercase'
+        }}>
+          Выберите время
+        </h3>
+
+        <input
+          type="time"
+          value={localValue}
+          onChange={e => setLocalValue(e.target.value)}
+          autoFocus
+          style={{
+            fontSize: 52,
+            fontWeight: 700,
+            color: 'var(--color-text)',
+            background: 'var(--color-surface)',
+            border: '2px solid var(--color-border)',
+            borderRadius: 12,
+            padding: '10px 20px',
+            outline: 'none',
+            textAlign: 'center',
+            width: '100%',
+            cursor: 'text',
+            fontFamily: 'monospace',
+            letterSpacing: '0.04em',
+          }}
+          onFocus={e => (e.target.style.borderColor = 'var(--color-primary)')}
+          onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+        />
+
+        {/* Быстрые варианты */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {['08:00','09:00','10:00','12:00','14:00','18:00','20:00','22:00'].map(t => (
+            <button
+              key={t}
+              onClick={() => setLocalValue(t)}
+              style={{
+                padding: '5px 10px', borderRadius: 8, fontSize: 13,
+                border: '1px solid var(--color-border)',
+                background: localValue === t ? 'var(--color-primary)' : 'var(--color-surface)',
+                color: localValue === t ? '#fff' : 'var(--color-text-muted)',
+                cursor: 'pointer', fontWeight: 500,
+              }}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+          <button
+            style={{
+              flex: 1, padding: '11px', borderRadius: 10,
+              border: '1.5px solid var(--color-border)',
+              background: 'transparent', color: 'var(--color-text)',
+              fontWeight: 600, fontSize: 14, cursor: 'pointer',
+            }}
+            onClick={onClose}
+          >
+            Отмена
+          </button>
+          <button
+            style={{
+              flex: 1, padding: '11px', borderRadius: 10, border: 'none',
+              background: 'var(--color-primary)', color: '#fff',
+              fontWeight: 700, fontSize: 14, cursor: 'pointer',
+            }}
+            onClick={() => { onChange(localValue); onClose(); }}
+          >
+            Готово
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// MobileTimePicker — drum wheel picker for mobile
 const ITEM_HEIGHT = 44;
 const VISIBLE_ITEMS = 3;
-const CENTER_OFFSET = ITEM_HEIGHT; // selected row = middle of 3 visible
+const CENTER_OFFSET = ITEM_HEIGHT;
 
 const generateNumbers = (max: number): string[] =>
   Array.from({ length: max + 1 }, (_, i) => i.toString().padStart(2, '0'));
 
 const getTranslateY = (index: number) => -index * ITEM_HEIGHT + CENTER_OFFSET;
 
-// ─── Reusable drum column (INFINITE LOOP) ────────────────────────────────────
 interface DrumColumnProps {
   items: string[];
   selectedIndex: number;
@@ -25,37 +134,27 @@ interface DrumColumnProps {
 }
 
 function DrumColumn({ items, selectedIndex, onIndexChange, max }: DrumColumnProps) {
-  // Triple the items for infinite scroll illusion
   const tripleItems = [...items, ...items, ...items];
   const itemsCount = items.length;
-  
-  // Start in the middle third
   const initialIndex = itemsCount + selectedIndex;
   const [translate, setTranslate] = useState(getTranslateY(initialIndex));
   const currentIndex = useRef(initialIndex);
 
-  // sync when parent resets
   useEffect(() => {
     const newIndex = itemsCount + selectedIndex;
     currentIndex.current = newIndex;
     setTranslate(getTranslateY(newIndex));
   }, [selectedIndex, itemsCount]);
 
-  // ── helpers ──────────────────────────────────────────────────────────────
   const getRealIndex = (index: number) => {
-    // Modulo to get actual value index (0 to items.length-1)
     return ((index % itemsCount) + itemsCount) % itemsCount;
   };
 
   const snap = (newIndex: number) => {
     const realIndex = getRealIndex(newIndex);
-    
-    // Check if we need to silently jump back to middle
     if (newIndex < itemsCount * 0.5 || newIndex > itemsCount * 2.5) {
-      // Jump to middle third with same value
       const middleIndex = itemsCount + realIndex;
       currentIndex.current = middleIndex;
-      // Jump without animation
       setTranslate(getTranslateY(middleIndex));
       onIndexChange(realIndex);
     } else {
@@ -65,9 +164,7 @@ function DrumColumn({ items, selectedIndex, onIndexChange, max }: DrumColumnProp
     }
   };
 
-  // ── touch ────────────────────────────────────────────────────────────────
   const touchStartY = useRef(0);
-
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
   };
@@ -82,10 +179,8 @@ function DrumColumn({ items, selectedIndex, onIndexChange, max }: DrumColumnProp
     touchStartY.current = e.changedTouches[0].clientY;
   };
 
-  // ── mouse drag ───────────────────────────────────────────────────────────
   const mouseStartY = useRef(0);
   const dragging = useRef(false);
-
   const onMouseDown = (e: React.MouseEvent) => {
     dragging.current = true;
     mouseStartY.current = e.clientY;
@@ -110,7 +205,6 @@ function DrumColumn({ items, selectedIndex, onIndexChange, max }: DrumColumnProp
     snap(currentIndex.current - Math.round(diff / ITEM_HEIGHT));
   };
 
-  // ── wheel ────────────────────────────────────────────────────────────────
   const onWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const step = e.deltaY > 0 ? 1 : -1;
@@ -146,8 +240,7 @@ function DrumColumn({ items, selectedIndex, onIndexChange, max }: DrumColumnProp
   );
 }
 
-// ─── Mobile drum sheet ───────────────────────────────────────────────────────
-function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
+function MobileTimePicker({ value, onChange, onClose }: TimePickerProps) {
   const [hours, minutes] = value ? value.split(':') : ['12', '00'];
 
   const hoursList = generateNumbers(23);
@@ -167,14 +260,12 @@ function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
         <div className="time-picker-handle" />
         <h3 className="time-picker-title">ВЫБЕРИТЕ ВРЕМЯ</h3>
 
-        {/* columns + colon aligned to drum centre */}
         <div style={{display:'flex', alignItems:'flex-end', gap:'8px', justifyContent:'center'}}>
           <div className="time-picker-column">
             <div className="time-picker-label">ЧАСЫ</div>
             <DrumColumn items={hoursList} selectedIndex={hourIndex} onIndexChange={setHourIndex} max={23} />
           </div>
 
-          {/* colon: sits at the level of the drum, centred vertically (132px = 3×44px) */}
           <div style={{height: 132, display:'flex', alignItems:'center', fontSize:'24px', fontWeight:'bold', color:'var(--text-primary)'}}>:</div>
 
           <div className="time-picker-column">
@@ -194,105 +285,4 @@ function MobileDrumPicker({ value, onChange, onClose }: TimePickerProps) {
       </div>
     </div>
   );
-}
-
-// ─── Desktop input ───────────────────────────────────────────────────────────
-function DesktopTimeInput({ value, onChange, onClose }: TimePickerProps) {
-  const [localValue, setLocalValue] = useState(value || '');
-
-  return (
-    <div
-      className="time-picker-overlay"
-      style={{ background: 'rgba(0,0,0,0.75)' }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: 'var(--color-bg)',
-          borderRadius: 16,
-          padding: '32px 36px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-          minWidth: 320,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 24,
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        <h3 style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: 0 }}>
-          ВЫБЕРИТЕ ВРЕМЯ
-        </h3>
-
-        {/* Большое поле ввода */}
-        <input
-          type="time"
-          value={localValue}
-          onChange={e => setLocalValue(e.target.value)}
-          autoFocus
-          style={{
-            fontSize: 48,
-            fontWeight: 700,
-            color: 'var(--color-text)',
-            background: 'var(--color-surface)',
-            border: '2px solid var(--color-border)',
-            borderRadius: 12,
-            padding: '12px 20px',
-            outline: 'none',
-            letterSpacing: '0.05em',
-            textAlign: 'center',
-            width: '100%',
-            cursor: 'text',
-          }}
-          onFocus={e => (e.target.style.borderColor = 'var(--color-primary)')}
-          onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-        />
-
-        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
-          <button
-            style={{
-              flex: 1, padding: '11px', borderRadius: 10,
-              border: '1.5px solid var(--color-border)',
-              background: 'transparent', color: 'var(--color-text)',
-              fontWeight: 600, fontSize: 14, cursor: 'pointer',
-            }}
-            onClick={onClose}
-          >
-            Отмена
-          </button>
-          <button
-            style={{
-              flex: 1, padding: '11px', borderRadius: 10,
-              border: 'none',
-              background: 'var(--color-primary)', color: '#fff',
-              fontWeight: 700, fontSize: 14, cursor: 'pointer',
-            }}
-            onClick={() => { onChange(localValue); onClose(); }}
-          >
-            Готово
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main export ─────────────────────────────────────────────────────────────
-export default function TimePicker(props: TimePickerProps) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < 768 : true
-  );
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
-
-  return isMobile ? <MobileDrumPicker {...props} /> : <DesktopTimeInput {...props} />;
 }

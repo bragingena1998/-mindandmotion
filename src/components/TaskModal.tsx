@@ -71,7 +71,11 @@ export default function TaskModal({ isOpen, onClose, onSubmit, folders, editingT
       setDeadline(normalizeDate(editingTask.deadline));
       setPriority(Number(editingTask.priority) || 2);
       setFolderId(editingTask.folderId || undefined);
-      setRecurrence(editingTask.recurrence || 'none');
+      const rec = editingTask.recurrence
+        || (editingTask.recurrenceType && editingTask.recurrenceType !== 'none'
+            ? editingTask.recurrenceType
+            : 'none');
+      setRecurrence(rec);
     } else {
       // Reset form for new task
       setTitle('');

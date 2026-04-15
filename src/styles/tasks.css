@@ -1596,8 +1596,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .subtask-item:last-child {
@@ -1641,22 +1641,31 @@
   opacity: 0.5;
 }
 
+/* Кнопка удаления подзадачи — ВСЕГДА видна, не скрыта */
 .subtask-delete {
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  background: none;
+  display: flex !important;          /* всегда видна */
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   border: none;
-  color: var(--text-muted);
+  background: transparent;
+  color: var(--color-error);
   cursor: pointer;
-  padding: 2px;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  margin-left: auto;
 }
-
-.subtask-item:hover .subtask-delete {
-  opacity: 1;
-}
-
 .subtask-delete:hover {
-  color: var(--danger-1);
+  background: var(--color-error-highlight);
+}
+
+/* Если где-то скрыто через display:none при hover — убираем */
+.subtask-item .subtask-delete {
+  display: flex !important;
 }
 
 /* Subtask edit mode */
