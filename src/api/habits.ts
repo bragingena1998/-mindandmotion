@@ -116,10 +116,28 @@ export async function fetchHabits(year: number, month: number): Promise<Habit[]>
 }
 
 export async function fetchHabitRecords(year: number, month: number): Promise<HabitRecord[]> {
+  console.log('[fetchHabitRecords] START', { year, month });
+
   const response = await apiClient.get(`/habits/records/${year}/${month}`);
+
+  console.log('[fetchHabitRecords] RAW RESPONSE:', {
+    status: response.status,
+    dataType: typeof response.data,
+    isArray: Array.isArray(response.data),
+    length: Array.isArray(response.data) ? response.data.length : 'N/A',
+    first3: Array.isArray(response.data) ? response.data.slice(0, 3) : response.data,
+  });
+
   const data = response.data;
   const records = data.records ?? data ?? [];
-  return records.map(adaptRecordFromAPI);
+  const mapped = records.map(adaptRecordFromAPI);
+
+  console.log('[fetchHabitRecords] MAPPED:', {
+    count: mapped.length,
+    first3: mapped.slice(0, 3),
+  });
+
+  return mapped;
 }
 
 // ========================================

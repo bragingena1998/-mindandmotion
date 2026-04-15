@@ -14,6 +14,7 @@ import {
   isWeekend,
 } from '../utils/habitUtils';
 import { useBanner } from '../context/BannerContext';
+import HoursEditModal from './HoursEditModal';
 import '../styles/habits.css';
 
 interface HabitTableProps {
@@ -67,18 +68,31 @@ export default function HabitTable({
 
   const handleCellTouchStart = (habit: Habit, day: number) => {
     cellLongPressTimer.current = setTimeout(() => {
-      if (habit.unit === 'Часы' && isHabitDayActive(habit, year, month, day)) {
-        const existingValue = getCellValue(records, habit.id, year, month, day);
-        showBanner({
-          type: 'habit-timer',
-          habit: { id: habit.id, name: habit.name, plan: habit.plan, unit: habit.unit },
-          day,
-          existingMinutes: existingValue,
-          onSave: (totalMinutes) => { onCellChange(habit.id, day, totalMinutes); },
-          onClose: () => {},
-        });
+      if (isHabitDayActive(habit, year, month, day)) {
+        const currentValue = getCellValue(records, habit.id, year, month, day);
+        if (habit.unit === 'Часы') {
+          // Долгий тап на Часы → HoursEditModal (не таймер)
+          setHoursEditModal({
+            habitId: habit.id,
+            habitName: habit.name,
+            day,
+            currentValue,
+          });
+        }
       }
     }, 500);
+  };
+
+  const handleCellContextMenu = (e: React.MouseEvent, habit: Habit, day: number) => {
+    if (habit.unit !== 'Часы') return;
+    e.preventDefault();
+    const currentValue = getCellValue(records, habit.id, year, month, day);
+    setHoursEditModal({
+      habitId: habit.id,
+      habitName: habit.name,
+      day,
+      currentValue,
+    });
   };
 
   const handleCellTouchEnd = () => {
@@ -90,6 +104,14 @@ export default function HabitTable({
 
   // ── Global banner ────────────────────────────────────────────────────────
   const { showBanner } = useBanner();
+
+  // ── Hours edit modal ───────────────────────────────────────────────────────
+  const [hoursEditModal, setHoursEditModal] = useState<{
+    habitId: number;
+    habitName: string;
+    day: number;
+    currentValue: number;
+  } | null>(null);
 
   // ── Today detection ─────────────────────────────────────────────────────
   const today = useMemo(() => new Date(), []);
@@ -218,30 +240,29 @@ export default function HabitTable({
                   {habit.name}
                 </span>
               </div>
-              {/* Таймер иконка для ПК (только для unit='Часы') */}
-              {!isMobile && habit.unit === 'Часы' && (
-                <button
-                  className="habit-timer-icon-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Открыть таймер на СЕГОДНЯ (если текущий месяц)
-                    const targetDay = isCurrentMonth ? todayDay : 1;
-                    const existingValue = getCellValue(records, habit.id, year, month, targetDay);
-                    showBanner({
-                      type: 'habit-timer',
-                      habit: { id: habit.id, name: habit.name, plan: habit.plan, unit: habit.unit },
-                      day: targetDay,
-                      existingMinutes: existingValue,
-                      onSave: (totalMinutes) => { onCellChange(habit.id, targetDay, totalMinutes); },
-                      onClose: () => {},
-                    });
-                  }}
-                  title="Запустить таймер"
-                >
-                  ⏱
-                </button>
-              )}
               <div className="habit-actions">
+                {/* Таймер — первым, только для Часы */}
+                {!isMobile && habit.unit === 'Часы' && (
+                  <button
+                    className="habit-btn habit-btn-timer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const targetDay = isCurrentMonth ? todayDay : 1;
+                      const existingValue = getCellValue(records, habit.id, year, month, targetDay);
+                      showBanner({
+                        type: 'habit-timer',
+                        habit: { id: habit.id, name: habit.name, plan: habit.plan, unit: habit.unit },
+                        day: targetDay,
+                        existingMinutes: existingValue,
+                        onSave: (totalMinutes) => { onCellChange(habit.id, targetDay, totalMinutes); },
+                        onClose: () => {},
+                      });
+                    }}
+                    title="Запустить таймер на сегодня"
+                  >
+                    ⏱
+                  </button>
+                )}
                 <button
                   className="habit-btn habit-btn-edit"
                   onClick={() => onEditHabit(habit)}
@@ -318,6 +339,7 @@ export default function HabitTable({
                     onTouchStart={() => handleCellTouchStart(habit, day)}
                     onTouchEnd={handleCellTouchEnd}
                     onTouchMove={handleCellTouchEnd}
+                    onContextMenu={(e) => handleCellContextMenu(e, habit, day)}
                     title={active ? `Клик для изменения${value > 0 ? ` (${value})` : ''}` : 'Неактивный день'}
                   >
                     <span className="habit-cell-value">{displayValue}</span>
@@ -328,23 +350,20 @@ export default function HabitTable({
           ))}
         </div>
 
-        {/* ── RIGHT COLUMN (sticky) ── */}
-        <div className="habit-col-right">
-          <div className="habit-header-stats">
-            <span>Итог</span>
-            <span>%</span>
-          </div>
-          {habits.map((habit) => {
-            const stats = calculateHabitStats(habit, records, year, month);
-            return (
-              <div key={habit.id} className="habit-stats-row">
-                <span className="habit-stat-total">{stats.total}</span>
-                <span className="habit-stat-percent">{stats.percent}%</span>
-              </div>
-            );
-          })}
-        </div>
       </div>
+
+      {hoursEditModal && (
+        <HoursEditModal
+          habitName={hoursEditModal.habitName}
+          day={hoursEditModal.day}
+          currentValue={hoursEditModal.currentValue}
+          onSave={(val) => {
+            onCellChange(hoursEditModal.habitId, hoursEditModal.day, val);
+            setHoursEditModal(null);
+          }}
+          onClose={() => setHoursEditModal(null)}
+        />
+      )}
     </div>
   );
 }

@@ -210,33 +210,6 @@
   font-size: 11px;
 }
 
-/* Timer icon button (desktop only) */
-.habit-timer-icon-btn {
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background: transparent;
-  font-size: 13px;
-  line-height: 1;
-  color: var(--accent-1, #f97316);
-  opacity: 0;
-  flex-shrink: 0;
-  transition: opacity 0.15s ease, background 0.15s ease;
-}
-
-.habit-name-cell:hover .habit-timer-icon-btn {
-  opacity: 1;
-}
-
-.habit-timer-icon-btn:hover {
-  background: rgba(var(--accent-1-rgb, 249, 115, 22), 0.15);
-}
-
 /* Actions buttons (show on hover) */
 .habit-actions {
   display: none;
@@ -285,6 +258,18 @@
 
 .habit-btn-delete:hover {
   background: var(--danger-1);
+}
+
+/* Timer button (inside actions) */
+.habit-btn.habit-btn-timer {
+  font-size: 14px;
+  color: var(--accent-1, #f97316);
+  opacity: 0.9;
+}
+
+.habit-btn.habit-btn-timer:hover {
+  background: rgba(var(--accent-1-rgb, 249,115,22), 0.18);
+  color: var(--accent-1, #f97316);
 }
 
 /* Unit and Plan cells */
@@ -1239,3 +1224,339 @@
   height: auto;
   display: block;
 }
+
+/* ========================================
+   TODAY CARD
+   ======================================== */
+
+.habits-today-card {
+  margin-bottom: 16px;
+  background: var(--color-surface);
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+/* Header */
+.htc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px 10px;
+}
+
+.htc-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.htc-count {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.htc-count-done {
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--color-text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.htc-count-sep {
+  font-size: 22px;
+  color: var(--color-text-muted);
+  margin: 0 2px;
+}
+
+.htc-count-total {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.htc-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  align-self: center;
+}
+
+.htc-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.htc-pct {
+  font-size: 38px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-1, #f97316);
+}
+
+.htc-motivation {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--accent-1, #f97316);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+/* Toolbar (переключатель) */
+.htc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.htc-mode-btn {
+  padding: 3px 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.6;
+}
+
+.htc-mode-btn.active {
+  background: var(--accent-1, #f97316);
+  border-color: var(--accent-1, #f97316);
+  color: #fff;
+}
+
+.htc-mode-btn:not(.active):hover {
+  border-color: var(--accent-1, #f97316);
+  color: var(--accent-1, #f97316);
+}
+
+/* Bars list */
+.htc-bars {
+  padding: 8px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.htc-bar-item {
+  padding: 7px 8px;
+  border-radius: 10px;
+  transition: background 0.15s ease;
+}
+
+.htc-bar-item.active-today {
+  background: rgba(var(--accent-1-rgb, 249,115,22), 0.04);
+}
+
+.htc-bar-item.done {
+  background: rgba(var(--accent-1-rgb, 249,115,22), 0.09);
+}
+
+/* Не-активные сегодня — тусклее */
+.htc-bar-item:not(.active-today):not(.done) .htc-bar-name,
+.htc-bar-item:not(.active-today):not(.done) .htc-bar-icon,
+.htc-bar-item:not(.active-today):not(.done) .htc-bar-value {
+  opacity: 0.5;
+}
+
+.htc-bar-item:not(.active-today):not(.done) .htc-bar-fill {
+  opacity: 0.4;
+}
+
+.htc-bar-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+
+.htc-bar-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.htc-bar-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.htc-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.htc-streak {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent-border, #fbbf24);
+  background: rgba(var(--accent-1-rgb, 249,115,22), 0.15);
+  padding: 1px 7px;
+  border-radius: 9999px;
+}
+
+.htc-bar-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  min-width: 54px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+}
+
+.htc-bar-right .htc-bar-value {
+  font-size: 11px;
+}
+
+.htc-bar-track {
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.htc-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    var(--accent-2, #ec4899) 0%,
+    var(--accent-1, #f97316) 100%
+  );
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 3px;
+}
+
+/* Правый столбец таблицы — убираем */
+.habit-col-right {
+  display: none;
+}
+
+/* ========================================
+   HOURS EDIT MODAL
+   ======================================== */
+
+.hours-modal-overlay {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+
+.hours-modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 20px;
+  width: min(340px, 100%);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+.hours-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px;
+}
+
+.hours-modal-title {
+  font-size: 15px; font-weight: 700;
+  color: var(--color-text);
+}
+
+.hours-modal-day {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.hours-modal-input-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 16px;
+  justify-content: center;
+}
+
+.hours-adj-btn {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 20px; font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.hours-adj-btn:hover { background: var(--color-surface-dynamic); }
+
+.hours-input {
+  width: 80px; height: 44px;
+  text-align: center;
+  font-size: 22px; font-weight: 700;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+}
+
+.hours-input:focus {
+  border-color: var(--accent-1, #f97316);
+  box-shadow: 0 0 0 3px rgba(var(--accent-1-rgb, 249,115,22), 0.15);
+}
+
+/* Скрыть стрелки у number input */
+.hours-input::-webkit-outer-spin-button,
+.hours-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.hours-input[type=number] { -moz-appearance: textfield; }
+
+.hours-unit-label {
+  font-size: 14px; font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hours-modal-actions {
+  display: flex; gap: 8px;
+}
+
+.hours-btn {
+  flex: 1; height: 44px;
+  border-radius: 10px; border: none;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hours-btn-clear {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+.hours-btn-clear:hover { color: var(--color-error); border-color: var(--color-error); }
+
+.hours-btn-save {
+  background: var(--accent-1, #f97316);
+  color: #fff;
+}
+.hours-btn-save:hover { opacity: 0.9; }

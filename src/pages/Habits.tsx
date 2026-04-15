@@ -37,6 +37,7 @@ export default function Habits() {
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [barMode, setBarMode] = useState<'percent' | 'amount'>('percent');
 
   // ── Mobile detection ────────────────────────────────────────────────────
   useEffect(() => {
@@ -73,16 +74,6 @@ export default function Habits() {
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
   const todayDay = today.getDate();
 
-  const todayStats = isCurrentMonth
-    ? {
-        completed: habits.filter(h => {
-          const value = getCellValue(records, h.id, year, month, todayDay);
-          return value > 0;
-        }).length,
-        total: habits.length,
-      }
-    : null;
-
   // ── Progress bars data ────────────────────────────────────────────────
   // Возраст streak для каждой привычки (дней подряд до сегодня)
   const getStreakDays = (habit: Habit): number => {
@@ -98,9 +89,46 @@ export default function Habits() {
   };
 
   const habitsWithStats = habits.map(h => {
-    const { percent, total } = calculateHabitStats(h, records, year, month);
-    return { ...h, percent, total, streak: getStreakDays(h) };
+    const { percent, total, activeDays } = calculateHabitStats(h, records, year, month);
+    const streak = getStreakDays(h);
+    const completedToday = isCurrentMonth
+      ? getCellValue(records, h.id, year, month, todayDay) > 0
+      : false;
+    const activeToday = isCurrentMonth
+      ? isHabitDayActive(h, year, month, todayDay)
+      : false;
+
+    // Метка для режима "кол-во" — зависит от unit и targetType
+    let amountLabel = '';
+    const plan = h.plan || 1;
+
+    if (h.unit === 'Дни') {
+      // Дни: "9 дн / 15 дн" (из активных дней)
+      const doneCount = records.filter(
+        r => r.habitId === h.id && r.year === year && r.month === month && r.value > 0
+      ).length;
+      amountLabel = h.targetType === 'daily'
+        ? `${doneCount} / ${activeDays} дн`
+        : `${doneCount} дн`;
+    } else if (h.unit === 'Часы') {
+      // Часы: "27.6 ч / 70 ч"
+      const planTotal = h.targetType === 'daily' ? plan * activeDays : plan;
+      amountLabel = `${total % 1 === 0 ? total : total.toFixed(1)} / ${planTotal} ч`;
+    } else {
+      // Кол-во и прочие: "250 / 1550 шт" или "250 / 50"
+      const planTotal = h.targetType === 'daily' ? plan * activeDays : plan;
+      const unitSuffix = h.unit && h.unit !== 'Кол-во' ? ` ${h.unit}` : '';
+      amountLabel = `${total} / ${planTotal}${unitSuffix}`;
+    }
+
+    return { ...h, percent, total, activeDays, streak, completedToday, activeToday, amountLabel };
   });
+
+  // Сводка за сегодня
+  const todaySummary = isCurrentMonth ? {
+    completed: habitsWithStats.filter(h => h.completedToday).length,
+    total: habitsWithStats.filter(h => h.activeToday).length,
+  } : null;
 
   // ── Trend chart data ────────────────────────────────────────────────────
   const getTrendData = () => {
@@ -215,46 +243,96 @@ export default function Habits() {
         </button>
       </div>
 
-      {/* Today's Stats */}
-      {todayStats && (
-        <div className="habits-stats-today">
-          <span className="stats-label">Сегодня:</span>
-          <span className="stats-value">
-            {todayStats.completed} из {todayStats.total}
-          </span>
-          <span className="stats-suffix">
-            {todayStats.total === 1 ? 'привычки' : 'привычек'} выполнено
-          </span>
-          {todayStats.total > 0 && (
-            <span className="stats-percent">
-              {Math.round((todayStats.completed / todayStats.total) * 100)}%
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Progress Bars */}
+      {/* Today Card */}
       {!loading && !error && habits.length > 0 && (
-        <div className="habits-progress-bars">
-          {habitsWithStats.map(h => (
-            <div key={h.id} className="habit-bar-row">
-              <div className="habit-bar-meta">
-                <span className="habit-bar-name">{h.name}</span>
-                <div className="habit-bar-badges">
-                  {h.streak > 0 && (
-                    <span className="habit-streak-badge">🔥 {h.streak}д</span>
-                  )}
-                  <span className="habit-bar-pct">{h.percent}%</span>
+        <div className="habits-today-card">
+
+          {/* Заголовок: X/Y и % */}
+          {todaySummary && (
+            <div className="htc-header">
+              <div className="htc-header-left">
+                <div className="htc-count">
+                  <span className="htc-count-done">{todaySummary.completed}</span>
+                  <span className="htc-count-sep">/</span>
+                  <span className="htc-count-total">{todaySummary.total}</span>
                 </div>
+                <span className="htc-label">сегодня</span>
               </div>
-              <div className="habit-bar-track">
-                <div
-                  className="habit-bar-fill"
-                  style={{ width: `${h.percent}%` }}
-                />
+              <div className="htc-header-right">
+                <span className="htc-pct">
+                  {todaySummary.total > 0
+                    ? Math.round((todaySummary.completed / todaySummary.total) * 100)
+                    : 0}%
+                </span>
+                <span className="htc-motivation">
+                  {(() => {
+                    const p = todaySummary.total > 0
+                      ? Math.round((todaySummary.completed / todaySummary.total) * 100) : 0;
+                    if (p === 100) return '🏆 ИДЕАЛЬНО!';
+                    if (p >= 80)  return '💪 МОЩНЫЙ ТЕМП!';
+                    if (p >= 50)  return '⚡ НА ХОДУ!';
+                    if (p > 0)    return '🚀 НАЧАЛО!';
+                    return '☕ НАЧИНАЕМ!';
+                  })()}
+                </span>
               </div>
             </div>
-          ))}
+          )}
+
+          {/* Toolbar с переключателем режима */}
+          <div className="htc-toolbar">
+            <button
+              className={`htc-mode-btn${barMode === 'percent' ? ' active' : ''}`}
+              onClick={() => setBarMode('percent')}
+            >
+              %
+            </button>
+            <button
+              className={`htc-mode-btn${barMode === 'amount' ? ' active' : ''}`}
+              onClick={() => setBarMode('amount')}
+            >
+              123
+            </button>
+          </div>
+
+          {/* Бары привычек */}
+          <div className="htc-bars">
+            {habitsWithStats.map(h => (
+              <div
+                key={h.id}
+                className={[
+                  'htc-bar-item',
+                  h.completedToday ? 'done' : '',
+                  h.activeToday ? 'active-today' : '',
+                ].filter(Boolean).join(' ')}
+              >
+                <div className="htc-bar-top">
+                  <span className="htc-bar-icon">
+                    {h.targetType === 'daily' ? '⏳' : '📅'}
+                  </span>
+                  <span className="htc-bar-name">{h.name}</span>
+                  <div className="htc-bar-right">
+                    {h.streak >= 2 && (
+                      <span className="htc-streak">🔥 {h.streak}</span>
+                    )}
+                    <span className="htc-bar-value">
+                      {barMode === 'percent'
+                        ? `${h.percent}%`
+                        : h.amountLabel
+                      }
+                    </span>
+                  </div>
+                </div>
+                <div className="htc-bar-track">
+                  <div
+                    className="htc-bar-fill"
+                    style={{ width: `${h.percent}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
         </div>
       )}
 
