@@ -6,11 +6,11 @@ import Layout from './components/Layout'
 
 // Pages
 import Tasks from './pages/Tasks'
+import Habits from './pages/Habits'
 import Login from './pages/Login'
 
 // Page placeholders (will be implemented in next days)
 const Dashboard = () => <div className="page-placeholder"><h1>Dashboard (coming soon)</h1></div>
-const Habits = () => <div className="page-placeholder"><h1>Habits (coming soon)</h1></div>
 const Calendar = () => <div className="page-placeholder"><h1>Calendar (coming soon)</h1></div>
 const Profile = () => <div className="page-placeholder"><h1>Profile (coming soon)</h1></div>
 const SecretChat = () => <div className="page-placeholder"><h1>Secret Chat (coming soon)</h1></div>
