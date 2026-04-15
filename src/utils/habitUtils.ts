@@ -19,15 +19,21 @@ export function isHabitDayActive(
   // Проверка start_date
   if (habit.startDate) {
     const start = new Date(habit.startDate);
-    start.setHours(0, 0, 0, 0);
-    if (date < start) return false;
+    // Защита от некорректных дат
+    if (!isNaN(start.getTime())) {
+      start.setHours(0, 0, 0, 0);
+      if (date < start) return false;
+    }
   }
 
   // Проверка end_date
   if (habit.endDate) {
     const end = new Date(habit.endDate);
-    end.setHours(23, 59, 59, 999);
-    if (date > end) return false;
+    // Защита от некорректных дат
+    if (!isNaN(end.getTime())) {
+      end.setHours(23, 59, 59, 999);
+      if (date > end) return false;
+    }
   }
 
   // Проверка daysOfWeek
