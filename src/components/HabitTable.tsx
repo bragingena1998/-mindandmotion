@@ -12,7 +12,6 @@ import {
   getCellValue,
   getDaysInMonth,
   isWeekend,
-  optimisticUpdateRecords,
 } from '../utils/habitUtils';
 import '../styles/habits.css';
 
@@ -48,6 +47,20 @@ export default function HabitTable({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ── Long press for mobile actions ───────────────────────────────────────────
+  const [activeActionRow, setActiveActionRow] = useState<number | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleNameLongPress = (habitId: number) => {
+    longPressTimer.current = setTimeout(() => {
+      setActiveActionRow(prev => prev === habitId ? null : habitId);
+    }, 500);
+  };
+
+  const handleNamePressEnd = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
   // ── Today detection ─────────────────────────────────────────────────────
   const today = useMemo(() => new Date(), []);
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
@@ -70,13 +83,47 @@ export default function HabitTable({
     }
   }, [isCurrentMonth, todayDay, isMobile]);
 
+  // Горизонтальный скролл колесиком мыши (только ПК)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Если есть горизонтальная прокрутка колесиком — игнорируй
+      if (e.deltaX !== 0) return;
+      // Если Shift зажат — браузер сам скроллит горизонтально
+      if (e.shiftKey) return;
+
+      // Конвертируем вертикальный скролл в горизонтальный
+      e.preventDefault();
+      el.scrollBy({ left: e.deltaY * 2.5, behavior: 'auto' });
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, []);
+
   // ── Handlers ────────────────────────────────────────────────────────────
   const handleCellClick = (habit: Habit, day: number) => {
     if (!isHabitDayActive(habit, year, month, day)) return;
 
     const currentValue = getCellValue(records, habit.id, year, month, day);
     const nextValue = getNextValueAfterTap(habit, currentValue);
-    onCellChange(habit.id, day, nextValue);
+
+    // Освобождаем поток перед async операцией
+    setTimeout(() => onCellChange(habit.id, day, nextValue), 0);
+  };
+
+  const handleNameClick = (e: React.MouseEvent, habit: Habit) => {
+    // На десктопе — сразу редактирование
+    if (!isMobile) {
+      onEditHabit(habit);
+      return;
+    }
+    // На мобиле — если actions не видны, просто скрываем другие
+    if (activeActionRow !== habit.id) {
+      setActiveActionRow(null);
+    }
   };
 
   // ── Render helpers ──────────────────────────────────────────────────────
@@ -115,7 +162,14 @@ export default function HabitTable({
             <span>Привычка</span>
           </div>
           {habits.map((habit) => (
-            <div key={habit.id} className="habit-row-cell habit-name-cell">
+            <div
+              key={habit.id}
+              className={`habit-row-cell habit-name-cell ${activeActionRow === habit.id ? 'actions-visible' : ''}`}
+              onClick={(e) => handleNameClick(e, habit)}
+              onTouchStart={() => handleNameLongPress(habit.id)}
+              onTouchEnd={handleNamePressEnd}
+              onMouseLeave={() => { if (isMobile) setActiveActionRow(null); }}
+            >
               <div className="habit-name-content">
                 <span className="habit-target-icon">
                   {habit.targetType === 'daily' ? '⏳' : '📅'}

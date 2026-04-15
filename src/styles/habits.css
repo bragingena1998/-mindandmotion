@@ -779,51 +779,70 @@
 
 /* ===== Mobile Adjustments ===== */
 @media (max-width: 768px) {
+  /* Ячейки дней — уже */
   .habit-day-cell,
   .habit-day-header {
-    width: 32px;
+    width: 30px;
   }
 
   .habit-cell-unit,
   .habit-cell-plan,
   .habit-header-unit,
   .habit-header-plan {
-    width: 40px;
+    width: 36px;
+    font-size: 9px;
   }
 
-  .habit-day-number {
-    font-size: 11px;
-  }
-
-  .habit-day-weekday {
-    font-size: 8px;
-  }
-
-  .habit-cell-value {
-    font-size: 10px;
-  }
-
+  .habit-day-number { font-size: 10px; }
+  .habit-day-weekday { font-size: 8px; }
+  .habit-cell-value { font-size: 10px; }
   .habit-stat-total,
-  .habit-stat-percent {
-    font-size: 10px;
-  }
+  .habit-stat-percent { font-size: 10px; padding: 1px 4px; }
 
-  /* Always show actions on mobile (no hover) */
+  /* Левая колонка — шире чтобы влезло название */
+  .habit-col-left { width: 120px; }
+
+  /* Правая колонка — уже */
+  .habit-col-right { width: 55px; }
+
+  /* На мобиле кнопки действий — СКРЫТЫ по умолчанию */
   .habit-actions {
-    display: flex;
-    position: static;
-    transform: none;
-    background: transparent;
-    border: none;
-    padding: 0;
+    display: none !important;
   }
 
-  .habit-btn {
-    width: 20px;
-    height: 20px;
-  }
-
+  /* Имя занимает всю ширину */
   .habit-name-content {
-    max-width: 70%;
+    max-width: 100%;
+    flex: 1;
+  }
+
+  /* Иконка типа — скрыть на мобиле чтобы сэкономить место */
+  .habit-target-icon {
+    display: none;
+  }
+
+  /* Имя привычки — чуть крупнее на мобиле */
+  .habit-name-text {
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* Ячейка имени — убрать overflow hidden чтобы имя читалось */
+  .habit-name-cell {
+    padding: 0 6px;
+  }
+
+  /* Показываем actions при долгом нажатии (класс добавляется через JS) */
+  .habit-name-cell.actions-visible .habit-actions {
+    display: flex !important;
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 2px 4px;
+    z-index: 20;
   }
 }
