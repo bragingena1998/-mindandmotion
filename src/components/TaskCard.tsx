@@ -110,12 +110,6 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const isLongPress = useRef(false);
 
-  // ── Timer minimize state ─────────────────────────────────────────────────
-  const [timerMinimized, setTimerMinimized] = useState(false);
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [timerTimeLeft, setTimerTimeLeft] = useState(0);
-  const [timerTaskTitle, setTimerTaskTitle] = useState('');
-
   // ── Confirmation modal state ────────────────────────────────────────────
   const [confirmDelete, setConfirmDelete] = useState<'task' | 'subtask' | null>(null);
   const [deletingSubtaskId, setDeletingSubtaskId] = useState<number | null>(null);
@@ -156,7 +150,7 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
     }
   };
 
-  const handleFocusSave = async (minutes: number) => {
+  const handleFocusSave = async () => {
     try {
       await updateTask(task.id, {
         focusSessions: task.focusSessions + 1,
@@ -168,35 +162,6 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
     }
   };
 
-  const handleTimerMinimize = () => {
-    setTimerMinimized(true);
-    // Не скрываем модалку полностью — она остаётся в DOM для работы таймера
-    setTimerTaskTitle(task.title);
-  };
-
-  const handleTimerSave = async () => {
-    if (timerTimeLeft > 0) {
-      const elapsedMinutes = Math.floor(timerTimeLeft / 60);
-      if (elapsedMinutes > 0) {
-        await handleFocusSave(elapsedMinutes);
-      }
-    }
-    setTimerMinimized(false);
-    setTimerRunning(false);
-    setTimerTimeLeft(0);
-  };
-
-  const handleTimerStop = () => {
-    setTimerMinimized(false);
-    setTimerRunning(false);
-    setTimerTimeLeft(0);
-  };
-
-  const formatTimerDisplay = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
 
   // ── Load subtasks when expanded ───────────────────────────────────────────
   useEffect(() => {
@@ -434,67 +399,13 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
       </div>
       </div>
 
-      {/* Focus Modal - always render when showFocus, control visibility via isMinimized */}
+      {/* Focus Modal - delegates to GlobalTimerBanner */}
       {showFocus && (
         <FocusModal
           task={task}
-          isMinimized={timerMinimized}
-          onClose={() => { setShowFocus(false); setTimerMinimized(false); }}
+          onClose={() => setShowFocus(false)}
           onSave={handleFocusSave}
-          onMinimize={() => setTimerMinimized(true)}
-          onTimeUpdate={setTimerTimeLeft}
         />
-      )}
-
-      {/* Timer banner - only when minimized */}
-      {showFocus && timerMinimized && (
-        <div className="timer-banner" style={{
-          position:'fixed', top:0, left:0, right:0, zIndex:1000,
-          background:'#1a1a2e', color:'#4fc3f7',
-          padding:'10px 16px', display:'flex', alignItems:'center',
-          gap:12, fontSize:14, fontWeight:600,
-          boxShadow:'0 2px 8px rgba(0,0,0,0.4)'
-        }}>
-          <span style={{ flex:1 }}>🎯 {task.title}</span>
-          <span style={{ fontFamily:'monospace', fontSize:16 }}>
-            {String(Math.floor(timerTimeLeft/60)).padStart(2,'0')}:
-            {String(timerTimeLeft%60).padStart(2,'0')}
-          </span>
-          {/* Сохранить сейчас */}
-          <button
-            onClick={async () => {
-              await handleFocusSave(Math.floor(timerTimeLeft / 60) || 1);
-              setShowFocus(false);
-              setTimerMinimized(false);
-              setTimerRunning(false);
-              setTimerTimeLeft(0);
-            }}
-            style={{ background:'#4fc3f7', color:'#0d1b2a', border:'none', borderRadius:6,
-                     padding:'4px 10px', fontWeight:700, fontSize:12, cursor:'pointer' }}
-          >
-            ✓ Сохранить
-          </button>
-          {/* Развернуть */}
-          <button onClick={() => setTimerMinimized(false)}
-            style={{ background:'transparent', color:'#4fc3f7', border:'none',
-                     fontSize:18, cursor:'pointer', padding:'0 4px' }}>
-            ⤢
-          </button>
-          {/* Закрыть без сохранения — НЕ открывает модалку */}
-          <button
-            onClick={() => {
-              setShowFocus(false);
-              setTimerMinimized(false);
-              setTimerRunning(false);
-              setTimerTimeLeft(0);
-            }}
-            style={{ background:'transparent', color:'rgba(255,255,255,0.5)', border:'none',
-                     fontSize:18, cursor:'pointer', padding:'0 4px' }}
-            title="Закрыть без сохранения"
-          >
-            ✕
-          </button>
-        </div>
       )}
 
       {/* Subtasks Bottom Sheet */}

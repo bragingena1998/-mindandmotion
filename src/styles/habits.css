@@ -198,8 +198,8 @@
 }
 
 .habit-name-text {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
@@ -208,6 +208,33 @@
 
 .habit-table-wrapper.mobile .habit-name-text {
   font-size: 11px;
+}
+
+/* Timer icon button (desktop only) */
+.habit-timer-icon-btn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--accent-1, #f97316);
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.habit-name-cell:hover .habit-timer-icon-btn {
+  opacity: 1;
+}
+
+.habit-timer-icon-btn:hover {
+  background: rgba(var(--accent-1-rgb, 249, 115, 22), 0.15);
 }
 
 /* Actions buttons (show on hover) */
@@ -856,7 +883,9 @@
   position: fixed;
   inset: 0;
   z-index: 49;
-  background: transparent;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
 .habit-timer-banner {
@@ -920,12 +949,12 @@
 .habit-timer-banner.expanded .timer-content {
   width: 340px;
   max-width: 95vw;
-  background: var(--color-surface);
+  background: color-mix(in oklch, var(--color-surface) 85%, #000 15%);
   border: 1px solid var(--color-border);
   border-bottom: none;
   border-radius: 16px 16px 0 0;
   padding: 20px;
-  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -12px 60px rgba(0,0,0,0.6), 0 -4px 20px rgba(0,0,0,0.4);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1077,6 +1106,32 @@
 
 .timer-close-btn:hover {
   color: var(--color-text);
+}
+
+/* --- Timer Time Chips (for focus session) --- */
+.timer-time-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.timer-chip {
+  padding: 6px 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.timer-chip.active {
+  background: var(--accent-1, #f97316);
+  border-color: var(--accent-1, #f97316);
+  color: #fff;
 }
 
 /* ========================================

@@ -62,6 +62,32 @@ export default function HabitTable({
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   };
 
+  // ── Long press for day cells (timer for hours habits) ─────────────────────
+  const cellLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCellTouchStart = (habit: Habit, day: number) => {
+    cellLongPressTimer.current = setTimeout(() => {
+      if (habit.unit === 'Часы' && isHabitDayActive(habit, year, month, day)) {
+        const existingValue = getCellValue(records, habit.id, year, month, day);
+        showBanner({
+          type: 'habit-timer',
+          habit: { id: habit.id, name: habit.name, plan: habit.plan, unit: habit.unit },
+          day,
+          existingMinutes: existingValue,
+          onSave: (totalMinutes) => { onCellChange(habit.id, day, totalMinutes); },
+          onClose: () => {},
+        });
+      }
+    }, 500);
+  };
+
+  const handleCellTouchEnd = () => {
+    if (cellLongPressTimer.current) {
+      clearTimeout(cellLongPressTimer.current);
+      cellLongPressTimer.current = null;
+    }
+  };
+
   // ── Global banner ────────────────────────────────────────────────────────
   const { showBanner } = useBanner();
 
@@ -111,20 +137,14 @@ export default function HabitTable({
   const handleCellClick = (habit: Habit, day: number) => {
     if (!isHabitDayActive(habit, year, month, day)) return;
 
-    // Для привычек с unit='Часы' открываем таймер
+    // Для привычек с unit='Часы' — клик добавляет +1ч (долгий тап открывает таймер)
     if (habit.unit === 'Часы') {
-      const existingValue = getCellValue(records, habit.id, year, month, day);
-      showBanner({
-        type: 'habit-timer',
-        habit: { id: habit.id, name: habit.name, plan: habit.plan, unit: habit.unit },
-        day,
-        existingMinutes: existingValue,
-        onSave: (totalMinutes) => {
-          onCellChange(habit.id, day, totalMinutes);
-        },
-        onClose: () => {},
-      });
-      return; // НЕ вызываем onCellChange сразу — таймер сам вызовет
+      const currentValue = getCellValue(records, habit.id, year, month, day);
+      // На мобиле — клик добавляет +1 (долгий тап обработан отдельно)
+      // На десктопе — клик добавляет +1
+      const nextValue = currentValue > 0 ? currentValue + 1 : 1;
+      setTimeout(() => onCellChange(habit.id, day, nextValue), 0);
+      return;
     }
 
     const currentValue = getCellValue(records, habit.id, year, month, day);
@@ -198,6 +218,29 @@ export default function HabitTable({
                   {habit.name}
                 </span>
               </div>
+              {/* Таймер иконка для ПК (только для unit='Часы') */}
+              {!isMobile && habit.unit === 'Часы' && (
+                <button
+                  className="habit-timer-icon-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Открыть таймер на СЕГОДНЯ (если текущий месяц)
+                    const targetDay = isCurrentMonth ? todayDay : 1;
+                    const existingValue = getCellValue(records, habit.id, year, month, targetDay);
+                    showBanner({
+                      type: 'habit-timer',
+                      habit: { id: habit.id, name: habit.name, plan: habit.plan, unit: habit.unit },
+                      day: targetDay,
+                      existingMinutes: existingValue,
+                      onSave: (totalMinutes) => { onCellChange(habit.id, targetDay, totalMinutes); },
+                      onClose: () => {},
+                    });
+                  }}
+                  title="Запустить таймер"
+                >
+                  ⏱
+                </button>
+              )}
               <div className="habit-actions">
                 <button
                   className="habit-btn habit-btn-edit"
@@ -272,6 +315,9 @@ export default function HabitTable({
                     key={day}
                     className={`habit-day-cell ${weekend ? 'weekend' : ''} ${isToday ? 'today' : ''} ${value > 0 ? 'filled' : ''}`}
                     onClick={() => handleCellClick(habit, day)}
+                    onTouchStart={() => handleCellTouchStart(habit, day)}
+                    onTouchEnd={handleCellTouchEnd}
+                    onTouchMove={handleCellTouchEnd}
                     title={active ? `Клик для изменения${value > 0 ? ` (${value})` : ''}` : 'Неактивный день'}
                   >
                     <span className="habit-cell-value">{displayValue}</span>
