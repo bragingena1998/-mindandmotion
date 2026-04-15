@@ -101,6 +101,10 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
   const [editingSubtaskId, setEditingSubtaskId] = useState<number | null>(null);
   const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('');
 
+  // ── Comment editing state ─────────────────────────────────────────────────
+  const [editingComment, setEditingComment] = useState(false);
+  const [commentDraft, setCommentDraft] = useState(task.comment || '');
+
   // ── Long press / Focus state ──────────────────────────────────────────────
   const [showFocus, setShowFocus] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -312,14 +316,7 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
     <>
       <div
         className={`task-card-compact ${task.done ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}`}
-        onClick={() => {
-          if (isMobile) {
-            // На мобиле: открываем sheet если есть подзадачи ИЛИ комментарий
-            if (task.subtasksCount > 0 || task.comment) setExpanded(true);
-          } else {
-            if (task.subtasksCount > 0) setExpanded(true);
-          }
-        }}
+        onClick={() => setExpanded(true)}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
@@ -410,6 +407,20 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
             {hasRecurrence && (
               <span className="meta-recurrence" title="Повторяющаяся задача">↻</span>
             )}
+            {task.focusSessions > 0 && (
+              <span
+                title={`Фокус-сессий выполнено: ${task.focusSessions}`}
+                style={{
+                  fontSize: 11, fontWeight: 600,
+                  color: '#4fc3f7',
+                  background: 'rgba(79,195,247,0.12)',
+                  borderRadius: 4, padding: '1px 5px',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                🎯 {task.focusSessions}
+              </span>
+            )}
             {task.subtasksCount > 0 && (
               <span className="meta-subtasks">
                 ☰ {task.subtasksCount}
@@ -438,19 +449,51 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
       {/* Timer banner - only when minimized */}
       {showFocus && timerMinimized && (
         <div className="timer-banner" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-          background: '#1a1a2e', color: '#4fc3f7',
-          padding: '10px 16px', display: 'flex', alignItems: 'center',
-          gap: 12, fontSize: 14, fontWeight: 600,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+          position:'fixed', top:0, left:0, right:0, zIndex:1000,
+          background:'#1a1a2e', color:'#4fc3f7',
+          padding:'10px 16px', display:'flex', alignItems:'center',
+          gap:12, fontSize:14, fontWeight:600,
+          boxShadow:'0 2px 8px rgba(0,0,0,0.4)'
         }}>
-          <span>🎯 {task.title}</span>
-          <span style={{flex:1}}>
+          <span style={{ flex:1 }}>🎯 {task.title}</span>
+          <span style={{ fontFamily:'monospace', fontSize:16 }}>
             {String(Math.floor(timerTimeLeft/60)).padStart(2,'0')}:
             {String(timerTimeLeft%60).padStart(2,'0')}
           </span>
-          <button onClick={() => setTimerMinimized(false)}>▶ Развернуть</button>
-          <button onClick={handleTimerStop}>✕</button>
+          {/* Сохранить сейчас */}
+          <button
+            onClick={async () => {
+              await handleFocusSave(Math.floor(timerTimeLeft / 60) || 1);
+              setShowFocus(false);
+              setTimerMinimized(false);
+              setTimerRunning(false);
+              setTimerTimeLeft(0);
+            }}
+            style={{ background:'#4fc3f7', color:'#0d1b2a', border:'none', borderRadius:6,
+                     padding:'4px 10px', fontWeight:700, fontSize:12, cursor:'pointer' }}
+          >
+            ✓ Сохранить
+          </button>
+          {/* Развернуть */}
+          <button onClick={() => setTimerMinimized(false)}
+            style={{ background:'transparent', color:'#4fc3f7', border:'none',
+                     fontSize:18, cursor:'pointer', padding:'0 4px' }}>
+            ⤢
+          </button>
+          {/* Закрыть без сохранения — НЕ открывает модалку */}
+          <button
+            onClick={() => {
+              setShowFocus(false);
+              setTimerMinimized(false);
+              setTimerRunning(false);
+              setTimerTimeLeft(0);
+            }}
+            style={{ background:'transparent', color:'rgba(255,255,255,0.5)', border:'none',
+                     fontSize:18, cursor:'pointer', padding:'0 4px' }}
+            title="Закрыть без сохранения"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -498,20 +541,76 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
               borderRadius: 2, margin: '0 auto 12px'
             }} />
 
-            {task.comment && (
-              <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: 10,
-                padding: '10px 12px',
-                marginBottom: 12,
-                fontSize: 13,
-                color: 'var(--color-text-muted)',
-                lineHeight: 1.5,
-                borderLeft: '3px solid var(--color-primary)',
-              }}>
-                💬 {task.comment}
+            {/* Комментарий с редактированием */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+                            marginBottom: 6 }}>
+                <span style={{ fontSize:12, fontWeight:700, letterSpacing:'0.08em',
+                               color:'var(--color-text-muted)', textTransform:'uppercase' }}>
+                  💬 Комментарий
+                </span>
+                {!editingComment && (
+                  <button
+                    onClick={() => { setCommentDraft(task.comment || ''); setEditingComment(true); }}
+                    style={{ fontSize:12, color:'var(--color-primary)', background:'none',
+                             border:'none', cursor:'pointer', padding:'2px 8px',
+                             borderRadius:6, border:'1px solid var(--color-primary)' }}
+                  >
+                    {task.comment ? 'Изменить' : '+ Добавить'}
+                  </button>
+                )}
               </div>
-            )}
+
+              {editingComment ? (
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  <textarea
+                    value={commentDraft}
+                    onChange={e => setCommentDraft(e.target.value)}
+                    autoFocus
+                    rows={3}
+                    placeholder="Введите комментарий..."
+                    style={{ width:'100%', background:'var(--color-surface)',
+                             border:'1.5px solid var(--color-primary)', borderRadius:10,
+                             padding:'10px 12px', fontSize:13, color:'var(--color-text)',
+                             resize:'none', outline:'none', lineHeight:1.5 }}
+                  />
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await updateTask(task.id, { comment: commentDraft } as Partial<Task>);
+                          task.comment = commentDraft;
+                          setEditingComment(false);
+                        } catch { alert('Не удалось сохранить'); }
+                      }}
+                      style={{ flex:1, padding:'9px', borderRadius:8, border:'none',
+                               background:'var(--color-primary)', color:'#fff',
+                               fontWeight:700, fontSize:13, cursor:'pointer' }}
+                    >
+                      Сохранить
+                    </button>
+                    <button
+                      onClick={() => setEditingComment(false)}
+                      style={{ flex:1, padding:'9px', borderRadius:8,
+                               border:'1px solid var(--color-border)', background:'transparent',
+                               color:'var(--color-text)', fontSize:13, cursor:'pointer' }}
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                </div>
+              ) : task.comment ? (
+                <div style={{ background:'var(--color-surface)', borderRadius:10, padding:'10px 12px',
+                              fontSize:13, color:'var(--color-text-muted)', lineHeight:1.5,
+                              borderLeft:'3px solid var(--color-primary)' }}>
+                  {task.comment}
+                </div>
+              ) : (
+                <div style={{ fontSize:13, color:'var(--color-text-faint)', fontStyle:'italic' }}>
+                  Нет комментария
+                </div>
+              )}
+            </div>
 
             <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: 'var(--color-text)' }}>
               Подзадачи · {task.title}
