@@ -13,6 +13,7 @@ import {
   getDaysInMonth,
   isWeekend,
 } from '../utils/habitUtils';
+import HabitTimerBanner from './HabitTimerBanner';
 import '../styles/habits.css';
 
 interface HabitTableProps {
@@ -61,6 +62,9 @@ export default function HabitTable({
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   };
 
+  // ── Timer banner state ──────────────────────────────────────────────────
+  const [timerHabit, setTimerHabit] = useState<{ habit: Habit; day: number; existingMinutes: number } | null>(null);
+
   // ── Today detection ─────────────────────────────────────────────────────
   const today = useMemo(() => new Date(), []);
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
@@ -106,6 +110,13 @@ export default function HabitTable({
   // ── Handlers ────────────────────────────────────────────────────────────
   const handleCellClick = (habit: Habit, day: number) => {
     if (!isHabitDayActive(habit, year, month, day)) return;
+
+    // Для привычек с unit='Часы' открываем таймер
+    if (habit.unit === 'Часы') {
+      const existingValue = getCellValue(records, habit.id, year, month, day);
+      setTimerHabit({ habit, day, existingMinutes: existingValue });
+      return; // НЕ вызываем onCellChange сразу — таймер сам вызовет
+    }
 
     const currentValue = getCellValue(records, habit.id, year, month, day);
     const nextValue = getNextValueAfterTap(habit, currentValue);
@@ -279,6 +290,20 @@ export default function HabitTable({
           })}
         </div>
       </div>
+
+      {/* Timer Banner */}
+      {timerHabit && (
+        <HabitTimerBanner
+          habit={timerHabit.habit}
+          day={timerHabit.day}
+          existingMinutes={timerHabit.existingMinutes}
+          onSave={(totalMinutes) => {
+            onCellChange(timerHabit.habit.id, timerHabit.day, totalMinutes);
+            setTimerHabit(null);
+          }}
+          onClose={() => setTimerHabit(null)}
+        />
+      )}
     </div>
   );
 }
