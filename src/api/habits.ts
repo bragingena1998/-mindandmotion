@@ -38,22 +38,49 @@ export interface HabitRecord {
 
 // API → Frontend (defensive: покрываем все варианты имён полей)
 function adaptHabitFromAPI(raw: any): Habit {
-  // Парсинг days_of_week из JSON если это string
+  // Парсинг days_of_week — поддержка ВСЕХ форматов бэкенда
   let daysOfWeek: number[] | undefined;
   const rawDays = raw.days_of_week ?? raw.daysOfWeek ?? raw.daysofweek;
-  if (rawDays !== null && rawDays !== undefined && rawDays !== '') {
-    let parsed: any;
+  
+  // ДИАГНОСТИКА — удалить после проверки
+  console.log('[adaptHabit] id=', raw.id, 'name=', raw.name,
+    'rawDays=', rawDays, 'type=', typeof rawDays);
+  
+  if (rawDays !== null && rawDays !== undefined) {
+    let parsed: any = null;
+    
     if (Array.isArray(rawDays)) {
+      // Уже массив — используем как есть
       parsed = rawDays;
-    } else if (typeof rawDays === 'string') {
-      try { parsed = JSON.parse(rawDays); } catch { parsed = []; }
+    } else if (typeof rawDays === 'string' && rawDays.trim() !== '') {
+      const trimmed = rawDays.trim();
+      
+      if (trimmed.startsWith('[')) {
+        // JSON массив: "[1,2,3]"
+        try { parsed = JSON.parse(trimmed); } catch { parsed = []; }
+      } else if (trimmed.startsWith('{')) {
+        // PostgreSQL array literal: "{1,2,3}"
+        const inner = trimmed.slice(1, -1);
+        parsed = inner ? inner.split(',').map(Number).filter(n => !isNaN(n)) : [];
+      } else if (/^\d+(,\d+)*$/.test(trimmed)) {
+        // Просто числа через запятую: "1,2,3"
+        parsed = trimmed.split(',').map(Number).filter(n => !isNaN(n));
+      } else if (/^\d+$/.test(trimmed)) {
+        // Одно число: "2"
+        parsed = [Number(trimmed)];
+      }
+    } else if (typeof rawDays === 'number') {
+      parsed = [rawDays];
     }
-    // Только если это реальный непустой массив — применяем
+    
     if (Array.isArray(parsed) && parsed.length > 0) {
       daysOfWeek = parsed.map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 6);
     }
-    // Если пришёл пустой массив [] — оставляем daysOfWeek = undefined (все дни активны)
+    // Пустой массив [] → daysOfWeek остаётся undefined (все дни активны)
   }
+  
+  // ДИАГНОСТИКА — удалить после проверки
+  console.log('[adaptHabit] → daysOfWeek итог=', daysOfWeek);
 
   return {
     id: Number(raw.id),
@@ -86,11 +113,13 @@ function adaptHabitForAPI(habit: Partial<Habit>): any {
   if (habit.startMonth !== undefined) result.start_month = habit.startMonth;
   if (habit.orderIndex !== undefined) result.order_index = habit.orderIndex;
 
-  // daysOfWeek → JSON string
-  if (habit.daysOfWeek !== undefined) {
-    result.days_of_week = Array.isArray(habit.daysOfWeek) ? JSON.stringify(habit.daysOfWeek) : habit.daysOfWeek;
+  // Всегда отправляем days_of_week как МАССИВ (бэкенд ждёт Array.isArray)
+  if ('daysOfWeek' in habit) {
+    const days = habit.daysOfWeek;
+    result.days_of_week = Array.isArray(days) ? days : [];
   }
 
+  console.log('[adaptHabitForAPI] OUT:', result);
   return result;
 }
 
@@ -121,6 +150,7 @@ export async function fetchHabits(year: number, month: number): Promise<Habit[]>
   const response = await apiClient.get(`/habits?year=${year}&month=${month}`);
   const data = response.data;
   const habits = data.habits ?? data ?? [];
+  console.log('[fetchHabits] raw first habit:', habits[0]);
   return habits.map(adaptHabitFromAPI);
 }
 
@@ -192,7 +222,9 @@ export async function createHabit(
 
 export async function updateHabit(id: number, habit: Partial<Habit>): Promise<void> {
   const payload = adaptHabitForAPI(habit);
-  await apiClient.put(`/habits/${id}`, payload);
+  console.log('[updateHabit] PUT payload:', payload);
+  const response = await apiClient.put(`/habits/${id}`, payload);
+  console.log('[updateHabit] Response:', response.data);
 }
 
 export async function archiveHabit(id: number, year: number, month: number): Promise<void> {
