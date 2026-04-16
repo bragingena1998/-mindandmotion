@@ -92,14 +92,21 @@ function adaptHabitForAPI(habit: Partial<Habit>): any {
   return result;
 }
 
-// API → Frontend для записи привычки
-// ВАЖНО: сервер возвращает habitid (без underscore!)
 function adaptRecordFromAPI(raw: any): HabitRecord {
+  // year/month могут не прийти с сервера — берём из контекста запроса
+  // или из любого варианта имени поля
+  const year = Number(
+    raw.year ?? raw.record_year ?? raw.recordYear ?? raw.recordyear ?? 0
+  );
+  const month = Number(
+    raw.month ?? raw.record_month ?? raw.recordMonth ?? raw.recordmonth ?? 0
+  );
+
   return {
     habitId: Number(raw.habitid ?? raw.habit_id ?? raw.habitId ?? 0),
-    year: Number(raw.year),
-    month: Number(raw.month),
-    day: Number(raw.day),
+    year,
+    month,
+    day:   Number(raw.day),
     value: Number(raw.value) || 0,
   };
 }
@@ -130,7 +137,13 @@ export async function fetchHabitRecords(year: number, month: number): Promise<Ha
 
   const data = response.data;
   const records = data.records ?? data ?? [];
-  const mapped = records.map(adaptRecordFromAPI);
+  const mapped = records.map((raw: any) => {
+    const record = adaptRecordFromAPI(raw);
+    // Если year/month не пришли с сервера — подставляем из параметров запроса
+    if (!record.year || isNaN(record.year)) record.year = year;
+    if (!record.month || isNaN(record.month)) record.month = month;
+    return record;
+  });
 
   console.log('[fetchHabitRecords] MAPPED:', {
     count: mapped.length,

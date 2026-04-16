@@ -404,26 +404,34 @@ export default function Tasks() {
   return (
     <div className="page-tasks">
       <div className="page-inner">
-        {/* БАГ 5 FIX: Заголовок с переключателем месяцев */}
-        <div className="page-header">
-          <h1 className="page-title">🎯 МОИ ЗАДАЧИ</h1>
-          <div className="month-navigator">
-            <button
-              className="month-nav-btn"
-              onClick={() => setCurrentMonth(getPrevMonth(currentMonth))}
-              aria-label="Предыдущий месяц"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <span className="month-display">{formatMonthDisplay(currentMonth)}</span>
-            <button
-              className="month-nav-btn"
-              onClick={() => setCurrentMonth(getNextMonth(currentMonth))}
-              aria-label="Следующий месяц"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
+        {/* Month Navigator — compact with add button */}
+        <div className="month-navigator compact">
+          <button
+            className="month-nav-btn"
+            onClick={() => setCurrentMonth(getPrevMonth(currentMonth))}
+            aria-label="Предыдущий месяц"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="month-display">{formatMonthDisplay(currentMonth)}</span>
+          <button
+            className="month-nav-btn"
+            onClick={() => setCurrentMonth(getNextMonth(currentMonth))}
+            aria-label="Следующий месяц"
+          >
+            <ChevronRight size={16} />
+          </button>
+          <div className="month-nav-spacer" />
+          <button
+            className="tasks-add-btn-compact"
+            onClick={() => {
+              setEditingTask(null);
+              setIsModalOpen(true);
+            }}
+          >
+            <Plus size={14} />
+            <span>Добавить</span>
+          </button>
         </div>
 
         {/* Statistics - 4 cards in grid */}

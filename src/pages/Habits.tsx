@@ -221,25 +221,21 @@ export default function Habits() {
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="habits-page">
-      {/* Header */}
-      <div className="habits-header">
-        <h1 className="habits-title">Привычки</h1>
-        <button className="habits-add-btn" onClick={handleAddHabit}>
-          <Plus size={18} />
-          <span>Добавить</span>
-        </button>
-      </div>
-
-      {/* Month Navigator */}
-      <div className="month-navigator">
+      {/* Month Navigator — compact with add button */}
+      <div className="month-navigator compact">
         <button className="month-nav-btn" onClick={handlePrevMonth}>
-          <ChevronLeft size={20} />
+          <ChevronLeft size={16} />
         </button>
         <span className="month-label">
           {MONTH_NAMES[month - 1]} {year}
         </span>
         <button className="month-nav-btn" onClick={handleNextMonth}>
-          <ChevronRight size={20} />
+          <ChevronRight size={16} />
+        </button>
+        <div className="month-nav-spacer" />
+        <button className="habits-add-btn-compact" onClick={handleAddHabit}>
+          <Plus size={14} />
+          <span>Добавить</span>
         </button>
       </div>
 
@@ -259,10 +255,17 @@ export default function Habits() {
                 <span className="htc-label">сегодня</span>
               </div>
               <div className="htc-header-right">
-                <span className="htc-pct">
+                <span
+                  className="htc-pct clickable"
+                  onClick={() => setBarMode(m => m === 'percent' ? 'amount' : 'percent')}
+                  title="Нажми чтобы переключить % / кол-во"
+                >
                   {todaySummary.total > 0
                     ? Math.round((todaySummary.completed / todaySummary.total) * 100)
                     : 0}%
+                  <span className="htc-pct-hint">
+                    {barMode === 'percent' ? '↕ 123' : '↕ %'}
+                  </span>
                 </span>
                 <span className="htc-motivation">
                   {(() => {
@@ -279,21 +282,6 @@ export default function Habits() {
             </div>
           )}
 
-          {/* Toolbar с переключателем режима */}
-          <div className="htc-toolbar">
-            <button
-              className={`htc-mode-btn${barMode === 'percent' ? ' active' : ''}`}
-              onClick={() => setBarMode('percent')}
-            >
-              %
-            </button>
-            <button
-              className={`htc-mode-btn${barMode === 'amount' ? ' active' : ''}`}
-              onClick={() => setBarMode('amount')}
-            >
-              123
-            </button>
-          </div>
 
           {/* Бары привычек */}
           <div className="htc-bars">

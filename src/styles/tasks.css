@@ -602,6 +602,30 @@
   text-align: center;
 }
 
+.month-nav-spacer {
+  flex: 1;
+}
+
+/* Compact add button for Tasks */
+.tasks-add-btn-compact {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 7px;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tasks-add-btn-compact:hover {
+  filter: brightness(1.1);
+}
+
 .modal-close {
   width: 32px;
   height: 32px;

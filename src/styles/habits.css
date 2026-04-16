@@ -218,10 +218,17 @@
   right: 4px;
   top: 50%;
   transform: translateY(-50%);
-  background: var(--color-surface);
+  background: var(--color-surface-offset, #f0ede8);
   padding: 2px 4px;
   border-radius: 6px;
   border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+/* dark mode */
+[data-theme="dark"] .habit-actions {
+  background: var(--color-surface-offset, #2a2927);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
 
 .habit-name-cell:hover .habit-actions {
@@ -407,55 +414,46 @@
   margin: 0 auto;
 }
 
-/* Header */
-.habits-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 0 8px;
-}
-
-.habits-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--color-text);
-  margin: 0;
-}
-
-.habits-add-btn {
+.habits-add-btn-compact {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 10px;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 7px;
   border: none;
   background: var(--color-primary);
   color: #fff;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.habits-add-btn:hover {
+.habits-add-btn-compact:hover {
   filter: brightness(1.1);
-  box-shadow: 0 4px 12px var(--habit-shadow-accent);
 }
 
 /* Month Navigator */
 .month-navigator {
   display: flex;
-  gap: 12px;
+  gap: 6px;
   align-items: center;
-  margin-bottom: 16px;
-  padding: 0 8px;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.month-navigator.compact {
+  margin-bottom: 10px;
+}
+
+.month-nav-spacer {
+  flex: 1;
 }
 
 .month-nav-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
@@ -464,6 +462,7 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .month-nav-btn:hover {
@@ -473,11 +472,11 @@
 }
 
 .month-label {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--color-text);
   text-transform: capitalize;
-  min-width: 140px;
+  min-width: 120px;
   text-align: center;
 }
 
@@ -1242,7 +1241,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 16px 10px;
+  padding: 10px 14px 8px;
 }
 
 .htc-header-left {
@@ -1258,7 +1257,7 @@
 }
 
 .htc-count-done {
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 900;
   color: var(--color-text);
   line-height: 1;
@@ -1266,13 +1265,13 @@
 }
 
 .htc-count-sep {
-  font-size: 22px;
+  font-size: 18px;
   color: var(--color-text-muted);
   margin: 0 2px;
 }
 
 .htc-count-total {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--color-text-muted);
   line-height: 1;
@@ -1296,11 +1295,35 @@
 }
 
 .htc-pct {
-  font-size: 38px;
+  font-size: 32px;
   font-weight: 900;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--accent-1, #f97316);
+}
+
+/* Кликабельный % */
+.htc-pct.clickable {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  transition: opacity 0.15s ease;
+}
+
+.htc-pct.clickable:hover {
+  opacity: 0.8;
+}
+
+.htc-pct-hint {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent-1, #f97316);
+  opacity: 0.6;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .htc-motivation {
@@ -1312,50 +1335,17 @@
   opacity: 0.85;
 }
 
-/* Toolbar (переключатель) */
-.htc-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px 8px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.htc-mode-btn {
-  padding: 3px 12px;
-  border-radius: 9999px;
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  line-height: 1.6;
-}
-
-.htc-mode-btn.active {
-  background: var(--accent-1, #f97316);
-  border-color: var(--accent-1, #f97316);
-  color: #fff;
-}
-
-.htc-mode-btn:not(.active):hover {
-  border-color: var(--accent-1, #f97316);
-  color: var(--accent-1, #f97316);
-}
-
 /* Bars list */
 .htc-bars {
-  padding: 8px 12px 12px;
+  padding: 6px 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
 }
 
 .htc-bar-item {
-  padding: 7px 8px;
-  border-radius: 10px;
+  padding: 4px 6px;
+  border-radius: 8px;
   transition: background 0.15s ease;
 }
 
@@ -1381,8 +1371,8 @@
 .htc-bar-top {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin-bottom: 5px;
+  gap: 6px;
+  margin-bottom: 3px;
 }
 
 .htc-bar-icon {
@@ -1432,7 +1422,7 @@
 }
 
 .htc-bar-track {
-  height: 4px;
+  height: 3px;
   background: var(--color-border);
   border-radius: 9999px;
   overflow: hidden;
