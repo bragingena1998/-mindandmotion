@@ -7,14 +7,24 @@ import { Habit, HabitRecord } from '../api/habits';
 /**
  * Проверяет, активен ли данный день для привычки
  * (учитывает start_date, end_date, daysOfWeek)
+ * 
+ * Для архивных месяцев (year < currentYear || month < currentMonth):
+ * - Не применяем фильтрацию по daysOfWeek (все дни активны)
+ * - Это сохраняет исторический вид привычки
  */
 export function isHabitDayActive(
   habit: Habit,
   year: number,
   month: number,
-  day: number
+  day: number,
+  currentYear?: number,
+  currentMonth?: number
 ): boolean {
   const date = new Date(year, month - 1, day);
+
+  // Определяем, является ли месяц архивным
+  const isArchiveMonth = currentYear !== undefined && currentMonth !== undefined &&
+    (year < currentYear || (year === currentYear && month < currentMonth));
 
   // Проверка start_date
   if (habit.startDate) {
@@ -46,8 +56,8 @@ export function isHabitDayActive(
     }
   }
 
-  // Проверка daysOfWeek
-  if (habit.daysOfWeek && habit.daysOfWeek.length > 0) {
+  // Проверка daysOfWeek (только для текущего месяца, не для архива)
+  if (!isArchiveMonth && habit.daysOfWeek && habit.daysOfWeek.length > 0) {
     const dayOfWeek = date.getDay(); // 0=Вс, 1=Пн, ...
     if (!habit.daysOfWeek.includes(dayOfWeek)) return false;
   }

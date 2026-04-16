@@ -57,7 +57,14 @@ export default function HabitTable({
 
   const handleNameLongPress = (habitId: number) => {
     longPressTimer.current = setTimeout(() => {
-      setActiveActionRow(prev => prev === habitId ? null : habitId);
+      setActiveActionRow(prev => {
+        const newValue = prev === habitId ? null : habitId;
+        // Vibration feedback when showing actions
+        if (newValue !== null && navigator.vibrate) {
+          navigator.vibrate(30);
+        }
+        return newValue;
+      });
     }, 500);
   };
 
@@ -65,12 +72,34 @@ export default function HabitTable({
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   };
 
+  // ── Global click handler to close actions when clicking outside ───────────
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      // If click is outside any .habit-name-cell.actions-visible
+      const activeCell = document.querySelector('.habit-name-cell.actions-visible');
+      if (activeCell && !activeCell.contains(target)) {
+        setActiveActionRow(null);
+      }
+    };
+
+    if (activeActionRow !== null) {
+      document.addEventListener('click', handleGlobalClick);
+      document.addEventListener('touchstart', handleGlobalClick);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+      document.removeEventListener('touchstart', handleGlobalClick);
+    };
+  }, [activeActionRow]);
+
   // ── Long press for day cells (timer for hours habits) ─────────────────────
   const cellLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleCellTouchStart = (habit: Habit, day: number) => {
     cellLongPressTimer.current = setTimeout(() => {
-      if (isHabitDayActive(habit, year, month, day)) {
+      if (isHabitDayActive(habit, year, month, day, today.getFullYear(), today.getMonth() + 1)) {
         const currentValue = getCellValue(records, habit.id, year, month, day);
         if (habit.unit === 'Часы') {
           // Долгий тап на Часы → HoursEditModal (не таймер)
@@ -163,7 +192,7 @@ export default function HabitTable({
 
   // ── Handlers ────────────────────────────────────────────────────────────
   const handleCellClick = (habit: Habit, day: number) => {
-    if (!isHabitDayActive(habit, year, month, day)) return;
+    if (!isHabitDayActive(habit, year, month, day, today.getFullYear(), today.getMonth() + 1)) return;
 
     // Для привычек с unit='Часы' — клик добавляет +1ч (долгий тап открывает таймер)
     if (habit.unit === 'Часы') {
@@ -346,7 +375,7 @@ export default function HabitTable({
               <div className="habit-row-cell habit-cell-unit">{habit.unit}</div>
               <div className="habit-row-cell habit-cell-plan">{habit.plan}</div>
               {days.map((day) => {
-                const active = isHabitDayActive(habit, year, month, day);
+                const active = isHabitDayActive(habit, year, month, day, today.getFullYear(), today.getMonth() + 1);
                 const value = getCellValue(records, habit.id, year, month, day);
                 const weekend = isWeekend(year, month, day);
                 const isToday = isDayToday(day);

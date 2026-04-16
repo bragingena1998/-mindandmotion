@@ -83,7 +83,7 @@ export default function Habits() {
     const d = today.getDate();
     let streak = 0;
     for (let i = d; i >= 1; i--) {
-      if (!isHabitDayActive(habit, year, month, i)) continue;
+      if (!isHabitDayActive(habit, year, month, i, today.getFullYear(), today.getMonth() + 1)) continue;
       const val = getCellValue(records, habit.id, year, month, i);
       if (val > 0) streak++;
       else break;
@@ -98,7 +98,7 @@ export default function Habits() {
       ? getCellValue(records, h.id, year, month, todayDay) > 0
       : false;
     const activeToday = isCurrentMonth
-      ? isHabitDayActive(h, year, month, todayDay)
+      ? isHabitDayActive(h, year, month, todayDay, today.getFullYear(), today.getMonth() + 1)
       : false;
 
     // Метка для режима "кол-во" — зависит от unit и targetType
@@ -141,7 +141,7 @@ export default function Habits() {
     return Array.from({ length: lastDay }, (_, i) => {
       const day = i + 1;
       // Привычки которые АКТИВНЫ в этот день
-      const activeHabits = habits.filter(h => isHabitDayActive(h, year, month, day));
+      const activeHabits = habits.filter(h => isHabitDayActive(h, year, month, day, today.getFullYear(), today.getMonth() + 1));
       if (activeHabits.length === 0) return { day, pct: 0, hasPlan: false };
       const completed = activeHabits.filter(h => getCellValue(records, h.id, year, month, day) > 0).length;
       return {
@@ -413,8 +413,11 @@ export default function Habits() {
               <h2 className="modal-title">Удалить привычку?</h2>
               <button className="modal-close" onClick={() => setDeletingHabitId(null)}>✕</button>
             </div>
-            <p style={{ color: 'var(--text-muted)', margin: '12px 0 20px', fontSize: '14px', lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text-muted)', margin: '12px 0 8px', fontSize: '14px', lineHeight: 1.5 }}>
               Это действие нельзя отменить. Все записи будут удалены.
+            </p>
+            <p style={{ color: 'var(--accent-border)', margin: '0 0 20px', fontSize: '13px', lineHeight: 1.5, fontStyle: 'italic' }}>
+              💡 Хотите сохранить прогресс? Заархивируйте привычку — она останется в прошлых месяцах.
             </p>
             <div style={{ display: 'flex', gap: '12px' }}>
               <button onClick={() => setDeletingHabitId(null)} style={{ flex:1, padding:'10px', borderRadius:'8px', border:'1px solid var(--accent-border)', background:'transparent', color:'var(--text-muted)', cursor:'pointer', fontSize:'13px', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Отмена</button>
