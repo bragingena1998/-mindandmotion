@@ -795,6 +795,34 @@
   font-size: 14px;
 }
 
+.date-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-clear-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.date-clear-btn:hover {
+  border-color: rgba(229, 62, 62, 0.6);
+  color: #fc8181;
+  background: rgba(229, 62, 62, 0.1);
+}
+
 /* Form errors */
 .form-error {
   font-size: 12px;

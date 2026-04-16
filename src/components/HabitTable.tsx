@@ -220,10 +220,8 @@ export default function HabitTable({
       onEditHabit(habit);
       return;
     }
-    // На мобиле — если actions не видны, просто скрываем другие
-    if (activeActionRow !== habit.id) {
-      setActiveActionRow(null);
-    }
+    // На мобиле — редактирование через контекстное меню (long press)
+    // Одиночный тап ничего не делает
   };
 
   // ── Render helpers ──────────────────────────────────────────────────────

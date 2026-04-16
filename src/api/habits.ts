@@ -190,19 +190,8 @@ export async function createHabit(
   return { id: data.id ?? data.habitId ?? data.habit_id ?? data.insertId ?? 0 };
 }
 
-export async function updateHabit(
-  id: number,
-  habit: Partial<Habit>,
-  effectiveYear?: number,
-  effectiveMonth?: number
-): Promise<void> {
+export async function updateHabit(id: number, habit: Partial<Habit>): Promise<void> {
   const payload = adaptHabitForAPI(habit);
-  // Передаём серверу с какого месяца применять изменения
-  // Бэкенд должен НЕ трогать records за месяцы до этой даты
-  if (effectiveYear !== undefined && effectiveMonth !== undefined) {
-    payload.effective_year = effectiveYear;
-    payload.effective_month = effectiveMonth;
-  }
   await apiClient.put(`/habits/${id}`, payload);
 }
 

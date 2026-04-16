@@ -115,7 +115,7 @@ export default function HabitModal({
           daysOfWeek,
           startDate: startDate || undefined,
           endDate: endDate || undefined,
-        }, year, month);
+        });
       } else {
         // Создание
         await createHabit({
@@ -274,17 +274,43 @@ export default function HabitModal({
           <div className="form-group dates-row">
             <div className="date-field">
               <label className="form-label">Начало</label>
-              <DatePicker
-                value={startDate}
-                onChange={(val) => setStartDate(val)}
-              />
+              <div className="date-field-row">
+                <DatePicker
+                  value={startDate}
+                  onChange={(val) => setStartDate(val)}
+                />
+                {startDate && (
+                  <button
+                    type="button"
+                    className="date-clear-btn"
+                    onClick={() => setStartDate('')}
+                    title="Сбросить дату начала"
+                    disabled={saving}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
             <div className="date-field">
               <label className="form-label">Конец</label>
-              <DatePicker
-                value={endDate}
-                onChange={(val) => setEndDate(val)}
-              />
+              <div className="date-field-row">
+                <DatePicker
+                  value={endDate}
+                  onChange={(val) => setEndDate(val)}
+                />
+                {endDate && (
+                  <button
+                    type="button"
+                    className="date-clear-btn"
+                    onClick={() => setEndDate('')}
+                    title="Сбросить дату конца"
+                    disabled={saving}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
