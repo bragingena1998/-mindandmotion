@@ -386,6 +386,14 @@ export default function HabitTable({
               <div className="habit-row-cell habit-cell-unit">{habit.unit}</div>
               <div className="habit-row-cell habit-cell-plan">{habit.plan}</div>
               {days.map((day) => {
+                // DEBUG: log daysOfWeek info
+                if (habit.daysOfWeek && habit.daysOfWeek.length > 0) {
+                  console.log('[HABIT days debug]', habit.name,
+                    'daysOfWeek:', habit.daysOfWeek,
+                    'типы:', habit.daysOfWeek.map(d => typeof d),
+                    'day тапа:', new Date(year, month-1, day).getDay()
+                  );
+                }
                 const active = isHabitDayActive(habit, year, month, day, today.getFullYear(), today.getMonth() + 1);
                 const value = getCellValue(records, habit.id, year, month, day);
                 const weekend = isWeekend(year, month, day);

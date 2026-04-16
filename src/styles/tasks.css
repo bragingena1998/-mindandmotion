@@ -2147,13 +2147,22 @@
   color: rgba(255, 255, 255, 0.35);
 }
 
-.delete-modal-text {
-  font-size: 18px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
+.delete-modal-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
   text-align: center;
   max-width: 280px;
-  line-height: 1.4;
+}
+
+.delete-modal-warning {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  line-height: 1.5;
+  max-width: 260px;
+  margin-top: -4px;
 }
 
 .delete-modal-actions {
