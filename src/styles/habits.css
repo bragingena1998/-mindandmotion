@@ -620,6 +620,14 @@
   border-radius: 16px 16px 0 0;
   margin-top: auto;
   max-height: 85vh;
+  overflow: hidden;
+}
+
+.habit-modal.mobile .habit-form {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(85vh - 60px); /* 60px = высота modal-header */
+  padding-bottom: 16px;
 }
 
 .habit-form {
@@ -834,6 +842,13 @@
   /* На мобиле кнопки действий — СКРЫТЫ по умолчанию */
   .habit-actions {
     display: none !important;
+  }
+
+  /* Горизонтальный скролл для actions когда виден */
+  .habit-name-cell.actions-visible .habit-actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 90vw;
   }
 
   /* Имя занимает всю ширину */
@@ -1455,11 +1470,6 @@
   );
   transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 3px;
-}
-
-/* Правый столбец таблицы — убираем */
-.habit-col-right {
-  display: none;
 }
 
 /* ========================================
