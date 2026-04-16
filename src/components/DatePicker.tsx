@@ -78,16 +78,25 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
   const calcPosition = useCallback(() => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const dropdownHeight = 320; // approximate calendar height
+    const dropdownWidth = Math.max(rect.width, 280);
+    const dropdownHeight = 320;
+    const viewportWidth = window.innerWidth;
     const spaceBelow = window.innerHeight - rect.bottom;
+
+    // Вертикаль: открываем вниз или вверх
     const top = spaceBelow > dropdownHeight
       ? rect.bottom + window.scrollY + 4
       : rect.top + window.scrollY - dropdownHeight - 4;
-    setDropdownPos({
-      top,
-      left: rect.left + window.scrollX,
-      width: Math.max(rect.width, 280),
-    });
+
+    // Горизонталь: прижимаем к левому краю кнопки, но не уходим за правый край экрана
+    let left = rect.left + window.scrollX;
+    const rightEdge = left + dropdownWidth;
+    if (rightEdge > viewportWidth - 8) {
+      left = viewportWidth - dropdownWidth - 8;
+    }
+    if (left < 8) left = 8;
+
+    setDropdownPos({ top, left, width: dropdownWidth });
   }, []);
 
   // Update position on scroll/resize when open

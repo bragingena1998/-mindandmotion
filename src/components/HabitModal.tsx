@@ -115,7 +115,7 @@ export default function HabitModal({
           daysOfWeek,
           startDate: startDate || undefined,
           endDate: endDate || undefined,
-        });
+        }, year, month);
       } else {
         // Создание
         await createHabit({

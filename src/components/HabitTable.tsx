@@ -3,6 +3,7 @@
 // ========================================
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Pencil, Archive, Trash2 } from 'lucide-react';
 import type { Habit, HabitRecord } from '../api/habits';
 import {
@@ -51,20 +52,27 @@ export default function HabitTable({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ── Long press for mobile actions ───────────────────────────────────────────
-  const [activeActionRow, setActiveActionRow] = useState<number | null>(null);
+  // ── Context menu for mobile actions ───────────────────────────────────────
+  const [contextMenu, setContextMenu] = useState<{
+    habitId: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleNameLongPress = (habitId: number) => {
+  const handleNameLongPress = (habitId: number, e: React.TouchEvent) => {
+    const touch = e.touches[0];
     longPressTimer.current = setTimeout(() => {
-      setActiveActionRow(prev => {
-        const newValue = prev === habitId ? null : habitId;
-        // Vibration feedback when showing actions
-        if (newValue !== null && navigator.vibrate) {
-          navigator.vibrate(30);
-        }
-        return newValue;
-      });
+      if (navigator.vibrate) navigator.vibrate(40);
+      // Вычисляем позицию меню чтобы не уходило за экран
+      const menuWidth = 200;
+      const menuHeight = 220;
+      let x = touch.clientX;
+      let y = touch.clientY;
+      if (x + menuWidth > window.innerWidth - 8) x = window.innerWidth - menuWidth - 8;
+      if (y + menuHeight > window.innerHeight - 8) y = y - menuHeight;
+      if (y < 8) y = 8;
+      setContextMenu({ habitId, x, y });
     }, 500);
   };
 
@@ -72,27 +80,22 @@ export default function HabitTable({
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   };
 
-  // ── Global click handler to close actions when clicking outside ───────────
+  // ── Global click handler to close context menu when clicking outside ───────
   useEffect(() => {
-    const handleGlobalClick = (e: MouseEvent | TouchEvent) => {
+    if (!contextMenu) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement;
-      // If click is outside any .habit-name-cell.actions-visible
-      const activeCell = document.querySelector('.habit-name-cell.actions-visible');
-      if (activeCell && !activeCell.contains(target)) {
-        setActiveActionRow(null);
+      if (!target.closest('.habit-context-menu')) {
+        setContextMenu(null);
       }
     };
-
-    if (activeActionRow !== null) {
-      document.addEventListener('click', handleGlobalClick);
-      document.addEventListener('touchstart', handleGlobalClick);
-    }
-
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
     return () => {
-      document.removeEventListener('click', handleGlobalClick);
-      document.removeEventListener('touchstart', handleGlobalClick);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [activeActionRow]);
+  }, [contextMenu]);
 
   // ── Long press for day cells (timer for hours habits) ─────────────────────
   const cellLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -261,11 +264,10 @@ export default function HabitTable({
           {habits.map((habit) => (
             <div
               key={habit.id}
-              className={`habit-row-cell habit-name-cell ${activeActionRow === habit.id ? 'actions-visible' : ''} ${dragOverId === habit.id ? 'drag-over' : ''}`}
+              className={`habit-row-cell habit-name-cell ${dragOverId === habit.id ? 'drag-over' : ''}`}
               onClick={(e) => handleNameClick(e, habit)}
-              onTouchStart={() => handleNameLongPress(habit.id)}
+              onTouchStart={(e) => handleNameLongPress(habit.id, e)}
               onTouchEnd={handleNamePressEnd}
-              onMouseLeave={() => { if (isMobile) setActiveActionRow(null); }}
               draggable={!!onReorderHabits && !isMobile}
               onDragStart={() => { draggedIdRef.current = habit.id; }}
               onDragOver={(e) => { e.preventDefault(); setDragOverId(habit.id); }}
@@ -345,42 +347,14 @@ export default function HabitTable({
                 >
                   <Trash2 size={14} />
                 </button>
-                {/* Mobile reorder buttons */}
-                {isMobile && onReorderHabits && (
-                  <>
-                    <button
-                      className="habit-btn habit-btn-up"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const ids = habits.map(h => h.id);
-                        const idx = ids.indexOf(habit.id);
-                        if (idx <= 0) return;
-                        const reordered = [...ids];
-                        [reordered[idx - 1], reordered[idx]] = [reordered[idx], reordered[idx - 1]];
-                        onReorderHabits(reordered);
-                        setActiveActionRow(null);
-                      }}
-                      title="Вверх"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      className="habit-btn habit-btn-down"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const ids = habits.map(h => h.id);
-                        const idx = ids.indexOf(habit.id);
-                        if (idx >= ids.length - 1) return;
-                        const reordered = [...ids];
-                        [reordered[idx], reordered[idx + 1]] = [reordered[idx + 1], reordered[idx]];
-                        onReorderHabits(reordered);
-                        setActiveActionRow(null);
-                      }}
-                      title="Вниз"
-                    >
-                      ▼
-                    </button>
-                  </>
+                {/* Desktop drag handle */}
+                {!isMobile && onReorderHabits && (
+                  <button
+                    className="habit-btn habit-btn-drag"
+                    title="Перетащить"
+                  >
+                    ⋮⋮
+                  </button>
                 )}
               </div>
             </div>
@@ -461,6 +435,89 @@ export default function HabitTable({
           }}
           onClose={() => setHoursEditModal(null)}
         />
+      )}
+
+      {/* Mobile context menu (long-press) */}
+      {contextMenu && createPortal(
+        (() => {
+          const habit = habits.find(h => h.id === contextMenu.habitId);
+          if (!habit) return null;
+          return (
+            <div
+              className="habit-context-menu"
+              style={{
+                position: 'fixed',
+                left: contextMenu.x,
+                top: contextMenu.y,
+                zIndex: 9999,
+              }}
+            >
+              <div className="hcm-title">{habit.name}</div>
+              <button
+                className="hcm-item"
+                onClick={() => {
+                  onEditHabit(habit);
+                  setContextMenu(null);
+                }}
+              >
+                <Pencil size={14} /> Редактировать
+              </button>
+              {onReorderHabits && (
+                <>
+                  <button
+                    className="hcm-item"
+                    onClick={() => {
+                      const ids = habits.map(h => h.id);
+                      const idx = ids.indexOf(habit.id);
+                      if (idx > 0) {
+                        const reordered = [...ids];
+                        [reordered[idx - 1], reordered[idx]] = [reordered[idx], reordered[idx - 1]];
+                        onReorderHabits(reordered);
+                      }
+                      setContextMenu(null);
+                    }}
+                  >
+                    ↑ Переместить вверх
+                  </button>
+                  <button
+                    className="hcm-item"
+                    onClick={() => {
+                      const ids = habits.map(h => h.id);
+                      const idx = ids.indexOf(habit.id);
+                      if (idx < ids.length - 1) {
+                        const reordered = [...ids];
+                        [reordered[idx], reordered[idx + 1]] = [reordered[idx + 1], reordered[idx]];
+                        onReorderHabits(reordered);
+                      }
+                      setContextMenu(null);
+                    }}
+                  >
+                    ↓ Переместить вниз
+                  </button>
+                </>
+              )}
+              <button
+                className="hcm-item hcm-item--warning"
+                onClick={() => {
+                  onArchiveHabit(habit.id);
+                  setContextMenu(null);
+                }}
+              >
+                <Archive size={14} /> Архивировать
+              </button>
+              <button
+                className="hcm-item hcm-item--danger"
+                onClick={() => {
+                  onDeleteHabit(habit.id);
+                  setContextMenu(null);
+                }}
+              >
+                <Trash2 size={14} /> Удалить
+              </button>
+            </div>
+          );
+        })(),
+        document.body
       )}
     </div>
   );

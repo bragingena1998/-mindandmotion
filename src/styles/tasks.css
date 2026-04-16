@@ -519,7 +519,7 @@
   max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
-  overflow-x: visible;
+  overflow-x: hidden;
   background: radial-gradient(circle at top left, #1e1b4b 0, #020617 60%);
   border-radius: var(--radius-lg);
   border: 1px solid var(--accent-soft);
@@ -2110,6 +2110,93 @@
 /* Minimized timer banner */
 .timer-banner {
   font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* ===== DELETE MODAL ===== */
+.delete-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: delete-fade-in 0.18s ease-out;
+}
+
+@keyframes delete-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.delete-modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 0 32px;
+  animation: delete-scale-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes delete-scale-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.delete-modal-icon {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.delete-modal-text {
+  font-size: 18px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+  max-width: 280px;
+  line-height: 1.4;
+}
+
+.delete-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.delete-modal-btn-cancel {
+  padding: 10px 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.delete-modal-btn-cancel:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.delete-modal-btn-confirm {
+  padding: 10px 28px;
+  border-radius: 10px;
+  border: none;
+  background: #e53e3e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.delete-modal-btn-confirm:hover {
+  background: #c53030;
+}
+
+.delete-modal-btn-confirm:active {
+  transform: scale(0.97);
 }
 
 .timer-banner button {

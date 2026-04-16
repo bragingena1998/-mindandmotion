@@ -41,16 +41,18 @@ function adaptHabitFromAPI(raw: any): Habit {
   // Парсинг days_of_week из JSON если это string
   let daysOfWeek: number[] | undefined;
   const rawDays = raw.days_of_week ?? raw.daysOfWeek ?? raw.daysofweek;
-  if (rawDays) {
+  if (rawDays !== null && rawDays !== undefined && rawDays !== '') {
+    let parsed: any;
     if (Array.isArray(rawDays)) {
-      daysOfWeek = rawDays;
+      parsed = rawDays;
     } else if (typeof rawDays === 'string') {
-      try {
-        daysOfWeek = JSON.parse(rawDays);
-      } catch {
-        daysOfWeek = [];
-      }
+      try { parsed = JSON.parse(rawDays); } catch { parsed = []; }
     }
+    // Только если это реальный непустой массив — применяем
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      daysOfWeek = parsed.map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 6);
+    }
+    // Если пришёл пустой массив [] — оставляем daysOfWeek = undefined (все дни активны)
   }
 
   return {
@@ -188,8 +190,19 @@ export async function createHabit(
   return { id: data.id ?? data.habitId ?? data.habit_id ?? data.insertId ?? 0 };
 }
 
-export async function updateHabit(id: number, habit: Partial<Habit>): Promise<void> {
+export async function updateHabit(
+  id: number,
+  habit: Partial<Habit>,
+  effectiveYear?: number,
+  effectiveMonth?: number
+): Promise<void> {
   const payload = adaptHabitForAPI(habit);
+  // Передаём серверу с какого месяца применять изменения
+  // Бэкенд должен НЕ трогать records за месяцы до этой даты
+  if (effectiveYear !== undefined && effectiveMonth !== undefined) {
+    payload.effective_year = effectiveYear;
+    payload.effective_month = effectiveMonth;
+  }
   await apiClient.put(`/habits/${id}`, payload);
 }
 

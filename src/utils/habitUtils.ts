@@ -7,7 +7,7 @@ import { Habit, HabitRecord } from '../api/habits';
 /**
  * Проверяет, активен ли данный день для привычки
  * (учитывает start_date, end_date, daysOfWeek)
- * 
+ *
  * Для архивных месяцев (year < currentYear || month < currentMonth):
  * - Не применяем фильтрацию по daysOfWeek (все дни активны)
  * - Это сохраняет исторический вид привычки
@@ -22,7 +22,7 @@ export function isHabitDayActive(
 ): boolean {
   const date = new Date(year, month - 1, day);
 
-  // Определяем, является ли месяц архивным
+  // Архивный месяц = строго РАНЬШЕ текущего
   const isArchiveMonth = currentYear !== undefined && currentMonth !== undefined &&
     (year < currentYear || (year === currentYear && month < currentMonth));
 
@@ -30,20 +30,9 @@ export function isHabitDayActive(
   if (habit.startDate) {
     const start = new Date(habit.startDate);
     if (!isNaN(start.getTime())) {
-      const startYear = start.getFullYear();
-      const startMonth = start.getMonth() + 1; // 1-12
-      const startDay = new Date(startYear, start.getMonth(), start.getDate());
-
-      // Архивные месяцы ДО начала привычки — неактивны
-      if (year < startYear || (year === startYear && month < startMonth)) {
-        return false;
-      }
-
-      // В месяце начала привычки — блокируем дни ДО startDate
-      if (year === startYear && month === startMonth) {
-        if (date < startDay) return false;
-      }
-      // Будущие месяцы — не блокируем (startDate не влияет)
+      const startNorm = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      const dateNorm  = new Date(year, month - 1, day);
+      if (dateNorm < startNorm) return false;
     }
   }
 
@@ -51,15 +40,18 @@ export function isHabitDayActive(
   if (habit.endDate) {
     const end = new Date(habit.endDate);
     if (!isNaN(end.getTime())) {
-      end.setHours(23, 59, 59, 999);
-      if (date > end) return false;
+      const endNorm = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+      const dateNorm = new Date(year, month - 1, day);
+      if (dateNorm > endNorm) return false;
     }
   }
 
-  // Проверка daysOfWeek (только для текущего месяца, не для архива)
-  if (!isArchiveMonth && habit.daysOfWeek && habit.daysOfWeek.length > 0) {
-    const dayOfWeek = date.getDay(); // 0=Вс, 1=Пн, ...
-    if (!habit.daysOfWeek.includes(dayOfWeek)) return false;
+  // Проверка daysOfWeek:
+  // - применяем ТОЛЬКО к текущему и будущим месяцам (не к архиву)
+  // - применяем ТОЛЬКО если массив не пустой (пустой = "все дни")
+  if (!isArchiveMonth && Array.isArray(habit.daysOfWeek) && habit.daysOfWeek.length > 0) {
+    const jsDay = date.getDay(); // 0=Вс, 1=Пн, 2=Вт, 3=Ср, 4=Чт, 5=Пт, 6=Сб
+    if (!habit.daysOfWeek.includes(jsDay)) return false;
   }
 
   return true;

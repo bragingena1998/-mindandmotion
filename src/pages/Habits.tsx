@@ -19,6 +19,7 @@ import HabitTable from '../components/HabitTable';
 import HabitModal from '../components/HabitModal';
 import HabitTrendChart from '../components/HabitTrendChart';
 import ConfirmModal from '../components/ConfirmModal';
+import DeleteModal from '../components/DeleteModal';
 import { optimisticUpdateRecords, getCellValue, isHabitDayActive, calculateHabitStats } from '../utils/habitUtils';
 import '../styles/habits.css';
 
@@ -410,15 +411,13 @@ export default function Habits() {
 
       {/* Модалка удаления привычки */}
       {deletingHabit && (
-        <ConfirmModal
-          title="Удалить привычку?"
-          message={`«${deletingHabit.name}» и все её записи будут удалены без возможности восстановления`}
-          warning="💡 Хотите сохранить прогресс? Заархивируйте привычку — она останется в истории."
-          confirmLabel="Удалить"
-          cancelLabel="Отмена"
-          confirmDanger={true}
-          icon="🗑️"
-          onConfirm={confirmDeleteHabit}
+        <DeleteModal
+          itemName={deletingHabit.name}
+          onConfirm={async () => {
+            await deleteHabit(deletingHabit.id, year, month);
+            await loadHabits();
+            setDeletingHabit(null);
+          }}
           onCancel={() => setDeletingHabit(null)}
         />
       )}

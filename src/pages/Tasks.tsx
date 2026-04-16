@@ -15,6 +15,7 @@ import TaskCard from '../components/TaskCard';
 import FolderChips from '../components/FolderChips';
 import TaskModal from '../components/TaskModal';
 import ConfirmModal from '../components/ConfirmModal';
+import DeleteModal from '../components/DeleteModal';
 import '../styles/tasks.css';
 
 // Types for grouped tasks
@@ -528,14 +529,13 @@ export default function Tasks() {
 
       {/* [4] ФИКС: модалка подтверждения удаления */}
       {deletingTask && (
-        <ConfirmModal
-          title="Удалить задачу?"
-          message={`«${deletingTask.title}» будет удалена без возможности восстановления`}
-          confirmLabel="Удалить"
-          cancelLabel="Отмена"
-          confirmDanger={true}
-          icon="🗑️"
-          onConfirm={confirmDelete}
+        <DeleteModal
+          itemName={deletingTask.title}
+          onConfirm={async () => {
+            await deleteTask(deletingTask.id);
+            await loadTasks();
+            setDeletingTask(null);
+          }}
           onCancel={() => setDeletingTask(null)}
         />
       )}
