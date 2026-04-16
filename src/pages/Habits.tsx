@@ -13,6 +13,7 @@ import {
   deleteHabitRecord,
   deleteHabit,
   archiveHabit,
+  reorderHabitsByIds,
 } from '../api/habits';
 import HabitTable from '../components/HabitTable';
 import HabitModal from '../components/HabitModal';
@@ -37,6 +38,8 @@ export default function Habits() {
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [deletingHabitId, setDeletingHabitId] = useState<number | null>(null);
+  const [archivingHabitId, setArchivingHabitId] = useState<number | null>(null);
   const [barMode, setBarMode] = useState<'percent' | 'amount'>('percent');
 
   // ── Mobile detection ────────────────────────────────────────────────────
@@ -152,8 +155,6 @@ export default function Habits() {
   // ── Handlers ────────────────────────────────────────────────────────────
   // Оптимистичное обновление ячейки
   const handleCellChange = async (habitId: number, day: number, newValue: number) => {
-    console.log('[CellChange]', { habitId, day, newValue, year, month });
-
     // 1. Сразу обновляем локальный state
     setRecords(prev => optimisticUpdateRecords(prev, habitId, year, month, day, newValue));
 
@@ -167,7 +168,7 @@ export default function Habits() {
     } catch (err) {
       // Откат при ошибке
       await loadHabits();
-      console.error('[CellChange ERROR]', err);
+      console.error('Failed to save cell change:', err);
     }
   };
 
@@ -181,15 +182,32 @@ export default function Habits() {
     setShowHabitModal(true);
   };
 
-  const handleDeleteHabit = async (habitId: number) => {
-    if (!confirm('Удалить привычку?')) return;
-    await deleteHabit(habitId, year, month);
+  const handleDeleteHabit = (habitId: number) => {
+    setDeletingHabitId(habitId);
+  };
+  const handleArchiveHabit = (habitId: number) => {
+    setArchivingHabitId(habitId);
+  };
+  const handleReorderHabits = async (orderedIds: number[]) => {
+    // Оптимистично обновляем локальный порядок
+    setHabits(prev => orderedIds.map(id => prev.find(h => h.id === id)!).filter(Boolean));
+    // Сохраняем на сервер
+    try {
+      await reorderHabitsByIds(orderedIds);
+    } catch {
+      await loadHabits(); // откат
+    }
+  };
+  const confirmDeleteHabit = async () => {
+    if (!deletingHabitId) return;
+    await deleteHabit(deletingHabitId, year, month);
+    setDeletingHabitId(null);
     await loadHabits();
   };
-
-  const handleArchiveHabit = async (habitId: number) => {
-    if (!confirm('Архивировать привычку на этот месяц?')) return;
-    await archiveHabit(habitId, year, month);
+  const confirmArchiveHabit = async () => {
+    if (!archivingHabitId) return;
+    await archiveHabit(archivingHabitId, year, month);
+    setArchivingHabitId(null);
     await loadHabits();
   };
 
@@ -362,6 +380,7 @@ export default function Habits() {
           onEditHabit={handleEditHabit}
           onDeleteHabit={handleDeleteHabit}
           onArchiveHabit={handleArchiveHabit}
+          onReorderHabits={handleReorderHabits}
         />
       )}
 
@@ -384,6 +403,44 @@ export default function Habits() {
           onClose={() => setShowHabitModal(false)}
           onSave={handleModalSave}
         />
+      )}
+
+      {/* Модалка удаления привычки */}
+      {deletingHabitId !== null && (
+        <div className="modal-overlay" onClick={() => setDeletingHabitId(null)}>
+          <div className="modal-content modal-confirm" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Удалить привычку?</h2>
+              <button className="modal-close" onClick={() => setDeletingHabitId(null)}>✕</button>
+            </div>
+            <p style={{ color: 'var(--text-muted)', margin: '12px 0 20px', fontSize: '14px', lineHeight: 1.5 }}>
+              Это действие нельзя отменить. Все записи будут удалены.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setDeletingHabitId(null)} style={{ flex:1, padding:'10px', borderRadius:'8px', border:'1px solid var(--accent-border)', background:'transparent', color:'var(--text-muted)', cursor:'pointer', fontSize:'13px', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Отмена</button>
+              <button onClick={confirmDeleteHabit} style={{ flex:1, padding:'10px', borderRadius:'8px', border:'none', background:'rgba(251,113,133,0.18)', color:'#fb7185', cursor:'pointer', fontSize:'13px', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em' }}>Удалить</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка архивации привычки */}
+      {archivingHabitId !== null && (
+        <div className="modal-overlay" onClick={() => setArchivingHabitId(null)}>
+          <div className="modal-content modal-confirm" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Архивировать привычку?</h2>
+              <button className="modal-close" onClick={() => setArchivingHabitId(null)}>✕</button>
+            </div>
+            <p style={{ color: 'var(--text-muted)', margin: '12px 0 20px', fontSize: '14px', lineHeight: 1.5 }}>
+              Привычка будет скрыта из активных для этого месяца.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setArchivingHabitId(null)} style={{ flex:1, padding:'10px', borderRadius:'8px', border:'1px solid var(--accent-border)', background:'transparent', color:'var(--text-muted)', cursor:'pointer', fontSize:'13px', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Отмена</button>
+              <button onClick={confirmArchiveHabit} style={{ flex:1, padding:'10px', borderRadius:'8px', border:'none', background:'rgba(251,200,50,0.15)', color:'#f59e0b', cursor:'pointer', fontSize:'13px', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em' }}>Архивировать</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

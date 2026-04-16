@@ -123,18 +123,7 @@ export async function fetchHabits(year: number, month: number): Promise<Habit[]>
 }
 
 export async function fetchHabitRecords(year: number, month: number): Promise<HabitRecord[]> {
-  console.log('[fetchHabitRecords] START', { year, month });
-
   const response = await apiClient.get(`/habits/records/${year}/${month}`);
-
-  console.log('[fetchHabitRecords] RAW RESPONSE:', {
-    status: response.status,
-    dataType: typeof response.data,
-    isArray: Array.isArray(response.data),
-    length: Array.isArray(response.data) ? response.data.length : 'N/A',
-    first3: Array.isArray(response.data) ? response.data.slice(0, 3) : response.data,
-  });
-
   const data = response.data;
   const records = data.records ?? data ?? [];
   const mapped = records.map((raw: any) => {
@@ -144,12 +133,6 @@ export async function fetchHabitRecords(year: number, month: number): Promise<Ha
     if (!record.month || isNaN(record.month)) record.month = month;
     return record;
   });
-
-  console.log('[fetchHabitRecords] MAPPED:', {
-    count: mapped.length,
-    first3: mapped.slice(0, 3),
-  });
-
   return mapped;
 }
 
@@ -165,17 +148,10 @@ export async function createHabitRecord(
   value: number
 ): Promise<void> {
   const payload = { habit_id: habitId, year, month, day, value };
-  console.log('[API createHabitRecord] Request:', { url: '/habits/records', payload });
   try {
-    const response = await apiClient.post('/habits/records', payload);
-    console.log('[API createHabitRecord] Response:', { status: response.status, data: response.data });
+    await apiClient.post('/habits/records', payload);
   } catch (err: any) {
-    console.error('[API createHabitRecord] Error:', {
-      message: err.message,
-      response: err.response?.data,
-      status: err.response?.status,
-      headers: err.response?.headers,
-    });
+    console.error('Failed to create habit record:', err.message);
     throw err;
   }
 }
@@ -187,17 +163,10 @@ export async function deleteHabitRecord(
   day: number
 ): Promise<void> {
   const url = `/habits/records/${habitId}/${year}/${month}/${day}`;
-  console.log('[API deleteHabitRecord] Request:', { url, habitId, year, month, day });
   try {
-    const response = await apiClient.delete(url);
-    console.log('[API deleteHabitRecord] Response:', { status: response.status, data: response.data });
+    await apiClient.delete(url);
   } catch (err: any) {
-    console.error('[API deleteHabitRecord] Error:', {
-      message: err.message,
-      response: err.response?.data,
-      status: err.response?.status,
-      headers: err.response?.headers,
-    });
+    console.error('Failed to delete habit record:', err.message);
     throw err;
   }
 }
@@ -233,6 +202,17 @@ export async function reorderHabits(habits: { id: number; orderIndex: number }[]
     habits: habits.map(h => ({
       id: h.id,
       order_index: h.orderIndex,
+    })),
+  };
+  await apiClient.put('/habits/reorder', payload);
+}
+
+// Упрощённая версия для drag-and-drop (принимает orderedIds)
+export async function reorderHabitsByIds(orderedIds: number[]): Promise<void> {
+  const payload = {
+    habits: orderedIds.map((id, index) => ({
+      id,
+      order_index: index,
     })),
   };
   await apiClient.put('/habits/reorder', payload);

@@ -26,6 +26,7 @@ interface HabitTableProps {
   onEditHabit: (habit: Habit) => void;
   onDeleteHabit: (habitId: number) => void;
   onArchiveHabit: (habitId: number) => void;
+  onReorderHabits?: (orderedIds: number[]) => void;
 }
 
 export default function HabitTable({
@@ -37,6 +38,7 @@ export default function HabitTable({
   onEditHabit,
   onDeleteHabit,
   onArchiveHabit,
+  onReorderHabits,
 }: HabitTableProps) {
   // ── Mobile detection ──────────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(
@@ -112,6 +114,10 @@ export default function HabitTable({
     day: number;
     currentValue: number;
   } | null>(null);
+
+  // ── Drag and drop ─────────────────────────────────────────────────────────
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const draggedIdRef = useRef<number | null>(null);
 
   // ── Today detection ─────────────────────────────────────────────────────
   const today = useMemo(() => new Date(), []);
@@ -226,11 +232,28 @@ export default function HabitTable({
           {habits.map((habit) => (
             <div
               key={habit.id}
-              className={`habit-row-cell habit-name-cell ${activeActionRow === habit.id ? 'actions-visible' : ''}`}
+              className={`habit-row-cell habit-name-cell ${activeActionRow === habit.id ? 'actions-visible' : ''} ${dragOverId === habit.id ? 'drag-over' : ''}`}
               onClick={(e) => handleNameClick(e, habit)}
               onTouchStart={() => handleNameLongPress(habit.id)}
               onTouchEnd={handleNamePressEnd}
               onMouseLeave={() => { if (isMobile) setActiveActionRow(null); }}
+              draggable={!!onReorderHabits && !isMobile}
+              onDragStart={() => { draggedIdRef.current = habit.id; }}
+              onDragOver={(e) => { e.preventDefault(); setDragOverId(habit.id); }}
+              onDragLeave={() => setDragOverId(null)}
+              onDrop={() => {
+                if (!draggedIdRef.current || draggedIdRef.current === habit.id || !onReorderHabits) return;
+                const ids = habits.map(h => h.id);
+                const from = ids.indexOf(draggedIdRef.current);
+                const to = ids.indexOf(habit.id);
+                const reordered = [...ids];
+                reordered.splice(from, 1);
+                reordered.splice(to, 0, draggedIdRef.current);
+                onReorderHabits(reordered);
+                draggedIdRef.current = null;
+                setDragOverId(null);
+              }}
+              style={{ cursor: onReorderHabits && !isMobile ? 'grab' : undefined }}
             >
               <div className="habit-name-content">
                 <span className="habit-target-icon">
@@ -240,7 +263,7 @@ export default function HabitTable({
                   {habit.name}
                 </span>
               </div>
-              <div className="habit-actions">
+              <div className="habit-actions" onClick={(e) => e.stopPropagation()}>
                 {/* Таймер — первым, только для Часы */}
                 {!isMobile && habit.unit === 'Часы' && (
                   <button
@@ -265,21 +288,30 @@ export default function HabitTable({
                 )}
                 <button
                   className="habit-btn habit-btn-edit"
-                  onClick={() => onEditHabit(habit)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditHabit(habit);
+                  }}
                   title="Редактировать"
                 >
                   <Pencil size={14} />
                 </button>
                 <button
                   className="habit-btn habit-btn-archive"
-                  onClick={() => onArchiveHabit(habit.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onArchiveHabit(habit.id);
+                  }}
                   title="Архивировать"
                 >
                   <Archive size={14} />
                 </button>
                 <button
                   className="habit-btn habit-btn-delete"
-                  onClick={() => onDeleteHabit(habit.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteHabit(habit.id);
+                  }}
                   title="Удалить"
                 >
                   <Trash2 size={14} />
@@ -314,21 +346,6 @@ export default function HabitTable({
               <div className="habit-row-cell habit-cell-unit">{habit.unit}</div>
               <div className="habit-row-cell habit-cell-plan">{habit.plan}</div>
               {days.map((day) => {
-                // DEBUG: log first habit, first day
-                if (habits.indexOf(habit) === 0 && day === 1) {
-                  console.log('[DEBUG active]', {
-                    habitId: habit.id,
-                    habitName: habit.name,
-                    startDate: habit.startDate,
-                    endDate: habit.endDate,
-                    daysOfWeek: habit.daysOfWeek,
-                    active: isHabitDayActive(habit, year, month, day),
-                    recordForDay1: records.find(r =>
-                      r.habitId === habit.id && r.year === year && r.month === month && r.day === 1
-                    ),
-                    allRecordsForHabit: records.filter(r => r.habitId === habit.id),
-                  });
-                }
                 const active = isHabitDayActive(habit, year, month, day);
                 const value = getCellValue(records, habit.id, year, month, day);
                 const weekend = isWeekend(year, month, day);

@@ -564,6 +564,11 @@
   overflow: hidden;
 }
 
+.month-navigator.compact {
+  margin-top: 0;
+  padding-top: 8px;
+}
+
 .month-nav-btn {
   display: flex;
   align-items: center;

@@ -173,7 +173,7 @@ function getCurrentMonth(): string {
 function formatMonthDisplay(monthStr: string): string {
   const [year, month] = monthStr.split('-');
   const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-  return date.toLocaleDateString('ru-RU', { month: 'long' }).toUpperCase();
+  return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase();
 }
 
 // ФАЙЛ 2 FIX: правильная реализация без setMonth багов
@@ -420,17 +420,6 @@ export default function Tasks() {
             aria-label="Следующий месяц"
           >
             <ChevronRight size={16} />
-          </button>
-          <div className="month-nav-spacer" />
-          <button
-            className="tasks-add-btn-compact"
-            onClick={() => {
-              setEditingTask(null);
-              setIsModalOpen(true);
-            }}
-          >
-            <Plus size={14} />
-            <span>Добавить</span>
           </button>
         </div>
 

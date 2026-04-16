@@ -19,17 +19,27 @@ export function isHabitDayActive(
   // Проверка start_date
   if (habit.startDate) {
     const start = new Date(habit.startDate);
-    // Защита от некорректных дат
     if (!isNaN(start.getTime())) {
-      start.setHours(0, 0, 0, 0);
-      if (date < start) return false;
+      const startYear = start.getFullYear();
+      const startMonth = start.getMonth() + 1; // 1-12
+      const startDay = new Date(startYear, start.getMonth(), start.getDate());
+
+      // Архивные месяцы ДО начала привычки — неактивны
+      if (year < startYear || (year === startYear && month < startMonth)) {
+        return false;
+      }
+
+      // В месяце начала привычки — блокируем дни ДО startDate
+      if (year === startYear && month === startMonth) {
+        if (date < startDay) return false;
+      }
+      // Будущие месяцы — не блокируем (startDate не влияет)
     }
   }
 
   // Проверка end_date
   if (habit.endDate) {
     const end = new Date(habit.endDate);
-    // Защита от некорректных дат
     if (!isNaN(end.getTime())) {
       end.setHours(23, 59, 59, 999);
       if (date > end) return false;

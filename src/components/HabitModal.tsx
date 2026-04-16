@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Habit, createHabit, updateHabit } from '../api/habits';
+import DatePicker from './DatePicker';
 
 interface HabitModalProps {
   habit: Habit | null; // null = создание, объект = редактирование
@@ -55,8 +56,8 @@ export default function HabitModal({
       setPlan(habit.plan || 1);
       setTargetType(habit.targetType || 'monthly');
       setDaysOfWeek(habit.daysOfWeek || []);
-      setStartDate(habit.startDate || '');
-      setEndDate(habit.endDate || '');
+      setStartDate(habit.startDate ? habit.startDate.substring(0, 10) : '');
+      setEndDate(habit.endDate ? habit.endDate.substring(0, 10) : '');
     } else {
       // Создание — дефолты
       setName('');
@@ -273,22 +274,16 @@ export default function HabitModal({
           <div className="form-group dates-row">
             <div className="date-field">
               <label className="form-label">Начало</label>
-              <input
-                type="date"
-                className="form-input"
+              <DatePicker
                 value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                disabled={saving}
+                onChange={(val) => setStartDate(val)}
               />
             </div>
             <div className="date-field">
               <label className="form-label">Конец</label>
-              <input
-                type="date"
-                className="form-input"
+              <DatePicker
                 value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                disabled={saving}
+                onChange={(val) => setEndDate(val)}
               />
             </div>
           </div>
