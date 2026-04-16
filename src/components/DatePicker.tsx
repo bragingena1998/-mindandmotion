@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import '../styles/tasks.css';
 
@@ -60,7 +61,9 @@ function getFirstDayOfMonth(year: number, month: number): number {
 
 export default function DatePicker({ value, onChange }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Parse current value or use today
   const today = new Date();
@@ -71,10 +74,41 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
   const selectedDate = value ? new Date(value) : null;
   const todayStr = today.toISOString().slice(0, 10);
 
-  // Close on outside click
+  // Calculate dropdown position
+  const calcPosition = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const dropdownHeight = 320; // approximate calendar height
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > dropdownHeight
+      ? rect.bottom + window.scrollY + 4
+      : rect.top + window.scrollY - dropdownHeight - 4;
+    setDropdownPos({
+      top,
+      left: rect.left + window.scrollX,
+      width: Math.max(rect.width, 280),
+    });
+  }, []);
+
+  // Update position on scroll/resize when open
+  useEffect(() => {
+    if (!isOpen) return;
+    const update = () => calcPosition();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [isOpen, calcPosition]);
+
+  // Close on outside click (check both container and dropdown)
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current && !containerRef.current.contains(e.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -143,7 +177,13 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
       {/* Input field */}
       <div
         className={`date-picker-input ${isOpen ? 'active' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const newOpen = !isOpen;
+          setIsOpen(newOpen);
+          if (newOpen) {
+            setTimeout(calcPosition, 0);
+          }
+        }}
       >
         <Calendar size={16} className="date-picker-icon" />
         <span className={displayValue ? '' : 'placeholder'}>
@@ -151,9 +191,19 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
         </span>
       </div>
 
-      {/* Dropdown calendar */}
-      {isOpen && (
-        <div className="date-picker-dropdown">
+      {/* Dropdown calendar — rendered via Portal to document.body */}
+      {isOpen && dropdownPos && createPortal(
+        <div
+          ref={dropdownRef}
+          className="date-picker-dropdown"
+          style={{
+            position: 'absolute',
+            top: dropdownPos.top,
+            left: dropdownPos.left,
+            width: dropdownPos.width,
+            zIndex: 9999,
+          }}
+        >
           {/* Header with month/year and navigation */}
           <div className="date-picker-header">
             <button
@@ -234,7 +284,8 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
               Сегодня
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -8,7 +8,7 @@ interface TaskCardProps {
   task: Task;
   folder?: Folder | null;
   onToggle: (id: number, done: boolean) => void;
-  onDelete: (id: number) => void;
+  onDelete: (task: Task) => void;
   onEdit?: (task: Task) => void;
 }
 
@@ -182,13 +182,11 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setConfirmDelete('task');
+    onDelete(task);
   };
 
   const confirmDeleteActual = async () => {
-    if (confirmDelete === 'task') {
-      onDelete(task.id);
-    } else if (confirmDelete === 'subtask' && deletingSubtaskId !== null) {
+    if (confirmDelete === 'subtask' && deletingSubtaskId !== null) {
       try {
         await deleteSubtask(task.id, deletingSubtaskId);
         setSubtasks(subtasks.filter(s => s.id !== deletingSubtaskId));

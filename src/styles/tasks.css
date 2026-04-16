@@ -853,6 +853,61 @@
   color: var(--text-main);
 }
 
+.btn-danger {
+  /* такой же как btn-primary но красный */
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: 1px solid rgba(251,113,133,0.5);
+  background: rgba(251,113,133,0.15);
+  color: #fb7185;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.15s;
+}
+.btn-danger:hover {
+  background: rgba(251,113,133,0.25);
+  box-shadow: 0 0 16px rgba(251,113,133,0.3);
+}
+
+/* ===== CONFIRM MODAL ===== */
+.confirm-modal {
+  max-width: 380px;
+  text-align: center;
+  position: relative;
+  padding: 32px 24px 24px;
+}
+.confirm-modal-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+.confirm-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+.confirm-modal-message {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+.confirm-modal-warning {
+  font-size: 11px;
+  color: var(--accent-border);
+  margin-bottom: 20px;
+  font-style: italic;
+  opacity: 0.8;
+}
+.confirm-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
 /* ===== EMPTY STATE ===== */
 .empty-state {
   text-align: center;
@@ -1208,20 +1263,14 @@
   color: rgba(177, 167, 216, 0.85);
 }
 
-/* Dropdown calendar */
+/* Dropdown calendar — rendered via Portal to document.body */
 .date-picker-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: auto;
-  width: 280px;
-  max-width: calc(100vw - 32px);
-  background: radial-gradient(circle at top, #1e1b4b 0, #0f172a 60%);
+  background: radial-gradient(circle at top left, #1e1b4b 0, #020617 60%);
   border: 1px solid var(--accent-soft);
   border-radius: 12px;
-  padding: 16px;
-  z-index: 100;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95);
+  padding: 12px;
+  min-width: 280px;
   animation: fadeIn 0.15s ease-out;
 }
 

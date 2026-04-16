@@ -18,6 +18,7 @@ import {
 import HabitTable from '../components/HabitTable';
 import HabitModal from '../components/HabitModal';
 import HabitTrendChart from '../components/HabitTrendChart';
+import ConfirmModal from '../components/ConfirmModal';
 import { optimisticUpdateRecords, getCellValue, isHabitDayActive, calculateHabitStats } from '../utils/habitUtils';
 import '../styles/habits.css';
 
@@ -38,8 +39,8 @@ export default function Habits() {
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [deletingHabitId, setDeletingHabitId] = useState<number | null>(null);
-  const [archivingHabitId, setArchivingHabitId] = useState<number | null>(null);
+  const [deletingHabit, setDeletingHabit] = useState<Habit | null>(null);
+  const [archivingHabit, setArchivingHabit] = useState<Habit | null>(null);
   const [barMode, setBarMode] = useState<'percent' | 'amount'>('percent');
 
   // ── Mobile detection ────────────────────────────────────────────────────
@@ -183,10 +184,12 @@ export default function Habits() {
   };
 
   const handleDeleteHabit = (habitId: number) => {
-    setDeletingHabitId(habitId);
+    const habit = habits.find(h => h.id === habitId);
+    if (habit) setDeletingHabit(habit);
   };
   const handleArchiveHabit = (habitId: number) => {
-    setArchivingHabitId(habitId);
+    const habit = habits.find(h => h.id === habitId);
+    if (habit) setArchivingHabit(habit);
   };
   const handleReorderHabits = async (orderedIds: number[]) => {
     // Оптимистично обновляем локальный порядок
@@ -199,15 +202,15 @@ export default function Habits() {
     }
   };
   const confirmDeleteHabit = async () => {
-    if (!deletingHabitId) return;
-    await deleteHabit(deletingHabitId, year, month);
-    setDeletingHabitId(null);
+    if (!deletingHabit) return;
+    await deleteHabit(deletingHabit.id, year, month);
+    setDeletingHabit(null);
     await loadHabits();
   };
   const confirmArchiveHabit = async () => {
-    if (!archivingHabitId) return;
-    await archiveHabit(archivingHabitId, year, month);
-    setArchivingHabitId(null);
+    if (!archivingHabit) return;
+    await archiveHabit(archivingHabit.id, year, month);
+    setArchivingHabit(null);
     await loadHabits();
   };
 
@@ -406,44 +409,31 @@ export default function Habits() {
       )}
 
       {/* Модалка удаления привычки */}
-      {deletingHabitId !== null && (
-        <div className="modal-overlay" onClick={() => setDeletingHabitId(null)}>
-          <div className="modal-content modal-confirm" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">Удалить привычку?</h2>
-              <button className="modal-close" onClick={() => setDeletingHabitId(null)}>✕</button>
-            </div>
-            <p style={{ color: 'var(--text-muted)', margin: '12px 0 8px', fontSize: '14px', lineHeight: 1.5 }}>
-              Это действие нельзя отменить. Все записи будут удалены.
-            </p>
-            <p style={{ color: 'var(--accent-border)', margin: '0 0 20px', fontSize: '13px', lineHeight: 1.5, fontStyle: 'italic' }}>
-              💡 Хотите сохранить прогресс? Заархивируйте привычку — она останется в прошлых месяцах.
-            </p>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setDeletingHabitId(null)} style={{ flex:1, padding:'10px', borderRadius:'8px', border:'1px solid var(--accent-border)', background:'transparent', color:'var(--text-muted)', cursor:'pointer', fontSize:'13px', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Отмена</button>
-              <button onClick={confirmDeleteHabit} style={{ flex:1, padding:'10px', borderRadius:'8px', border:'none', background:'rgba(251,113,133,0.18)', color:'#fb7185', cursor:'pointer', fontSize:'13px', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em' }}>Удалить</button>
-            </div>
-          </div>
-        </div>
+      {deletingHabit && (
+        <ConfirmModal
+          title="Удалить привычку?"
+          message={`«${deletingHabit.name}» и все её записи будут удалены без возможности восстановления`}
+          warning="💡 Хотите сохранить прогресс? Заархивируйте привычку — она останется в истории."
+          confirmLabel="Удалить"
+          cancelLabel="Отмена"
+          confirmDanger={true}
+          icon="🗑️"
+          onConfirm={confirmDeleteHabit}
+          onCancel={() => setDeletingHabit(null)}
+        />
       )}
 
       {/* Модалка архивации привычки */}
-      {archivingHabitId !== null && (
-        <div className="modal-overlay" onClick={() => setArchivingHabitId(null)}>
-          <div className="modal-content modal-confirm" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">Архивировать привычку?</h2>
-              <button className="modal-close" onClick={() => setArchivingHabitId(null)}>✕</button>
-            </div>
-            <p style={{ color: 'var(--text-muted)', margin: '12px 0 20px', fontSize: '14px', lineHeight: 1.5 }}>
-              Привычка будет скрыта из активных для этого месяца.
-            </p>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setArchivingHabitId(null)} style={{ flex:1, padding:'10px', borderRadius:'8px', border:'1px solid var(--accent-border)', background:'transparent', color:'var(--text-muted)', cursor:'pointer', fontSize:'13px', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Отмена</button>
-              <button onClick={confirmArchiveHabit} style={{ flex:1, padding:'10px', borderRadius:'8px', border:'none', background:'rgba(251,200,50,0.15)', color:'#f59e0b', cursor:'pointer', fontSize:'13px', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em' }}>Архивировать</button>
-            </div>
-          </div>
-        </div>
+      {archivingHabit && (
+        <ConfirmModal
+          title="Архивировать привычку?"
+          message={`«${archivingHabit.name}» будет скрыта из активных для этого месяца`}
+          confirmLabel="Архивировать"
+          cancelLabel="Отмена"
+          icon="📦"
+          onConfirm={confirmArchiveHabit}
+          onCancel={() => setArchivingHabit(null)}
+        />
       )}
     </div>
   );

@@ -345,6 +345,43 @@ export default function HabitTable({
                 >
                   <Trash2 size={14} />
                 </button>
+                {/* Mobile reorder buttons */}
+                {isMobile && onReorderHabits && (
+                  <>
+                    <button
+                      className="habit-btn habit-btn-up"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const ids = habits.map(h => h.id);
+                        const idx = ids.indexOf(habit.id);
+                        if (idx <= 0) return;
+                        const reordered = [...ids];
+                        [reordered[idx - 1], reordered[idx]] = [reordered[idx], reordered[idx - 1]];
+                        onReorderHabits(reordered);
+                        setActiveActionRow(null);
+                      }}
+                      title="Вверх"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      className="habit-btn habit-btn-down"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const ids = habits.map(h => h.id);
+                        const idx = ids.indexOf(habit.id);
+                        if (idx >= ids.length - 1) return;
+                        const reordered = [...ids];
+                        [reordered[idx], reordered[idx + 1]] = [reordered[idx + 1], reordered[idx]];
+                        onReorderHabits(reordered);
+                        setActiveActionRow(null);
+                      }}
+                      title="Вниз"
+                    >
+                      ▼
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ))}
