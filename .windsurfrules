@@ -1,0 +1,16 @@
+# See AGENTS.md for full project contract.
+# See docs/ for architecture, domain, migration guides.
+
+## Quick reference
+- Stack: React 18 + TypeScript + Vite + React Router v6
+- Dev port: 3001 (npm run dev)
+- API: VITE_API_URL → https://mindandmotion.ru/api
+- Auth token: localStorage key 'app-auth-token' или 'mm_token'
+- Active branch: web-review
+
+## Rules
+- Always read AGENTS.md before starting any task.
+- No `any` in TypeScript.
+- No hardcoded URLs — use import.meta.env.VITE_API_URL.
+- No push without owner confirmation.
+- After task: update docs/feature-parity.md.

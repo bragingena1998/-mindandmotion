@@ -607,13 +607,11 @@
    HABIT MODAL STYLES
    ======================================== */
 
-/* Базовая модалка — десктоп */
+/* Базовая модалка — десктоп (без скролла) */
 .modal-content.habit-modal,
 .habit-modal {
   width: 480px;
   max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
   border-radius: 16px;
   display: flex;
   flex-direction: column;
@@ -933,6 +931,23 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     max-width: 90vw;
+  }
+}
+
+/* Десктопная модалка привычек — без вертикального скролла */
+@media (min-width: 769px) {
+  .modal-content.habit-modal,
+  .habit-modal {
+    height: auto;
+    max-height: none;
+    overflow: visible !important;
+  }
+
+  .modal-content.habit-modal::-webkit-scrollbar,
+  .habit-modal::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   /* Имя занимает всю ширину */
