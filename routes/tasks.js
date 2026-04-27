@@ -345,7 +345,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   const {
     date, time, deadline, title, priority, comment, done, doneDate,
     focusSessions, isRecurring, recurrenceType, recurrenceValue,
-    isGenerated, templateId, folderId
+    isGenerated, templateId, folderId, nextDate
   } = req.body;
 
   try {
@@ -367,33 +367,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
     );
 
     if (isRecurring && done && !oldTask.done) {
-      let nextDate = new Date(date);
-
-      if (recurrenceType === 'daily') {
-        nextDate.setDate(nextDate.getDate() + 1);
-      } else if (recurrenceType === 'weekly') {
-        nextDate.setDate(nextDate.getDate() + 7);
-      } else if (recurrenceType === 'monthly') {
-        nextDate.setMonth(nextDate.getMonth() + 1);
-      } else if (recurrenceType === 'custom' && recurrenceValue) {
-        try {
-          const days = JSON.parse(recurrenceValue);
-          if (Array.isArray(days) && days.length > 0) {
-            let found = false;
-            for (let i = 1; i <= 7; i++) {
-              nextDate.setDate(nextDate.getDate() + 1);
-              if (days.includes(nextDate.getDay())) { found = true; break; }
-            }
-            if (!found) nextDate.setDate(nextDate.getDate() + 1);
-          } else {
-            nextDate.setDate(nextDate.getDate() + 1);
-          }
-        } catch (e) {
-          nextDate.setDate(nextDate.getDate() + 1);
-        }
-      }
-
-      const nextDateStr = nextDate.toISOString().split('T')[0];
+      // ФАЙЛ 2: используем nextDate от фронта, fallback на +1 день
+      const nextDateStr = nextDate || (() => {
+        const [_y, _m, _d] = String(date).split('-').map(Number);
+        const dt = new Date(_y, _m - 1, _d);
+        dt.setDate(dt.getDate() + 1);
+        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      })();
       const [newTaskResult] = await pool.query(
         `INSERT INTO tasks (user_id, date, time, deadline, title, priority, comment, done, focus_sessions,
           is_recurring, recurrence_type, recurrence_value, is_generated, template_id, folder_id)
