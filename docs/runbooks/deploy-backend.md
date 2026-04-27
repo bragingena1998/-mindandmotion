@@ -1,92 +1,71 @@
-# Runbook: Деплой Backend на VPS
+# Runbook: Deploy Backend
 
-> Для деплоя Node.js + Express бэкенда на VPS Beget.
-> **Деплой выполняет только владелец вручную через SSH.**
-> Последнее обновление: апрель 2026
+> VPS: Beget | Путь: `/var/www/backend/` | PM2: `mindandmotion-backend`
 
----
-
-## ⚠️ Правила
-
-- Агент **не деплоит автоматически** — только сообщает что нужен деплой
-- Перед деплоем — убедиться что `git push origin backend` выполнен
-- После деплоя — проверить healthcheck
-
----
-
-## Шаги деплоя
-
-### 1. Запушить изменения с локала
-
-```powershell
-Set-Location "E:\Mobile app = web + web ios\backend"
-git add -A
-git commit -m "feat/fix: описание изменений"
-git push origin backend
-```
-
-### 2. Подключиться к VPS по SSH
+## Стандартный деплой
 
 ```bash
-ssh USER@mindandmotion.ru
-# или по IP: ssh USER@IP_СЕРВЕРА
-```
+# 1. Подключиться к VPS
+ssh user@mindandmotion.ru
 
-### 3. Обновить код на сервере
-
-```bash
+# 2. Перейти в папку бэкенда
 cd /var/www/backend
+
+# 3. Подтянуть изменения
 git pull origin backend
-```
 
-### 4. Установить зависимости (если изменился package.json)
-
-```bash
+# 4. Установить зависимости (если изменился package.json)
 npm install --production
-```
 
-### 5. Перезапустить через PM2
+# 5. Перезапустить через PM2
+pm2 restart mindandmotion-backend
 
-```bash
-pm2 restart backend
+# 6. Проверить статус
 pm2 status
-# Убедиться что статус: online
+pm2 logs mindandmotion-backend --lines 20
 ```
 
-### 6. Проверить healthcheck
+## Healthcheck
 
 ```bash
-curl https://mindandmotion.ru/api/tasks
-# Должно вернуть 401 (без токена) — значит сервер работает
+curl https://mindandmotion.ru/api/health
+# Ожидаемый ответ: { "status": "ok" }
+
+curl https://mindandmotion.ru/api/auth/login \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"test@test.com","password":"wrong"}'
+# Ожидаемый ответ: 401 (не 500)
 ```
 
----
-
-## Если что-то пошло не так — откат
+## Если что-то пошло не так
 
 ```bash
-cd /var/www/backend
-git log --oneline -5        # Найти предыдущий рабочий коммит
-git checkout <COMMIT_SHA>   # Откатиться
-pm2 restart backend
+# Смотреть логи
+pm2 logs mindandmotion-backend --lines 50
+
+# Проверить процессы
+pm2 list
+
+# Перезапустить принудительно
+pm2 delete mindandmotion-backend
+pm2 start ecosystem.config.js
+
+# Откатить (смотри rollback.md)
 ```
 
----
-
-## Миграция БД
-
-Если в деплое есть изменения схемы БД:
-1. Сделать бэкап: `mysqldump -u root -p mindandmotion > backup_$(date +%Y%m%d).sql`
-2. Применить миграцию вручную в MySQL
-3. Обновить `.agent/wiki/domain.md` с описанием изменений
-4. Только после этого деплоить код
-
----
-
-## Просмотр логов
+## Миграции БД
 
 ```bash
-pm2 logs backend --lines 50
-# или в реальном времени:
-pm2 logs backend
+# Подключиться к MySQL
+mysql -u root -p mindandmotion
+
+# Проверить текущую схему
+SHOW TABLES;
+DESCRIBE tasks;
+
+# Выполнить миграцию из файла
+mysql -u root -p mindandmotion < /var/www/backend/migrations/YYYY-MM-DD_name.sql
 ```
+
+⚠️ Миграции БД требуют Telegram-апрув перед выполнением.
