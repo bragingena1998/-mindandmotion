@@ -1,97 +1,111 @@
-# Telegram Bridge — Approve Workflow
+# Runbook: Telegram Bridge
 
-Система подтверждения опасных операций через Telegram перед выполнением.
+> Система апрува опасных операций через Telegram
 
----
-
-## Архитектура
+## Как это работает
 
 ```
-Агент / разработчик хочет сделать push/deploy/rm
-           ↓
-  scripts/telegram-approve.js
-           ↓
-  Telegram-бот отправляет сообщение с кнопками
-           ↓
-  Ты нажимаешь ✅ Approve или ❌ Cancel
-           ↓
-  Скрипт продолжает или прерывает операцию
+Windsurf / терминал
+      ↓
+ scripts/git-push-safe.ps1  (или approve.ps1, safe-deploy.ps1 и т.)
+      ↓
+ scripts/telegram-approve.cjs
+      ↓
+ Telegram Bot API → твой телефон
+      ↓
+  [✅ Approve] [❌ Cancel]
+      ↓
+ выполняется / отменяется
 ```
 
----
+## Настройка
 
-## Шаг 1 — Создать Telegram-бота
+### 1. Создать бота
+1. Открыть [@BotFather](https://t.me/BotFather)
+2. `/newbot` → имя → username (must end in `bot`)
+3. Скопировать **BOT_TOKEN** (формат: `1234567890:AAFxxx...`)
 
-1. Открой [@BotFather](https://t.me/botfather) в Telegram
-2. Отправь `/newbot`
-3. Придумай имя и username (например `MindMotionDevBot`)
-4. Скопируй полученный **BOT_TOKEN**
-5. Узнай свой **CHAT_ID**:
-   - Напиши боту любое сообщение
-   - Открой в браузере: `https://api.telegram.org/bot<BOT_TOKEN>/getUpdates`
-   - Найди `"chat":{"id": XXXXXX}` — это твой CHAT_ID
+### 2. Узнать CHAT_ID
+1. Написать любое сообщение своему боту
+2. Открыть: `https://api.telegram.org/bot<TOKEN>/getUpdates`
+3. Найти `"chat":{"id":XXXXXXXX}` — это и есть CHAT_ID
 
----
+### 3. Добавить в .env
 
-## Шаг 2 — Добавить переменные в .env
+Файл: `E:\Mobile app = web + web ios\docs\.env`
 
 ```env
-TELEGRAM_BOT_TOKEN=xxxxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TELEGRAM_CHAT_ID=123456789
+# Telegram Bridge
+TG_BOT_TOKEN=1234567890:AAFxxx...
+TG_CHAT_ID=1815370777
+
+# VPS (для safe-deploy.ps1)
+VPS_HOST=mindandmotion.ru
+VPS_USER=root
+
+# DB (для safe-migrate.ps1)
+DB_NAME=mindandmotion
+DB_USER=root
+DB_PASS=твой_пароль
 ```
 
----
+## Справочник по скриптам
 
-## Шаг 3 — Создать scripts/telegram-approve.js
+| Скрипт | Назначение | Пример |
+|---|---|---|
+| `git-push-safe.ps1` | Push в Git | `.\scripts\git-push-safe.ps1 "описание"` |
+| `safe-install.ps1` | npm install/uninstall | `.\scripts\safe-install.ps1 install axios` |
+| `safe-delete.ps1` | Удаление файлов | `.\scripts\safe-delete.ps1 "path/to/file"` |
+| `safe-deploy.ps1` | Деплой на VPS | `.\scripts\safe-deploy.ps1 -Target backend` |
+| `safe-migrate.ps1` | SQL-миграция | `.\scripts\safe-migrate.ps1 -File migration.sql` |
+| `approve.ps1` | Универсальный апрув | `.\scripts\approve.ps1 -Message "что" -Command "cmd"` |
 
-Файл уже должен быть в `scripts/telegram-approve.js`.
-Запуск: `node scripts/telegram-approve.js "Описание операции"`
+## Как использовать approve.ps1 (универсальный)
 
-Возвращает exit code:
-- `0` — Approved (можно продолжать)
-- `1` — Cancelled или timeout (прервать)
-
----
-
-## Шаг 4 — PowerShell-обёртка для git push
-
-Файл `scripts/git-push-safe.ps1`:
 ```powershell
-# Использование: .\scripts\git-push-safe.ps1 origin backend
-param($remote = "origin", $branch = "backend")
+# Просто спросить апрув без команды
+.\scripts\approve.ps1 -Message "Зайти на продакшн-сервер"
 
-$result = node scripts/telegram-approve.js "git push $remote $branch"
-if ($LASTEXITCODE -eq 0) {
-    git push $remote $branch
-} else {
-    Write-Host "Push отменён"
-    exit 1
+# Апрув + команда строкой
+.\scripts\approve.ps1 -Message "npm install dotenv" -Command "npm install dotenv"
+
+# Апрув + несколько команд
+.\scripts\approve.ps1 -Message "Сброс безопасности" -Action {
+  git stash
+  git reset --hard HEAD~1
+  git stash pop
 }
 ```
 
----
+## Как использовать в Windsurf (Cascade)
 
-## Операции, требующие approve
+При любой опасной операции Windsurf должен вызывать:
 
-| Операция | Скрипт | Приоритет |
-|---|---|---|
-| `git push` | `git-push-safe.ps1` | 🔴 Обязательно |
-| `deploy` на VPS | `deploy-safe.ps1` | 🔴 Обязательно |
-| SQL-миграции | `migrate-safe.ps1` | 🔴 Обязательно |
-| `npm install` новых пакетов | approve в терминале | 🟡 Желательно |
-| `rm` / `Remove-Item` | approve в терминале | 🟡 Желательно |
+```powershell
+# Вместо: git push
+.\scripts\git-push-safe.ps1 "что пушаем"
 
----
+# Вместо: npm install X
+.\scripts\safe-install.ps1 install X
+
+# Вместо: Remove-Item ...
+.\scripts\safe-delete.ps1 "путь"
+
+# Вместо: деплоя через SSH
+.\scripts\safe-deploy.ps1 -Target backend
+
+# Вместо: mysql ... < migration.sql
+.\scripts\safe-migrate.ps1 -File migration.sql
+
+# Любая другая опасная команда:
+.\scripts\approve.ps1 -Message "описание" -Command "команда"
+```
+
+## Добавить в AGENTS.md
+
+Чтобы Windsurf знал об этих скриптах — смотри Terminal Safety раздел в AGENTS.md.
 
 ## Timeout
 
-Если нет ответа в течение 60 секунд — операция автоматически отменяется.
-
----
-
-## Связанные файлы
-
-- `scripts/telegram-approve.js` — основной скрипт
-- `scripts/git-push-safe.ps1` — обёртка для push
-- `.env` — BOT_TOKEN и CHAT_ID (никогда не коммитить!)
-- `.windsurf/workflows/git-push.md` — workflow для Windsurf
+По умолчанию 60 секунд — автоматически Cancel.
+Изменить в `scripts/telegram-approve.cjs` → `const TIMEOUT_MS = 120_000` (для 2 минут).
