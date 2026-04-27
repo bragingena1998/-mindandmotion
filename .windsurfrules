@@ -1,16 +1,105 @@
-# See AGENTS.md for full project contract.
-# See docs/ for architecture, domain, migration guides.
+# Mind & Motion — Web (web-review)
+# Читай AGENTS.md (ветка docs) ПЕРВЫМ перед любой задачей.
 
-## Quick reference
-- Stack: React 18 + TypeScript + Vite + React Router v6
-- Dev port: 3001 (npm run dev)
-- API: VITE_API_URL → https://mindandmotion.ru/api
-- Auth token: localStorage key 'app-auth-token' или 'mm_token'
-- Active branch: web-review
+---
 
-## Rules
-- Always read AGENTS.md before starting any task.
-- No `any` in TypeScript.
-- No hardcoded URLs — use import.meta.env.VITE_API_URL.
-- No push without owner confirmation.
-- After task: update docs/feature-parity.md.
+## ЛОКАЛЬНЫЙ ПУТЬ ПРОЕКТА
+
+Этот репозиторий локально находится по пути:
+  E:\Mobile app = web + web ios\apps\web
+
+Диск E: — ВСЕГДА с заглавной буквы.
+Путь содержит пробелы и символ = — ВСЕГДА оборачивать в кавычки.
+
+---
+
+## ТЕРМИНАЛ — ТОЛЬКО PowerShell, НЕ bash
+
+# ЗАПРЕЩЕНО (bash-синтаксис — не работает в PowerShell):
+#   cd "E:\путь" && git status
+#   e:\путь
+
+# ПРАВИЛЬНО — каждая команда отдельной строкой:
+#   Set-Location "E:\Mobile app = web + web ios\apps\web"
+#   git status
+#
+# Или через точку с запятой (не &&):
+#   Set-Location "E:\Mobile app = web + web ios\apps\web"; git status
+
+---
+
+## СТЕК
+
+- React 18 + TypeScript + Vite
+- React Router v6
+- Dev: npm run dev → порт 3001
+- Build: npm run build → папка dist/
+- API base: import.meta.env.VITE_API_URL → https://mindandmotion.ru/api
+- Auth token: localStorage ключ 'mm_token'
+- Активная ветка: web-review
+
+---
+
+## СТРУКТУРА ПРОЕКТА (E:\Mobile app = web + web ios\)
+
+  apps\web          ← ЭТОТ проект (ветка web-review)
+  backend           ← Node.js backend (ветка backend) — НЕ ТРОГАТЬ
+  mindandmotion-mobile ← React Native (ветка mobile-dev3.0) — НЕ ТРОГАТЬ
+  habits-app        ← Архив (ветка web-dev) — НЕ ТРОГАТЬ
+  docs              ← Документация (ветка docs) — только читать
+
+---
+
+## ДОКУМЕНТАЦИЯ (ветка docs)
+
+Всегда читать перед задачей:
+  AGENTS.md              — главный контракт, API, законы
+  docs/ARCHITECTURE.md   — архитектура, компоненты, роутинг
+  docs/DOMAIN.md         — домен: habits, tasks, streaks, типы данных
+  docs/STATUS.md         — статус переноса фич из mobile → web
+
+---
+
+## ЗАКОНЫ (нарушение = поломка проекта)
+
+1. Читать AGENTS.md до начала любой задачи
+2. Пуш ТОЛЬКО в web-review, никогда в другие ветки
+3. Перед редактированием файла — прочитать его текущее содержимое
+4. Не затирать существующие функции — только добавлять/изменять нужное
+5. Не использовать `any` в TypeScript
+6. Не хардкодить URL — только import.meta.env.VITE_API_URL
+7. Не менять .env без явной команды владельца
+8. Не пушить без подтверждения владельца
+9. После задачи — обновить docs/STATUS.md
+
+---
+
+## ПАТТЕРН ВЫПОЛНЕНИЯ ЗАДАЧИ
+
+1. Прочитать AGENTS.md + релевантный docs-файл
+2. Предложить пошаговый план (какие файлы меняем)
+3. Ждать подтверждения
+4. Выполнять по шагам с кратким описанием каждого
+5. Резюме: что сделано + что обновить в docs/STATUS.md
+
+---
+
+## ШАБЛОНЫ ПРОМПТОВ
+
+### Новая фича
+Цель: [что нужно]
+Домен: [habits / tasks / auth / ...]
+Референс из mobile: [экран или компонент в mindandmotion-mobile]
+Ограничения: не менять [X], сохранить поведение [Y]
+Задача: план → подтверждение → реализация → резюме
+
+### Багфикс
+Ожидаемое поведение: [...]
+Текущее поведение: [...]
+Где: [страница / компонент]
+Задача: найти причину → варианты → фикс после выбора
+
+### Перенос фичи из mobile в web
+Фича: [название]
+Где в mobile: [путь к файлу в mindandmotion-mobile]
+Задача: прочитать mobile-реализацию → спроектировать web-аналог → план → подтверждение → реализация
