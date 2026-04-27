@@ -1,6 +1,6 @@
 # Mind & Motion — Общий контракт для AI-агентов
 
-> **Читай этот файл первым.** Детали — в `.windsurf/rules/` и `.agent/`.
+> **Читай этот файл первым.** Детали — в `.windsurf/rules/` и `.agent/`.\
 > Последнее обновление: 27.04.2026
 
 ---
@@ -19,13 +19,78 @@
 
 ---
 
+## ⚠️ СТРУКТУРА ПРОЕКТА — ЕДИНСТВЕННАЯ ИСТИНА
+
+> Эта таблица — абсолютный источник правды о структуре. Не угадывать, не предполагать.
+
+| Локальная папка | GitHub ветка | Назначение |
+|---|---|---|
+| `E:\Mobile app = web + web ios\apps\web` | `web-review` | Рабочий React/Vite web + PWA |
+| `E:\Mobile app = web + web ios\backend` | `backend` | Node.js backend |
+| `E:\Mobile app = web + web ios\mindandmotion-mobile` | `mobile-dev3.0` | React Native Android |
+| `E:\Mobile app = web + web ios\habits-app` | `web-dev` | Старая версия (архив, не трогать) |
+| `E:\Mobile app = web + web ios\docs` | `docs` | Агентная документация, правила Windsurf |
+
+### Критические правила по путям
+
+1. **Диск E: — ЗАГЛАВНАЯ буква.** Всегда `E:\`, никогда `e:\`
+2. **Пробелы в пути** — путь `E:\Mobile app = web + web ios` содержит пробелы и `=`. Всегда оборачивать в двойные кавычки
+3. **Никогда не угадывать путь** — использовать только пути из этой таблицы
+4. **git-операции** — выполнять из корня нужной папки (не из подпапки)
+
+---
+
+## ⚠️ ПРАВИЛА ТЕРМИНАЛА (PowerShell на Windows)
+
+> Windsurf работает в PowerShell. Bash-синтаксис здесь не работает.
+
+### Запрещено (сломает выполнение)
+```powershell
+# ❌ НЕ использовать && (это bash, не PowerShell)
+cd "E:\путь" && git status
+
+# ❌ НЕ использовать e:\ (маленькая буква диска)
+cd "e:\Mobile app = web + web ios"
+```
+
+### Правильный синтаксис
+```powershell
+# ✅ Каждую команду — отдельной строкой
+Set-Location "E:\Mobile app = web + web ios\apps\web"
+git status
+
+# ✅ Или через точку с запятой (;) — не &&
+Set-Location "E:\Mobile app = web + web ios\docs"; git status
+
+# ✅ cd тоже работает, но Set-Location надёжнее с пробелами в пути
+Set-Location -LiteralPath "E:\Mobile app = web + web ios\apps\web"
+```
+
+### Переходы по папкам проекта
+```powershell
+# Web (ветка web-review)
+Set-Location "E:\Mobile app = web + web ios\apps\web"
+
+# Docs (ветка docs)
+Set-Location "E:\Mobile app = web + web ios\docs"
+
+# Backend (ветка backend)
+Set-Location "E:\Mobile app = web + web ios\backend"
+
+# Mobile (ветка mobile-dev3.0)
+Set-Location "E:\Mobile app = web + web ios\mindandmotion-mobile"
+```
+
+---
+
 ## Стек
 
-| Платформа | Технологии | Ветка | Расположение |
-|-----------|------------|-------|--------------|
-| **Web+PWA** | React 18 + Vite + React Router | `web-review` | `/apps/web/` (уточнить у владельца) |
-| **Mobile** | React Native + Expo (bare workflow) | `mobile-dev3.0` | корень репо |
-| **Backend** | Node.js + Express + MySQL (mysql2) | `backend` | `/var/www/backend/` на VPS |
+| Платформа | Технологии | Ветка | Локальный путь |
+|-----------|------------|-------|----------------|
+| **Web+PWA** | React 18 + Vite + React Router + TypeScript | `web-review` | `E:\Mobile app = web + web ios\apps\web` |
+| **Mobile** | React Native + Expo (bare workflow) | `mobile-dev3.0` | `E:\Mobile app = web + web ios\mindandmotion-mobile` |
+| **Backend** | Node.js + Express + MySQL (mysql2) | `backend` | `E:\Mobile app = web + web ios\backend` (локально) / `/var/www/backend/` на VPS |
+| **Docs** | Markdown | `docs` | `E:\Mobile app = web + web ios\docs` |
 
 ---
 
@@ -128,7 +193,6 @@ MySQL отдаёт snake_case, JS использует camelCase. Защитны
 task.folderId    ?? task.folder_id    ?? null
 task.isRecurring ?? task.isrecurring  ?? 0
 task.doneDate    ?? task.done_date    ?? null
-task.doneDate    ?? task.done_date    ?? null
 ```
 
 ---
@@ -149,20 +213,23 @@ task.doneDate    ?? task.done_date    ?? null
 1. **Пуш web-изменений только в `web-review`**
 2. **Пуш mobile-изменений только в `mobile-dev3.0`**
 3. **Пуш backend-изменений только в `backend`**
-4. **Читать SHA файла перед обновлением** — иначе конфликт
-5. **Не создавать `.save`, `.bak`, `*_copy` и другие мусорные файлы**
-6. **Батч-пуш**: не делать несколько коммитов там, где можно один (`push_files`)
+4. **Пуш документации только в `docs`**
+5. **Читать SHA файла перед обновлением** — иначе конфликт
+6. **Не создавать `.save`, `.bak`, `*_copy` и другие мусорные файлы**
+7. **Батч-пуш**: не делать несколько коммитов там, где можно один
 
 ### Код (общие для всех платформ)
-7. **Не угадывать структуру файла** — всегда читать перед редактированием
-8. **Не затирать существующие функции** — только добавлять/изменять нужное
-9. **API-запросы** — всегда проверять токен, обрабатывать 401
-10. **Оптимистичный UI**: мутировать state сразу, откатывать при ошибке API
+8. **Не угадывать структуру файла** — всегда читать перед редактированием
+9. **Не затирать существующие функции** — только добавлять/изменять нужное
+10. **API-запросы** — всегда проверять токен, обрабатывать 401
+11. **Оптимистичный UI**: мутировать state сразу, откатывать при ошибке API
 
 ### Документация
-11. **После завершения задачи** — обновить `feature-parity.md` (статусы ✅/🔄/❌)
-12. **Если добавлен новый API-эндпоинт** — обновить `AGENTS.md` и `.agent/wiki/api.md`
-13. **Если изменена схема БД** — обновить `domain.md` + записать что добавлено
+12. **После завершения задачи** — обновить `STATUS.md` (статусы ✅/🔄/❌)
+13. **Если добавлен новый API-эндпоинт** — обновить `AGENTS.md`
+14. **Если изменена схема БД** — обновить `DOMAIN.md` + записать что добавлено
+
+---
 
 ## Паттерн выполнения задач (Windsurf / Cascade)
 
@@ -173,38 +240,45 @@ task.doneDate    ?? task.done_date    ?? null
 4. Выполнять по шагам — каждый шаг с кратким описанием.
 5. В конце: резюме изменений + что обновить в docs.
 
+---
+
 ## Шаблоны промптов
 
 ### Новая фича
-> Цель: [что нужно]
-> Домен: [habits / tasks / timers / auth]
-> Файлы: [src/pages/X, src/api/Y]
+> Цель: [что нужно]\
+> Домен: [habits / tasks / timers / auth]\
+> Файлы: [src/pages/X, src/api/Y]\
 > Ограничения: не менять [Z], сохранить поведение [N]
 >
 > Задача: план → подтверждение → реализация по шагам → резюме
 
 ### Багфикс
-> Ожидаемое поведение: [...]
-> Текущее поведение: [...]
+> Ожидаемое поведение: [...]\
+> Текущее поведение: [...]\
 > Где проявляется: [страница/компонент]
 >
 > Задача: найти причину → предложить варианты → фикс после выбора
 
 ### Рефакторинг
-> Цель: упростить [область], не меняя бизнес-поведение
+> Цель: упростить [область], не меняя бизнес-поведение\
 > Задача: оценить проблемы → план → реализация по шагам
+
+---
 
 ## Terminal safety (Windsurf)
 
 Разрешено без подтверждения:
-- ls, pwd, cat, echo
+- ls, dir, pwd, cat, echo
 - npm run dev / build / preview
+- git status, git log, git diff
 
 Требует подтверждения:
 - npm install / uninstall
 - git add / commit / push
-- rm, mv массовые операции
+- Удаление файлов (rm, Remove-Item)
+- Массовые mv/rename операции
 
 Запрещено:
 - Менять .env без явной инструкции
 - Добавлять новые env-переменные молча
+- Переключать ветки без явной команды владельца
