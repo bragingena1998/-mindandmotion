@@ -1,0 +1,49 @@
+# Mind & Motion — Windsurf Rules
+# Этот файл читается Windsurf АВТОМАТИЧЕСКИ при каждом открытии проекта.
+# НЕ удалять, НЕ игнорировать.
+
+## ПЕРВЫЙ ШАГ ЛЮБОЙ СЕССИИ
+Перед началом работы прочитай:
+1. `AGENTS.md` — структура проекта, стек, все эндпоинты, законы
+2. `docs/STATUS.md` — текущее состояние задач
+3. `docs/handoffs/` — последний handoff-файл (самый свежий по дате)
+
+Если задача касается конкретной фичи — прочитай соответствующий `docs/specs/*.md`.
+
+---
+
+## ПРОТОКОЛ РАБОТЫ (обязательный)
+
+1. Прочитать код который будешь менять
+2. Предложить план (файлы, шаги, риски)
+3. ЖДАТЬ подтверждения владельца
+4. Выполнять по шагам
+5. Обновить документацию (AGENTS.md / STATUS.md / handoff)
+6. Commit через `scripts/git-push-safe.ps1`
+
+## ТЕРМИНАЛ
+- PowerShell, НЕ bash
+- НЕ использовать `&&` — только `;` или отдельные строки
+- Пути всегда в кавычках: `"E:\Mobile app = web + web ios\..."`
+- Диск всегда заглавная: `E:\`, не `e:\`
+
+## ОПАСНЫЕ КОМАНДЫ — через approve-скрипты
+- git push → `scripts/git-push-safe.ps1 "описание"`
+- npm install → `scripts/safe-install.ps1 install <пакет>`
+- удаление → `scripts/safe-delete.ps1 "путь"`
+- деплой VPS → `scripts/safe-deploy.ps1 -Target backend`
+- SQL-миграция → `scripts/safe-migrate.ps1 -File migration.sql`
+- любое другое → `scripts/approve.ps1 -Message "что" -Command "cmd"`
+
+## ВЕТКИ
+- web → `web-review`
+- backend → `backend`
+- mobile → `mobile-dev3.0`
+- docs → `docs`
+- НЕ переключать ветки без команды владельца
+
+## ДОКУМЕНТАЦИЯ ПОСЛЕ КАЖДОЙ ЗАДАЧИ
+- Обновить `docs/STATUS.md`
+- Создать `docs/handoffs/YYYY-MM-DD_описание.md`
+- Если новый эндпоинт → обновить `AGENTS.md`
+- Если новая env-переменная → добавить в `.env.example`
