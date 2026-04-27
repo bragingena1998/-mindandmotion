@@ -4,41 +4,30 @@
   Использование: .\scripts\safe-delete.ps1 "путь/к/файлу"
 #>
 
-param(
-  [Parameter(Mandatory)]
-  [string]$Target
-)
+param([Parameter(Mandatory)][string]$Target)
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ApproveScript = Join-Path $ScriptDir "telegram-approve.js"
-
+$ScriptDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ApproveScript = Join-Path $ScriptDir "telegram-approve.cjs"
 if (-not (Test-Path $ApproveScript)) {
-  $ApproveScript = "E:\Mobile app = web + web ios\docs\scripts\telegram-approve.js"
+  $ApproveScript = "E:\Mobile app = web + web ios\docs\scripts\telegram-approve.cjs"
 }
 
 if (-not (Test-Path $Target)) {
-  Write-Host "⚠️  Файл/папка не найдена: $Target" -ForegroundColor Yellow
+  Write-Host "⚠️  Не найдено: $Target" -ForegroundColor Yellow
   exit 0
 }
 
 $Description = "УДАЛЕНИЕ: $Target"
-
 Write-Host ""
 Write-Host "🗑️  $Description" -ForegroundColor Red
-Write-Host "📨 Запрашиваем апрув в Telegram..." -ForegroundColor Cyan
-Write-Host ""
 
-# Загружаем .env
 $EnvFile = Join-Path (Get-Location) ".env"
-if (-not (Test-Path $EnvFile)) {
-  $EnvFile = "E:\Mobile app = web + web ios\docs\.env"
-}
+if (-not (Test-Path $EnvFile)) { $EnvFile = "E:\Mobile app = web + web ios\docs\.env" }
 if (Test-Path $EnvFile) {
   Get-Content $EnvFile | ForEach-Object {
     if ($_ -match '^([^#=]+)=(.*)$') {
-      $key = $Matches[1].Trim()
-      $val = $Matches[2].Trim().Trim('"')
-      if (-not [System.Environment]::GetEnvironmentVariable($key)) {
+      $key = $Matches[1].Trim(); $val = $Matches[2].Trim().Trim('"')
+      if (-not [System.Environment]::GetEnvironmentVariable($key, 'Process')) {
         [System.Environment]::SetEnvironmentVariable($key, $val, 'Process')
       }
     }
@@ -46,15 +35,10 @@ if (Test-Path $EnvFile) {
 }
 
 node $ApproveScript $Description
-$ExitCode = $LASTEXITCODE
-
-Write-Host ""
-
-if ($ExitCode -eq 0) {
-  Write-Host "🗑️  Удаляем: $Target" -ForegroundColor Red
+if ($LASTEXITCODE -eq 0) {
   Remove-Item -Recurse -Force $Target
   Write-Host "✅ Удалено." -ForegroundColor Green
 } else {
-  Write-Host "🛑 Удаление отменено." -ForegroundColor Yellow
+  Write-Host "🛑 Отменено." -ForegroundColor Yellow
   exit 1
 }

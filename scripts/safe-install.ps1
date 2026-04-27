@@ -1,10 +1,9 @@
 <#
 .SYNOPSIS
-  npm install / uninstall с Telegram-апрувом.
+  npm install/uninstall с Telegram-апрувом.
   Использование:
     .\scripts\safe-install.ps1 install axios
     .\scripts\safe-install.ps1 uninstall lodash
-    .\scripts\safe-install.ps1 install  (без пакета — просто npm install)
 #>
 
 param(
@@ -13,11 +12,10 @@ param(
   [string]$Package = ""
 )
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ApproveScript = Join-Path $ScriptDir "telegram-approve.js"
-
+$ScriptDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ApproveScript = Join-Path $ScriptDir "telegram-approve.cjs"
 if (-not (Test-Path $ApproveScript)) {
-  $ApproveScript = "E:\Mobile app = web + web ios\docs\scripts\telegram-approve.js"
+  $ApproveScript = "E:\Mobile app = web + web ios\docs\scripts\telegram-approve.cjs"
 }
 
 $ActionLabel = if ($Package) { "npm $Action $Package" } else { "npm $Action" }
@@ -25,20 +23,14 @@ $Description = "$ActionLabel в $(Get-Location)"
 
 Write-Host ""
 Write-Host "📦 $Description" -ForegroundColor Cyan
-Write-Host "📨 Запрашиваем апрув в Telegram..." -ForegroundColor Cyan
-Write-Host ""
 
-# Загружаем .env
 $EnvFile = Join-Path (Get-Location) ".env"
-if (-not (Test-Path $EnvFile)) {
-  $EnvFile = "E:\Mobile app = web + web ios\docs\.env"
-}
+if (-not (Test-Path $EnvFile)) { $EnvFile = "E:\Mobile app = web + web ios\docs\.env" }
 if (Test-Path $EnvFile) {
   Get-Content $EnvFile | ForEach-Object {
     if ($_ -match '^([^#=]+)=(.*)$') {
-      $key = $Matches[1].Trim()
-      $val = $Matches[2].Trim().Trim('"')
-      if (-not [System.Environment]::GetEnvironmentVariable($key)) {
+      $key = $Matches[1].Trim(); $val = $Matches[2].Trim().Trim('"')
+      if (-not [System.Environment]::GetEnvironmentVariable($key, 'Process')) {
         [System.Environment]::SetEnvironmentVariable($key, $val, 'Process')
       }
     }
@@ -46,18 +38,8 @@ if (Test-Path $EnvFile) {
 }
 
 node $ApproveScript $Description
-$ExitCode = $LASTEXITCODE
-
-Write-Host ""
-
-if ($ExitCode -eq 0) {
-  Write-Host "▶️  Выполняем: $ActionLabel" -ForegroundColor Green
-  if ($Package) {
-    npm $Action $Package
-  } else {
-    npm $Action
-  }
-  Write-Host ""
+if ($LASTEXITCODE -eq 0) {
+  if ($Package) { npm $Action $Package } else { npm $Action }
   Write-Host "✅ Готово!" -ForegroundColor Green
 } else {
   Write-Host "🛑 Отменено." -ForegroundColor Yellow
