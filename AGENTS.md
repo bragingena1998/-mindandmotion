@@ -1,36 +1,26 @@
-# Mobile — контекст для AI
+# AGENTS.md — Mobile (mobile-dev3.0)
 
-> Читать вместе с корневым `AGENTS.md`
-> Полный контекст мобилки: `AI_CONTEXT.md` в корне этой ветки
+> ⚠️ Эта ветка содержит только мобильное приложение (React Native + Expo).
+>
+> **Главный AGENTS.md живёт в ветке `docs`:**
+> [`docs/AGENTS.md`](https://github.com/bragingena1998/-mindandmotion/blob/docs/docs/AGENTS.md)
 
-## Стек
-- React Native + Expo SDK (Bare Workflow)
-- Ветка: `mobile-dev3.0`
-- Тестирование: Expo Dev Client на Android
-- Сборка: EAS Build (preview APK)
-- Опубликовано: RuStore (на модерации)
+## Что читать перед работой в этой ветке
 
-## Структура
-```
-src/
-├── screens/      # Экраны: TasksScreen, HabitsScreen, CalendarScreen,
-│             # DashboardScreen, ProfileScreen, SettingsScreen,
-│             # LoginScreen, RegisterScreen, NotificationSettingsScreen
-├── components/   # Button, Input, Modal, Card, AlertModal,
-│             # TimePicker, DatePicker, HabitTable, TabBar
-├── contexts/     # ThemeContext (colors.*)
-├── services/     # api.js (axios + JWT), storage.js (SecureStore)
-└── theme/        # Цветовые темы
-```
+1. `docs` ветка → `docs/AGENTS.md` — полный контракт, все законы, все эндпоинты
+2. `docs` ветка → `.windsurf/rules/00-project.md` — общие правила
+3. `docs` ветка → `.windsurf/rules/02-mobile.md` — правила мобилки
+4. `docs` ветка → `docs/ARCHITECTURE.md` — архитектура
 
-## Ключевые паттерны
-- Токен: SecureStore (не AsyncStorage)
-- Цвета: `const { colors } = useTheme()` — никогда хардкод
-- Оптимистичный UI: обновить state → API → rollback при ошибке
-- Списки: FlatList + getItemLayout (не ScrollView)
-- Уведомления: только в собранном APK
+## Быстрый старт (мобилка)
 
-## Текущий статус
-- ✅ Этапы 1-4 завершены (задачи, папки, привычки, календарь)
-- ✅ Опубликовано в RuStore (на модерации)
-- Техдолг: удалить `TasksScreen.js.save`, добавить `danger2` в темы
+- **Стек:** React Native + Expo SDK (Bare Workflow)
+- **Ветка:** `mobile-dev3.0`
+- **Токен:** SecureStore (не AsyncStorage!)
+- **Цвета:** `const { colors } = useTheme()` — никогда хардкод
+- **API:** `services/api.js`, базовый URL `https://mindandmotion.ru/api`
+
+## ⚠️ Важно для этой ветки
+
+В рабочей директории есть удалённые файлы (`var/www/backend/*`, `DEVLOG_v2.md` и др.)
+это артефакты старой структуры — **не восстанавливать**, не коммитить их.
