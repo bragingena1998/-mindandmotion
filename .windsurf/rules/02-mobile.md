@@ -2,96 +2,108 @@
 
 > Контекст для задач в ветке `mobile-dev3.0`.
 > Читать вместе с `00-project.md` и `AGENTS.md`.
+> Последнее обновление: 27.04.2026
 
 ---
 
 ## Стек
 
-- React Native + Expo SDK (bare workflow)
-- Навигация: React Navigation (AuthStack / AppStack)
-- Хранение токена: `SecureStore` через `src/services/storage.js`
-- API: axios-инстанс в `src/services/api.js` (baseURL → Beget VPS)
-- Темы: `ThemeContext` в `src/contexts/ThemeContext.js`
-- Ветка: `mobile-dev3.0`
+- **Framework:** React Native + Expo (bare workflow)
+- **Навигация:** React Navigation
+- **Хранилище:** Expo SecureStore через `src/services/storage.js`
+- **API:** fetch через `src/services/api.js`
+- **Темизация:** ThemeContext → `src/contexts/ThemeContext.js`
+- **Ветка:** `mobile-dev3.0`
+- **Статус:** в продакшне на Android
 
 ---
 
-## Законы (нельзя нарушать)
+## Структура src/
 
-1. **НЕЛЬЗЯ хардкодить цвета** — только `colors.X` из `useTheme()`
-   - Исключение: `'#FFFFFF'` и `'#020617'` на акцентных/danger градиентах
-2. **НЕЛЬЗЯ `ScrollView` для больших списков** — только `FlatList` с `getItemLayout`
-3. **НЕЛЬЗЯ оборачивать модалки в `TouchableOpacity`** — только `Pressable`
-4. **НЕЛЬЗЯ `initialScrollIndex` без `getItemLayout`** — зависание
-5. **НЕЛЬЗЯ мутировать state напрямую** — только `setState(prev => ...)`
-6. **НЕЛЬЗЯ API-запрос без оптимистичного обновления** (кроме создания)
-7. **НЕЛЬЗЯ `Alert.alert` для инфо** — только `showToast()`. Alert только для деструктивных подтверждений
-8. **НЕЛЬЗЯ нативный RN `Modal`** — только кастомный `Modal.js`
-9. **НЕЛЬЗЯ забывать `useNativeDriver: true`** в анимациях без layout-изменений
-10. **НЕЛЬЗЯ общий `Animated.Value` в state** для hover-списков — отдельный компонент
-11. **НЕЛЬЗЯ `overflow: hidden` на контейнере модалки** — только на scroll-wrapper внутри
-
----
-
-## Компоненты `src/components/`
-
-| Компонент | Назначение |
-|-----------|------------|
-| `Background.js` | Обёртка-фон для всех экранов (обязательна) |
-| `Button.js` | Пропы: `variant` (primary/secondary/outline/danger), `noBorder`, `loading` |
-| `Input.js` | Проп `containerStyle` для переопределения внешнего контейнера |
-| `Modal.js` | Кастомный. Pressable-backdrop, ScrollView внутри. Без `overflow:hidden` на контейнере |
-| `AlertModal.js` | Подтверждение (да/нет) — для всех деструктивных действий |
-| `HabitTable.js` | Таблица-сетка привычек. Пропы: `onHabitDelete`, `onHabitEdit` |
-| `FocusSessionModal.js` | Таймер концентрации. Экспортирует `hasFocusSession`, `getFocusSession` |
-| `TimePicker.js` | Барабан HH:MM. FlatList + getItemLayout |
-| `TabBar.js` | Кастомный bottom tab bar |
+```
+src/
+├── screens/             — экраны приложения
+│   ├── HabitsScreen.js  — привычки (источник правды для web)
+│   ├── TasksScreen.js   — задачи (источник правды для web)
+│   ├── CalendarScreen.js
+│   ├── ProfileScreen.js
+│   └── LoginScreen.js
+├── components/          — переиспользуемые компоненты
+│   ├── HabitTable.js    — таблица-сетка привычек
+│   ├── TaskCard.js      — карточка задачи
+│   └── ...
+├── services/
+│   ├── api.js           — все API-запросы
+│   └── storage.js       — SecureStore обёртка
+├── contexts/
+│   └── ThemeContext.js  — тёмная/светлая тема
+└── theme/               — палитры цветов
+```
 
 ---
 
-## Дизайн-система
+## Авторизация — паттерн
 
 ```js
-// Получение цветов (обязательный паттерн)
+// storage.js
+import * as SecureStore from 'expo-secure-store';
+export const getToken = () => SecureStore.getItemAsync('mm_token');
+export const setToken = (t) => SecureStore.setItemAsync('mm_token', t);
+export const removeToken = () => SecureStore.deleteItemAsync('mm_token');
+
+// api.js — использование
+const token = await getToken();
+const res = await fetch(`https://mindandmotion.ru/api${url}`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+---
+
+## Темизация
+
+```js
+// Использование темы в компоненте
 const { colors } = useTheme();
 
-// Основные переменные
-colors.background      // фон экрана
-colors.surface         // фон карточек/модалок
-colors.accent1         // основной акцент (золотистый)
-colors.accentText      // текст на акцентном фоне
-colors.textMain        // основной текст
-colors.textMuted       // второстепенный текст
-colors.borderSubtle    // тонкая граница
-colors.danger1         // красный
-colors.ok1             // зелёный
-```
-
-**Темы:** default / storm / ice / blood / toxic / glitch
-
----
-
-## Паттерн: оптимистичный UI
-
-```js
-const oldTasks = [...tasks];
-setTasks(prev => prev.map(t => t.id === id ? {...t, done: 1} : t));
-try {
-  await tasksAPI.updateTask(id, { done: 1 });
-} catch {
-  setTasks(oldTasks);
-  showToast('❌ Ошибка. Изменения отменены.');
-}
+// Ключевые цвета из theme/
+colors.background    // фон
+colors.surface       // карточки
+colors.accent1       // золотой акцент (#f59e0b)
+colors.text          // основной текст
+colors.textSecondary // второстепенный
+colors.danger        // удаление
 ```
 
 ---
 
-## Деплой (Android)
+## Правила работы с mobile
 
-```bash
-# Тест на девайсе
-npx expo start --dev-client
+1. **Не ломать продакшн** — mobile в продакшне на Android, любое изменение должно быть безопасным
+2. **Expo managed → bare**: не добавлять нативные модули без необходимости
+3. **SecureStore** для токена — не AsyncStorage
+4. **Стили** — StyleSheet.create(), не инлайн-объекты
+5. **Тема** — только через useTheme(), не хардкодить цвета
+6. **Навигация** — не нарушать стек навигатора
 
-# Сборка APK (preview)
-eas build --profile preview --platform android
-```
+---
+
+## Mobile как источник правды для Web
+
+Эта ветка — **референс для переноса фич на web**.
+
+Перед реализацией фичи на web:
+1. Найди соответствующий экран в `src/screens/`
+2. Найди компоненты в `src/components/`
+3. Прочитай логику API-вызовов в `src/services/api.js`
+4. Перенеси логику, адаптируй UI под web (RN-стили → CSS, TouchableOpacity → button/div)
+
+**Маппинг экранов mobile → страниц web:**
+
+| Mobile Screen | Web Page | Статус |
+|--------------|----------|--------|
+| HabitsScreen.js | pages/Habits.tsx | 🔄 частично |
+| TasksScreen.js | pages/Tasks.tsx | 🔄 частично |
+| CalendarScreen.js | pages/Calendar.tsx | ❌ не создана |
+| ProfileScreen.js | pages/Profile.tsx | ❌ не создана |
+| LoginScreen.js | pages/Login.tsx | ✅ готово |

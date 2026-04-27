@@ -2,30 +2,51 @@
 
 > Контекст для задач в ветке `web-review`.
 > Читать вместе с `00-project.md` и `AGENTS.md`.
+> Последнее обновление: 27.04.2026
 
 ---
 
 ## Стек
 
-- **Framework:** React 18 + Vite
+- **Framework:** React 18 + TypeScript + Vite
 - **Роутинг:** React Router v6
-- **Стили:** CSS-модули или Tailwind (уточнить у владельца)
+- **Стили:** CSS-файлы в `src/styles/` + инлайн-стили в компонентах (без Tailwind)
 - **API:** fetch с базовым URL `https://mindandmotion.ru/api`
 - **Auth:** JWT в `localStorage` ключ `mm_token`
 - **Ветка:** `web-review`
+- **Точка входа:** `src/main.tsx` → `src/App.tsx`
 
-> ⚠️ Перед первой задачей — прочитай корневую структуру ветки `web-review` через `get_file_contents`.
+---
+
+## Структура src/
+
+```
+src/
+├── App.tsx          — роутер, защищённые роуты
+├── main.tsx         — ReactDOM.render
+├── api/             — fetch-обёртки по разделам (tasksApi, habitsApi и т.д.)
+├── components/      — переиспользуемые UI-компоненты
+├── context/         — AuthContext и другие контексты
+├── pages/
+│   ├── Habits.tsx   — страница привычек (~17 KB)
+│   ├── Tasks.tsx    — страница задач (~20 KB)
+│   └── Login.tsx    — страница входа
+├── styles/          — глобальные CSS переменные, reset, общие стили
+└── utils/           — вспомогательные функции
+```
+
+> ⚠️ Перед созданием нового компонента — прочитай `src/components/` чтобы не дублировать существующий.
 
 ---
 
 ## Авторизация — паттерн
 
-```js
+```ts
 // Получить токен
 const token = localStorage.getItem('mm_token');
 
 // API-запрос
-async function apiRequest(method, url, body = null) {
+async function apiRequest(method: string, url: string, body?: object) {
   const token = localStorage.getItem('mm_token');
   const res = await fetch(`https://mindandmotion.ru/api${url}`, {
     method,
@@ -48,14 +69,14 @@ async function apiRequest(method, url, body = null) {
 
 ## Оптимистичный UI (обязателен для toggle/update)
 
-```js
+```ts
 // 1. Сохранить старое состояние
 const prev = [...tasks];
 // 2. Обновить UI сразу
 setTasks(tasks.map(t => t.id === id ? {...t, done: 1} : t));
 // 3. Запрос к API
 try {
-  await apiRequest('PUT', `/api/tasks/${id}`, { done: 1 });
+  await apiRequest('PUT', `/tasks/${id}`, { done: 1 });
 } catch {
   // 4. Откат при ошибке
   setTasks(prev);
@@ -65,7 +86,30 @@ try {
 
 ---
 
-## PWA — требования
+## CSS-переменные (дизайн-система)
+
+```css
+:root {
+  --color-bg:           #020617;   /* фон страницы */
+  --color-surface:      #0f172a;   /* фон карточек */
+  --color-surface-2:    #1e293b;   /* фон вложенных элементов */
+  --color-accent:       #f59e0b;   /* золотой акцент */
+  --color-accent-text:  #020617;   /* текст на акценте */
+  --color-text:         #e2e8f0;   /* основной текст */
+  --color-text-muted:   #94a3b8;   /* второстепенный */
+  --color-border:       rgba(148,163,184,0.15); /* граница */
+  --color-danger:       #ef4444;   /* удаление, ошибки */
+  --color-success:      #22c55e;   /* выполнено, ок */
+  --radius-card:        12px;
+  --radius-btn:         8px;
+}
+```
+
+> ❌ Никогда не хардкодить цвета напрямую — только через переменные.
+
+---
+
+## PWA — требования (статус: ❌ не реализовано — приоритетная задача)
 
 - `manifest.json` с именем, иконками, `display: standalone`
 - `theme_color` = `#020617` (тёмная тема)
@@ -82,9 +126,8 @@ try {
 ```css
 /* Минимум на каждой странице */
 @media (max-width: 768px) {
-  /* Нет горизонтального скролла */
   body { overflow-x: hidden; }
-  /* Минимальный шрифт — iOS не зумит на input */
+  /* Минимальный font-size 16px — iOS не зумит на input */
   input, button, select, textarea { font-size: 16px; }
   /* Safe area для iPhone */
   .app-container {
@@ -94,45 +137,18 @@ try {
 ```
 
 **Breakpoints:**
-- Mobile: `< 768px` → карточки в колонку, bottom nav
-- Tablet: `768px – 1024px` → 2 колонки
-- Desktop: `> 1024px` → sidebar + основной контент
-
----
-
-## CSS-переменные (дизайн-система)
-
-```css
-:root {
-  --color-bg:       #020617;   /* фон страницы */
-  --color-surface:  #0f172a;   /* фон карточек */
-  --color-accent:   #f59e0b;   /* золотой акцент */
-  --color-accent-text: #020617; /* текст на акценте */
-  --color-text:     #e2e8f0;   /* основной текст */
-  --color-text-muted: #94a3b8; /* второстепенный */
-  --color-border:   rgba(148,163,184,0.15); /* граница */
-  --color-danger:   #ef4444;   /* удаление, ошибки */
-  --color-success:  #22c55e;   /* выполнено, ок */
-  --radius-card:    12px;
-  --radius-btn:     8px;
-}
-```
-
-> Никогда не хардкодить цвета напрямую — только через переменные.
-
----
-
-## Компоненты — что уже есть (уточнить у владельца)
-
-> ⚠️ Прочитай структуру `apps/web/src/components/` перед созданием нового компонента.
-> Возможно, нужный компонент уже существует.
+- Mobile `< 768px` → карточки в колонку, bottom nav
+- Tablet `768px – 1024px` → 2 колонки
+- Desktop `> 1024px` → sidebar + основной контент
 
 ---
 
 ## Законы (web-специфичные)
 
-1. **`<meta name="viewport">`** — обязателен на каждой HTML-странице
+1. **`<meta name="viewport">`** — обязателен в `index.html`
 2. **Минимальный font-size 16px** на мобайле для всех полей ввода
-3. **Токен только в `localStorage`** ключ `mm_token` (не sessionStorage, не cookie)
+3. **Токен только в `localStorage`** ключ `mm_token`
 4. **Пуш только в `web-review`** — не в `web-dev`, не в `main`
 5. **Responsive** — всё должно работать на iPhone SE (375px)
+6. **TypeScript** — типизировать пропсы и ответы API, не использовать `any`
+7. **Новые компоненты** — создавать в `src/components/`, страницы в `src/pages/`

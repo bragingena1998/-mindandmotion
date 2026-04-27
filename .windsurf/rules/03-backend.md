@@ -2,18 +2,19 @@
 
 > Контекст для задач в ветке `backend`.
 > Читать вместе с `00-project.md` и `AGENTS.md`.
+> Последнее обновление: 27.04.2026
 
 ---
 
 ## Стек
 
-- Node.js + Express
-- MySQL (connection pool через `mysql2`)
-- JWT авторизация (middleware в `/middleware/`)
-- VPS Beget: `root@85.198.96.149`
-- Путь: `/var/www/backend/`
-- Process manager: PM2
-- Ветка: `backend`
+- **Runtime:** Node.js
+- **Framework:** Express
+- **БД:** MySQL (mysql2)
+- **Auth:** JWT (jsonwebtoken)
+- **Хостинг:** VPS Beget, `/var/www/backend/`
+- **Base URL:** `https://mindandmotion.ru/api`
+- **Ветка:** `backend`
 
 ---
 
@@ -21,63 +22,53 @@
 
 ```
 /var/www/backend/
-├── server.js                # Точка входа, подключение роутов
-├── db.js                    # MySQL connection pool
 ├── routes/
-│   ├── auth.js              # Регистрация, логин, forgot-password
-│   ├── tasks.js             # CRUD задач, цикличность, фокус-сессии, статистика
-│   ├── subtasks.js          # CRUD подзадач
-│   ├── subtaskActions.js    # Toggle подзадач
-│   ├── folders.js           # CRUD папок + reorder
-│   ├── habits.js            # CRUD привычек + records + reorder
-│   ├── birthdays.js         # CRUD дней рождений/событий
-│   ├── users.js             # Профиль пользователя
-│   └── secretChat.js        # Личная фича (скрытый чат)
-├── middleware/              # Auth middleware (JWT verify)
-└── utils/                  # Вспомогательные функции
+│   ├── auth.js
+│   ├── tasks.js
+│   ├── habits.js
+│   ├── folders.js
+│   ├── birthdays.js
+│   └── profile.js
+├── middleware/
+│   ├── auth.js      — проверка JWT
+│   └── validate.js  — валидация входных данных
+├── db/
+│   └── index.js     — pool MySQL
+└── server.js        — точка входа
 ```
 
 ---
 
-## Законы
+## Правила работы с backend
 
-1. **Миграции только вручную через phpMyAdmin** + обязательная запись что изменено
-2. **Все роуты защищены JWT middleware** (кроме `/auth/*`)
-3. **MySQL поля snake_case, JS camelCase** — маппинг в роутах
-4. **Никогда не хранить секреты в коде** — только в переменных окружения
-
----
-
-## Деплой
-
-```bash
-ssh root@85.198.96.149
-cd /var/www/backend
-git pull origin backend
-pm2 restart server
-pm2 logs server --lines 50
-```
+1. **Не нарушать контракт API** — клиенты (web + mobile) зависят от структуры ответов
+2. **Миграции БД** — любое изменение схемы документировать в `.agent/wiki/domain.md`
+3. **JWT middleware** — применять на всех защищённых роутах
+4. **snake_case** — MySQL отдаёт snake_case, не переименовывать поля без синхронизации с клиентами
+5. **Ошибки** — возвращать правильные HTTP-коды (401, 422, 500)
+6. **Не деплоить** автоматически — деплой только вручную через SSH владельцем
 
 ---
 
-## Схема БД (MySQL)
+## Добавление нового эндпоинта — чеклист
 
-```sql
-users (id, email, password_hash, name, created_at)
+- [ ] Создать/обновить route в `routes/`
+- [ ] Добавить JWT middleware
+- [ ] Добавить валидацию входных данных
+- [ ] Обновить `AGENTS.md` раздел «Все эндпоинты»
+- [ ] Обновить `.agent/wiki/domain.md` если изменилась схема
+- [ ] Сообщить владельцу о необходимости деплоя
 
-tasks (id, user_id, title, date, deadline, time, priority, done, done_date,
-       comment, isrecurring, recurrencetype, recurrencevalue, isgenerated,
-       templateid, folderid, focussessions, subtasks_count)
+---
 
-subtasks (id, task_id, title, completed, created_at)
+## snake_case ↔ camelCase
 
-folders (id, user_id, name, emoji, order_index, created_at)
+MySQL отдаёт snake_case. Клиенты (web + mobile) используют camelCase с защитными цепочками:
 
-habits (id, user_id, name, unit, plan, target_type, start_date, end_date,
-        days_of_week JSON, order_index, created_at)
-
-habit_records (id, habit_id, user_id, year, month, day, value FLOAT,
-               UNIQUE KEY (habit_id, year, month, day))
-
-birthdays (id, user_id, name, day, month, year, type, notify_before)
+```js
+task.folderId    ?? task.folder_id    ?? null
+task.isRecurring ?? task.isrecurring  ?? 0
+task.doneDate    ?? task.done_date    ?? null
 ```
+
+**Не менять имена полей в БД** — это сломает оба клиента.
