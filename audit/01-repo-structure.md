@@ -8,20 +8,20 @@
 ## 1. Общая структура репозитория
 
 ```
-E:\Mobile app = web + web ios\
+E:\ProjectMM\
 ├── .gitignore                 # Корневой gitignore
 ├── package-lock.json          # Корневой lock-файл (пустой, 105 bytes)
-├── apps/                      # Приложения (монорепо)
-│   └── web/                   # Основной веб-клиент (Vite + React)
+├── web/                       # Основной веб-клиент (Vite + React)
+├── mobile/                    # React Native мобильное приложение (Expo)
 ├── backend/                   # Node.js/Express API сервер
 ├── docs/                      # Документация проекта (GitBook/сайт)
 ├── habits-app/                # Легаси веб-приложение (HTML/CSS/JS)
-└── mindandmotion-mobile/      # React Native мобильное приложение (Expo)
+└── tg-bot/                    # Telegram-бот (уведомления)
 ```
 
 ---
 
-## 2. Анализ apps/web (Веб-клиент)
+## 2. Анализ web/ (Веб-клиент)
 
 ### 2.1. Стек и зависимости
 
@@ -70,7 +70,7 @@ src/
 │   ├── GlobalTimerBanner.tsx   # Глобальный таймер-баннер
 │   ├── HabitModal.tsx          # Модалка создания/редактирования привычки
 │   ├── HabitTable.tsx          # Таблица привычек (основной UI)
-│   ├── HabitTimerBanner.tsx    # (устарел?)
+│   ├── HabitTimerBanner.tsx    # Баннер таймера для привычек (6KB, полнофункциональный)
 │   ├── HabitTrendChart.tsx     # График трендов привычек
 │   ├── HoursEditModal.tsx
 │   ├── Layout.tsx              # Основной лейаут с навигацией
@@ -105,7 +105,7 @@ src/
 
 **Запуск development:**
 ```bash
-cd E:\Mobile app = web + web ios\apps\web
+cd E:\ProjectMM\web
 npm install
 npm run dev  # http://localhost:3001
 ```
@@ -221,7 +221,7 @@ backend/
 
 ---
 
-## 4. Анализ mindandmotion-mobile/
+## 4. Анализ mobile/
 
 ### 4.1. Стек и зависимости
 
@@ -247,7 +247,7 @@ npm run web    # expo start --web
 ### 4.2. Структура src/
 
 ```
-mindandmotion-mobile/src/
+mobile/src/
 ├── components/        # React Native компоненты (26 шт)
 ├── contexts/          # Context (2 шт)
 │   ├── AuthContext.js
@@ -309,7 +309,12 @@ habits-app/
 └── web/                 # (2 элемента)
 ```
 
-**Статус:** Легаси, не используется в production (заменён на apps/web).
+**Статус:** Легаси, не используется в production (заменён на web/).
+
+⚠️ **Примечание по файлам habits-app/:**
+- `tasks.css` — фактический размер: 46KB (не 27KB)
+- `index.html` — фактический размер: ~91KB (93542 байт)
+- Папка `web/` внутри `habits-app/` — возможно удалена
 
 ---
 
@@ -317,29 +322,45 @@ habits-app/
 
 **Структура:**
 ```
-docs/
+docs/ (ветка: docs, локально: E:\ProjectMM\docs)
 ├── AGENTS.md            # Общая документация проекта
-├── README.md            # Описание проекта
-├── docs/                # Вложенная документация
-│   ├── ARCHITECTURE.md  # Архитектура web
-│   ├── DOMAIN.md        # Доменная модель
-│   ├── STATUS.md        # Статус проекта
-│   ├── WEB_TRANSFER_GUIDE.md
-│   ├── Анализ.md
-│   ├── Аудит привычек.md
-│   ├── Миграция по приоритетам.md
-│   └── Миграция.md
+├── REPO_MAP.md          # Карта репозитория
+├── README.md            # Описание структуры docs/
+├── STATUS.md            # Статус проекта
+├── ARCHITECTURE.md      # Архитектура web
+├── DOMAIN.md            # Доменная модель
+├── HABITS_AUDIT.md      # ← (файл называется так, не "Аудит привычек.md")
+├── ANALYSIS.md
+├── MIGRATION.md
+├── MIGRATION_PRIORITIES.md
+├── WEB_TRANSFER_GUIDE.md
+├── .windsurf/           # ← внутри docs/, не в корне репозитория
+│   ├── rules/
+│   │   ├── 00-project.md
+│   │   ├── 01-web.md
+│   │   ├── 02-mobile.md
+│   │   └── 03-backend.md
+│   └── workflows/       # ← Windsurf automation workflows
+├── .agent/              # ← внутри docs/, не в корне репозитория
+│   ├── wiki/
+│   │   ├── domain.md
+│   │   ⚠️ mobile-screens.md ← НЕ СУЩЕСТВУЕТ (запланирован)
+│   │   ⚠️ api.md ← НЕ СУЩЕСТВУЕТ (запланирован)
+│   └── spec/
+│       ├── feature-parity.md
+│       └── tasks.md
 ├── prompts/             # AI промпты
-└── src/, dist/          # Сборка доксайта
+├── runbooks/            # Инструкции по деплою
+├── audit/               # Технические аудиты
+├── handoffs/            # Шаблоны отчётов
+└── workflow/            # Workflow документация
 ```
-
-**Примечание:** Файлы ARCHITECTURE.md, DOMAIN.md, STATUS.md недавно перемещены из корня docs/ в docs/docs/.
 
 ---
 
 ## 7. Сводка по реализованным фичам
 
-### 7.1. Web (apps/web) — Готово ✅
+### 7.1. Web (web/) — Готово ✅
 
 - [x] Авторизация (login, logout, localStorage)
 - [x] Задачи: CRUD, приоритеты, дедлайны, папки
@@ -438,13 +459,13 @@ docs/
 
 ## 9. Рекомендации
 
-1. **Удалить habits-app/** — полностью заменён apps/web
-2. **Добавить tsconfig.json** в apps/web для явной конфигурации TypeScript
+1. **Удалить habits-app/** — полностью заменён web/
+2. **Добавить tsconfig.json** в web/ для явной конфигурации TypeScript
 3. **Унифицировать базовый URL** — вынести в переменные окружения для mobile
 4. **Реализовать refresh tokens** — повысить безопасность
 5. **Добавить тесты** — минимум unit-тесты для адаптеров (snake_case ↔ camelCase)
 6. **Документировать API** — Swagger/OpenAPI для backend
-7. **Импортировать экраны** из mobile в web для Dashboard, Calendar, Profile
+7. **Импортировать экраны** из mobile в web/ для Dashboard, Calendar, Profile
 
 ---
 

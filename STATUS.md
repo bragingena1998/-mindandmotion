@@ -8,8 +8,8 @@
 
 | Платформа | Ветка | Статус | Примечание |
 |-----------|-------|--------|------------|
-| Mobile (React Native) | `mobile-dev3.0` | 🟢 В продакшне | Основной продукт, ~13 экранов |
-| Web (React + Vite) | `web-review` | 🟡 Активная разработка | 2/6 страниц готово |
+| Mobile (React Native) | `mobile` | 🟢 В продакшне | Основной продукт, ~13 экранов |
+| Web (React + Vite) | `web` | 🟡 Активная разработка | 2/6 страниц готово |
 | Backend (Node.js) | `backend` | 🟢 В продакшне | mindandmotion.ru/api |
 | Monorepo Shared | — | ❌ Не начато | Phase 1 планируется |
 
@@ -26,7 +26,7 @@
 | `/profile` | `App.tsx:16` | ❌ Заглушка | Profile (coming soon) |
 | `/secret-chat` | `App.tsx:17` | ❌ Заглушка | Secret Chat (coming soon) |
 | `/login` | `pages/Login.tsx` | ✅ Готово | Авторизация |
-| `/register` | `App.tsx:20` | ❌ Заглушка | Register (coming soon) |
+| `/register` | `App.tsx:20` | ❌ Заглушка | Register (coming soon) ⚠️ файл не существует — заглушка в App.tsx |
 
 ---
 
@@ -64,7 +64,7 @@
 
 ## Что сделано ✅
 
-### Веб-клиент (web-review)
+### Веб-клиент (web)
 - ✅ Авторизация (Login)
 - ✅ Полная страница Задач (Tasks) — создание, редактирование, удаление, подзадачи, рекуррентность
 - ✅ Полная страница Привычек (Habits) — таблица, CRUD, дни недели, архивация
@@ -138,9 +138,9 @@
 
 ## Репозитории
 
-- **Web:** https://github.com/bragingena1998/-mindandmotion/tree/web-review
+- **Web:** https://github.com/bragingena1998/-mindandmotion/tree/web
 - **Backend:** https://github.com/bragingena1998/-mindandmotion/tree/backend
-- **Mobile:** https://github.com/bragingena1998/-mindandmotion/tree/mobile-dev3.0
+- **Mobile:** https://github.com/bragingena1998/-mindandmotion/tree/mobile
 
 ---
 

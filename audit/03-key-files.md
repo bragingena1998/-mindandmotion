@@ -5,7 +5,7 @@
 
 ---
 
-## 1. apps/web/src/pages/Dashboard.tsx
+## 1. web/src/pages/Dashboard.tsx ⚠️ файл не существует — inline-заглушка в App.tsx
 
 ### Статус файла
 ❌ **Файл не существует**. Dashboard в web-приложении — это **заглушка** в `App.tsx`.
@@ -34,7 +34,7 @@ const Dashboard = () => <div className="page-placeholder"><h1>Dashboard (coming 
 
 ---
 
-## 2. mindandmotion-mobile/src/screens/DashboardScreen.js
+## 2. mobile/src/screens/DashboardScreen.js
 
 ### Общая информация
 - **Размер:** 1006 строк, ~42KB
@@ -207,7 +207,7 @@ const { tick, bumpAll } = useDataSync();
 
 ---
 
-## 3. apps/web/src/pages/Login.tsx
+## 3. web/src/pages/Login.tsx
 
 ### Полный код запроса
 
@@ -291,7 +291,7 @@ Login.tsx использует **`fetch`** вместо **`axios`** (apiClient):
 
 ---
 
-## 4. apps/web/src/context/AuthContext.tsx
+## 4. web/src/context/AuthContext.tsx
 
 ### Полная структура
 
@@ -390,7 +390,7 @@ export function useAuth() {
 
 ---
 
-## 5. apps/web/src/api/client.ts
+## 5. web/src/api/client.ts
 
 ### Базовый URL
 ```typescript
