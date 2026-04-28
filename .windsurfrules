@@ -1,49 +1,131 @@
-# Mind & Motion — Windsurf Rules
-# Этот файл читается Windsurf АВТОМАТИЧЕСКИ при каждом открытии проекта.
-# НЕ удалять, НЕ игнорировать.
-
-## ПЕРВЫЙ ШАГ ЛЮБОЙ СЕССИИ
-Перед началом работы прочитай:
-1. `AGENTS.md` — структура проекта, стек, все эндпоинты, законы
-2. `docs/STATUS.md` — текущее состояние задач
-3. `docs/handoffs/` — последний handoff-файл (самый свежий по дате)
-
-Если задача касается конкретной фичи — прочитай соответствующий `docs/specs/*.md`.
+# Mind & Motion — Web (web-review)
+# Читай AGENTS.md (ветка docs) ПЕРВЫМ перед любой задачей.
 
 ---
 
-## ПРОТОКОЛ РАБОТЫ (обязательный)
+## ЛОКАЛЬНЫЙ ПУТЬ ПРОЕКТА
 
-1. Прочитать код который будешь менять
-2. Предложить план (файлы, шаги, риски)
-3. ЖДАТЬ подтверждения владельца
-4. Выполнять по шагам
-5. Обновить документацию (AGENTS.md / STATUS.md / handoff)
-6. Commit через `scripts/git-push-safe.ps1`
+Этот репозиторий локально находится по пути:
+  E:\Mobile app = web + web ios\apps\web
 
-## ТЕРМИНАЛ
-- PowerShell, НЕ bash
-- НЕ использовать `&&` — только `;` или отдельные строки
-- Пути всегда в кавычках: `"E:\Mobile app = web + web ios\..."`
-- Диск всегда заглавная: `E:\`, не `e:\`
+Диск E: — ВСЕГДА с заглавной буквы.
+Путь содержит пробелы и символ = — ВСЕГДА оборачивать в кавычки.
 
-## ОПАСНЫЕ КОМАНДЫ — через approve-скрипты
-- git push → `scripts/git-push-safe.ps1 "описание"`
-- npm install → `scripts/safe-install.ps1 install <пакет>`
-- удаление → `scripts/safe-delete.ps1 "путь"`
-- деплой VPS → `scripts/safe-deploy.ps1 -Target backend`
-- SQL-миграция → `scripts/safe-migrate.ps1 -File migration.sql`
-- любое другое → `scripts/approve.ps1 -Message "что" -Command "cmd"`
+---
 
-## ВЕТКИ
-- web → `web-review`
-- backend → `backend`
-- mobile → `mobile-dev3.0`
-- docs → `docs`
-- НЕ переключать ветки без команды владельца
+## ТЕРМИНАЛ — ТОЛЬКО PowerShell, НЕ bash
 
-## ДОКУМЕНТАЦИЯ ПОСЛЕ КАЖДОЙ ЗАДАЧИ
-- Обновить `docs/STATUS.md`
-- Создать `docs/handoffs/YYYY-MM-DD_описание.md`
-- Если новый эндпоинт → обновить `AGENTS.md`
-- Если новая env-переменная → добавить в `.env.example`
+# ЗАПРЕЩЕНО (bash-синтаксис — не работает в PowerShell):
+#   cd "E:\путь" && git status
+#   e:\путь
+
+# ПРАВИЛЬНО — каждая команда отдельной строкой:
+#   Set-Location "E:\Mobile app = web + web ios\apps\web"
+#   git status
+#
+# Или через точку с запятой (не &&):
+#   Set-Location "E:\Mobile app = web + web ios\apps\web"; git status
+
+---
+
+## СТЕК
+
+- React 18 + TypeScript + Vite
+- React Router v6
+- Dev: npm run dev → порт 3001
+- Build: npm run build → папка dist/
+- API base: import.meta.env.VITE_API_URL → https://mindandmotion.ru/api
+- Auth token: localStorage ключ 'mm_token'
+- Активная ветка: web-review
+
+---
+
+## СТРУКТУРА ПРОЕКТА (E:\Mobile app = web + web ios\)
+
+  apps\web              ← ЭТОТ проект (ветка web-review)
+  backend               ← Node.js backend (ветка backend) — НЕ ТРОГАТЬ
+  mindandmotion-mobile  ← React Native (ветка mobile-dev3.0) — НЕ ТРОГАТЬ
+  habits-app            ← Архив (ветка web-dev) — НЕ ТРОГАТЬ
+  docs                  ← Документация (ветка docs) — только читать
+
+---
+
+## ДОКУМЕНТАЦИЯ (ветка docs)
+
+Всегда читать перед задачей:
+  AGENTS.md                        — главный контракт, API, законы, протокол документации
+  docs/ARCHITECTURE.md             — архитектура, компоненты, роутинг
+  docs/DOMAIN.md                   — домен: habits, tasks, streaks, типы данных
+  docs/STATUS.md                   — статус переноса фич из mobile → web
+  docs/REPO_MAP.md                 — навигационная карта всех модулей
+  docs/runbooks/deploy-backend.md  — как деплоить бэкенд
+  docs/runbooks/build-android.md   — как собрать Android релиз
+  docs/runbooks/rollback.md        — как откатить
+  docs/runbooks/telegram-bridge.md — как работает Telegram-апрув
+  docs/handoffs/TEMPLATE.md        — шаблон handoff-файла
+
+---
+
+## ЗАКОНЫ (нарушение = поломка проекта)
+
+1. Читать AGENTS.md до начала любой задачи
+2. Пуш ТОЛЬКО в web-review, никогда в другие ветки
+3. Перед редактированием файла — прочитать его текущее содержимое
+4. Не затирать существующие функции — только добавлять/изменять нужное
+5. Не использовать `any` в TypeScript
+6. Не хардкодить URL — только import.meta.env.VITE_API_URL
+7. Не менять .env без явной команды владельца
+8. Пуш через scripts/git-push-safe.ps1 (не git push напрямую!) — Требует Telegram-апрув
+9. Новая env-переменная — добавить в .env.example
+10. Агент НЕ считается выполнившим задачу, пока документация не актуализирована
+
+---
+
+## ОБЯЗАТЕЛЬНЫЙ ПРОТОКОЛ ДОКУМЕНТАЦИИ
+
+> Агент НЕ считается выполнившим задачу, пока docs не обновлены.
+
+| Что изменилось | Обязательно обновить | Формат |
+|---|---|---|
+| Любая завершённая задача | `docs/STATUS.md` | `✅ YYYY-MM-DD Название — кратко что сделано` |
+| Завершённая сессия | `docs/handoffs/YYYY-MM-DD_описание.md` | копия `handoffs/TEMPLATE.md` |
+| Новый феатур / фича | сначала `docs/specs/FEATURE_NAME.md` | цель + criteria + риски |
+| Новая env-переменная | `.env.example` | строка с комментарием |
+| Новый API-эндпоинт | `AGENTS.md` → раздел "Все эндпоинты" | строка в блоке кода |
+
+### Правило для новой фичи:
+1. Создать `docs/specs/FEATURE_NAME.md` с описанием цели, acceptance criteria, edge cases
+2. Получить подтверждение владельца
+3. Только после этого приступать к коду
+
+---
+
+## ПАТТЕРН ВЫПОЛНЕНИЯ ЗАДАЧИ
+
+1. Прочитать AGENTS.md + релевантный docs-файл
+2. Предложить пошаговый план (какие файлы меняем)
+3. Ждать подтверждения
+4. Выполнять по шагам с кратким описанием каждого
+5. Обновить документацию согласно протоколу выше
+
+---
+
+## ШАБЛОНЫ ПРОМПТОВ
+
+### Новая фича
+Цель: [что нужно]
+Домен: [habits / tasks / auth / ...]
+Референс из mobile: [экран или компонент в mindandmotion-mobile]
+Ограничения: не менять [X], сохранить поведение [Y]
+Задача: создать spec → план → подтверждение → реализация → docs
+
+### Багфикс
+Ожидаемое поведение: [...]
+Текущее поведение: [...]
+Где: [страница / компонент]
+Задача: найти причину → варианты → фикс после выбора → обновить STATUS.md
+
+### Перенос фичи из mobile в web
+Фича: [название]
+Где в mobile: [путь к файлу в mindandmotion-mobile]
+Задача: прочитать mobile-реализацию → спроектировать web-аналог → план → подтверждение → реализация
