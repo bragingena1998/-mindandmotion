@@ -1,0 +1,304 @@
+/* Dashboard Page Styles */
+
+.dashboard-page {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Header */
+.dashboard-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-surface);
+}
+
+.greeting {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 0.5rem 0;
+}
+
+.current-date {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Grid Layout */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+/* Widget Base */
+.dashboard-widget {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-widget:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.widget-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.widget-header h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+  flex: 1;
+}
+
+.widget-header svg {
+  color: var(--color-accent);
+}
+
+.task-count,
+.habit-count {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+}
+
+/* Widget Content */
+.widget-content {
+  min-height: 200px;
+}
+
+.empty-state {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 2rem 1rem;
+  font-style: italic;
+}
+
+/* Tasks Widget */
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dashboard-task-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dashboard-task-item:last-child {
+  border-bottom: none;
+}
+
+.task-checkbox {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.task-checkbox:hover {
+  color: var(--color-accent);
+}
+
+.task-title {
+  color: var(--color-text);
+  font-size: 0.875rem;
+  flex: 1;
+}
+
+.more-tasks {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  text-align: center;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+/* Habits Widget */
+.habit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dashboard-habit-item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dashboard-habit-item:last-child {
+  border-bottom: none;
+}
+
+.habit-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.habit-title {
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.habit-progress-text {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.habit-progress-bar {
+  height: 6px;
+  background: var(--color-bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.habit-progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Statistics Widget */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 1rem;
+  background: var(--color-bg);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Loading Skeleton */
+.dashboard-skeleton {
+  padding: 1.5rem;
+}
+
+.skeleton-header {
+  height: 60px;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  margin-bottom: 2rem;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-widget {
+  height: 280px;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-widget {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-page {
+    padding: 1rem;
+  }
+
+  .greeting {
+    font-size: 1.5rem;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-widget {
+    grid-column: span 1;
+  }
+
+  .widget-content {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-header {
+    text-align: center;
+  }
+
+  .current-date {
+    justify-content: center;
+  }
+
+  .widget-header h2 {
+    font-size: 1rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+}
