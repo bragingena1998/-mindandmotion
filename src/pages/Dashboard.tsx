@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Check, Circle, TrendingUp, Calendar, Target, Award } from 'lucide-react';
-import type { Task, Habit, HabitRecord } from '../api/types';
+import type { Task } from '../api/tasks';
+import type { Habit, HabitRecord } from '../api/habits';
 import { fetchTasks, updateTask, fetchTotalCompletedCount } from '../api/tasks';
 import { fetchHabits, fetchHabitRecords } from '../api/habits';
 
