@@ -35,7 +35,7 @@ export default function Login() {
         localStorage.setItem('app-auth-token', data.token)
         localStorage.setItem('app-user-email', email)
         login(data.token, data.user)
-        navigate('/tasks', { replace: true })
+        navigate('/', { replace: true })
       } else {
         setError(data.message || 'Неверные учетные данные')
       }

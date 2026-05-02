@@ -38,11 +38,11 @@ function App() {
         {/* Public routes - accessible without auth */}
         <Route 
           path="/login" 
-          element={isAuthenticated ? <Navigate to="/tasks" replace /> : <Login />} 
+          element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} 
         />
         <Route 
           path="/register" 
-          element={isAuthenticated ? <Navigate to="/tasks" replace /> : <Register />} 
+          element={isAuthenticated ? <Navigate to="/" replace /> : <Register />} 
         />
 
         {/* Protected routes with Layout */}
