@@ -227,16 +227,12 @@ export async function deleteTask(taskId: number): Promise<void> {
 // ШАГ 1: Получение общего счётчика выполненных задач за всё время
 export async function fetchTotalCompletedCount(): Promise<number> {
   try {
-    // Пробуем статистический эндпоинт
-    const response = await apiClient.get('/tasks/stats/total-completed');
-    const data = response.data;
-    return data.count ?? data.total ?? 0;
-  } catch {
-    // Fallback: загружаем все задачи без фильтра месяца
-    const response = await apiClient.get('/tasks?all=true');
+    const response = await apiClient.get('/tasks');
     const data = response.data;
     const tasks = (data.tasks || data).map(adaptTaskFromAPI);
     return tasks.filter((t: Task) => t.done).length;
+  } catch {
+    return 0;
   }
 }
 

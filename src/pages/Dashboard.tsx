@@ -43,10 +43,31 @@ export default function Dashboard() {
     setUserName(storedName);
   }, [loadData]);
 
-  const todayTasks = tasks.filter((task) => task.date === today && !task.done);
-  const completedToday = tasks.filter((task) => task.date === today && task.done).length;
+  const todayTasks = tasks.filter((task) => {
+    if (!task.date) return false;
+    if (!task.title || task.title.trim() === '') return false;
+    return task.date.slice(0, 10) === today && !task.done;
+  });
+  const completedToday = tasks.filter((task) => {
+    if (!task.date) return false;
+    return task.date.slice(0, 10) === today && task.done;
+  }).length;
 
-  const activeHabits = habits.filter((h) => h.active);
+  const overdueTasks = tasks.filter((task) => {
+    if (!task.date || !task.title || task.title.trim() === '') return false;
+    return task.date.slice(0, 10) < today && !task.done;
+  });
+
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = tomorrowDate.toISOString().slice(0, 10);
+
+  const tomorrowTasks = tasks.filter((task) => {
+    if (!task.date || !task.title || task.title.trim() === '') return false;
+    return task.date.slice(0, 10) === tomorrow && !task.done;
+  });
+
+  const activeHabits = habits.filter((h) => h.active !== false);
 
   const getHabitProgress = (habitId: number) => {
     const record = habitRecords.find((r) => r.habitId === habitId);
@@ -119,27 +140,60 @@ export default function Dashboard() {
           <div className="widget-header">
             <Target size={20} />
             <h2>Задачи на сегодня</h2>
-            <span className="task-count">{todayTasks.length}</span>
+            <span className="task-count">{todayTasks.length + overdueTasks.length}</span>
           </div>
           <div className="widget-content">
-            {todayTasks.length === 0 ? (
+            {overdueTasks.length === 0 && todayTasks.length === 0 && tomorrowTasks.length === 0 ? (
               <p className="empty-state">Нет задач на сегодня. Отличная работа!</p>
             ) : (
               <ul className="task-list">
-                {todayTasks.slice(0, 5).map((task) => (
-                  <li key={task.id} className="dashboard-task-item">
-                    <button
-                      className="task-checkbox"
-                      onClick={() => handleTaskToggle(task.id, task.done)}
-                      aria-label={`Mark task ${task.title} as done`}
-                    >
+                {overdueTasks.length > 0 && (
+                  <div className="task-section-label overdue-label">🔴 ПРОСРОЧЕННЫЕ</div>
+                )}
+                {overdueTasks.slice(0, 3).map((task) => (
+                  <li key={task.id} className={`dashboard-task-item priority-${task.priority}`}>
+                    <button className="task-checkbox" onClick={() => handleTaskToggle(task.id, task.done)}>
                       <Circle size={18} />
                     </button>
-                    <span className="task-title">{task.title}</span>
+                    <div className="task-info">
+                      <span className="task-title">{task.title}</span>
+                      {task.time && <span className="task-time">{task.time}</span>}
+                    </div>
                   </li>
                 ))}
-                {todayTasks.length > 5 && (
-                  <p className="more-tasks">+{todayTasks.length - 5} ещё задач</p>
+
+                {todayTasks.length > 0 && overdueTasks.length > 0 && (
+                  <div className="task-section-label">СЕГОДНЯ</div>
+                )}
+                {todayTasks.slice(0, 4).map((task) => (
+                  <li key={task.id} className={`dashboard-task-item priority-${task.priority}`}>
+                    <button className="task-checkbox" onClick={() => handleTaskToggle(task.id, task.done)}>
+                      <Circle size={18} />
+                    </button>
+                    <div className="task-info">
+                      <span className="task-title">{task.title}</span>
+                      {task.time && <span className="task-time">{task.time}</span>}
+                    </div>
+                  </li>
+                ))}
+
+                {tomorrowTasks.length > 0 && (
+                  <div className="task-section-label">ЗАВТРА</div>
+                )}
+                {tomorrowTasks.slice(0, 2).map((task) => (
+                  <li key={task.id} className={`dashboard-task-item priority-${task.priority}`}>
+                    <button className="task-checkbox" onClick={() => handleTaskToggle(task.id, task.done)}>
+                      <Circle size={18} />
+                    </button>
+                    <div className="task-info">
+                      <span className="task-title">{task.title}</span>
+                      {task.time && <span className="task-time">{task.time}</span>}
+                    </div>
+                  </li>
+                ))}
+
+                {todayTasks.length + overdueTasks.length + tomorrowTasks.length > 5 && (
+                  <p className="more-tasks">+{todayTasks.length + overdueTasks.length + tomorrowTasks.length - 5} ещё задач</p>
                 )}
               </ul>
             )}
