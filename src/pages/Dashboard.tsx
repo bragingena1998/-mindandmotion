@@ -39,7 +39,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData();
-    const storedName = localStorage.getItem('user-name') || 'User';
+    const storedName = localStorage.getItem('user-name') || localStorage.getItem('app-user-email')?.split('@')[0] || 'Пользователь';
     setUserName(storedName);
   }, [loadData]);
 
@@ -66,13 +66,13 @@ export default function Dashboard() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return 'Доброе утро';
+    if (hour < 18) return 'Добрый день';
+    return 'Добрый вечер';
   };
 
   const formatDate = () => {
-    return new Date().toLocaleDateString('en-US', {
+    return new Date().toLocaleDateString('ru-RU', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -118,12 +118,12 @@ export default function Dashboard() {
         <div className="dashboard-widget tasks-widget">
           <div className="widget-header">
             <Target size={20} />
-            <h2>Today&apos;s Tasks</h2>
+            <h2>Задачи на сегодня</h2>
             <span className="task-count">{todayTasks.length}</span>
           </div>
           <div className="widget-content">
             {todayTasks.length === 0 ? (
-              <p className="empty-state">No tasks for today. You&apos;re all caught up!</p>
+              <p className="empty-state">Нет задач на сегодня. Отличная работа!</p>
             ) : (
               <ul className="task-list">
                 {todayTasks.slice(0, 5).map((task) => (
@@ -139,7 +139,7 @@ export default function Dashboard() {
                   </li>
                 ))}
                 {todayTasks.length > 5 && (
-                  <p className="more-tasks">+{todayTasks.length - 5} more tasks</p>
+                  <p className="more-tasks">+{todayTasks.length - 5} ещё задач</p>
                 )}
               </ul>
             )}
@@ -150,12 +150,12 @@ export default function Dashboard() {
         <div className="dashboard-widget habits-widget">
           <div className="widget-header">
             <TrendingUp size={20} />
-            <h2>Today&apos;s Habits</h2>
+            <h2>Привычки на сегодня</h2>
             <span className="habit-count">{activeHabits.length}</span>
           </div>
           <div className="widget-content">
             {activeHabits.length === 0 ? (
-              <p className="empty-state">No active habits. Start building good habits!</p>
+              <p className="empty-state">Нет активных привычек. Начни формировать полезные привычки!</p>
             ) : (
               <ul className="habit-list">
                 {activeHabits.slice(0, 5).map((habit) => {
@@ -189,24 +189,24 @@ export default function Dashboard() {
         <div className="dashboard-widget stats-widget">
           <div className="widget-header">
             <Award size={20} />
-            <h2>Statistics</h2>
+            <h2>Статистика</h2>
           </div>
           <div className="widget-content stats-grid">
             <div className="stat-item">
               <span className="stat-value">{totalCompleted}</span>
-              <span className="stat-label">Tasks Completed</span>
+              <span className="stat-label">Задач выполнено</span>
             </div>
             <div className="stat-item">
               <span className="stat-value">{completedToday}</span>
-              <span className="stat-label">Completed Today</span>
+              <span className="stat-label">Выполнено сегодня</span>
             </div>
             <div className="stat-item">
               <span className="stat-value">{calculateStreak()}%</span>
-              <span className="stat-label">Habit Streak</span>
+              <span className="stat-label">Прогресс привычек</span>
             </div>
             <div className="stat-item">
               <span className="stat-value">{activeHabits.length}</span>
-              <span className="stat-label">Active Habits</span>
+              <span className="stat-label">Активных привычек</span>
             </div>
           </div>
         </div>
