@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Check, Circle, TrendingUp, Calendar, Target, Award } from 'lucide-react';
+import { Circle, Check, TrendingUp, Award, Calendar, Clock, CheckCheck } from 'lucide-react';
 import type { Task } from '../api/tasks';
 import type { Habit, HabitRecord } from '../api/habits';
 import { fetchTasks, updateTask, fetchTotalCompletedCount } from '../api/tasks';
@@ -12,6 +12,23 @@ export default function Dashboard() {
   const [totalCompleted, setTotalCompleted] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState('');
+  const [tasksExpanded, setTasksExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [completingId, setCompletingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  const [tasksExpanded, setTasksExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const today = new Date().toISOString().split('T')[0];
   const currentYear = new Date().getFullYear();
@@ -75,13 +92,16 @@ export default function Dashboard() {
   };
 
   const handleTaskToggle = async (taskId: number, currentDone: boolean) => {
+    if (!currentDone) setCompletingId(taskId);
     try {
       await updateTask(taskId, { done: !currentDone });
       setTasks((prev) =>
         prev.map((t) => (t.id === taskId ? { ...t, done: !currentDone } : t))
       );
+      setTimeout(() => setCompletingId(null), 600);
     } catch (error) {
       console.error('Failed to update task:', error);
+      setCompletingId(null);
     }
   };
 
@@ -105,6 +125,44 @@ export default function Dashboard() {
     if (habitRecords.length === 0) return 0;
     const completedHabits = habitRecords.filter((r) => r.completed > 0).length;
     return Math.floor((completedHabits / activeHabits.length) * 100) || 0;
+  };
+
+  const buildWeekGrid = () => {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const dayTasks = tasks.filter(t => t.date?.slice(0,10) === dateStr);
+      const done = dayTasks.filter(t => t.done).length;
+      const total = dayTasks.length;
+      const pct = total > 0 ? done / total : 0;
+      const isToday = dateStr === today;
+      days.push({ dateStr, done, total, pct, isToday, label: d.toLocaleDateString('ru-RU', { weekday: 'short' }) });
+    }
+    return days;
+  };
+  const weekGrid = buildWeekGrid();
+
+  const upcomingTask = tasks
+    .filter(t => {
+      if (!t.date || !t.time || t.done || !t.title?.trim()) return false;
+      const taskDateTime = new Date(`${t.date.slice(0,10)}T${t.time}`);
+      return taskDateTime > new Date();
+    })
+    .sort((a, b) => {
+      const da = new Date(`${a.date.slice(0,10)}T${a.time}`);
+      const db = new Date(`${b.date.slice(0,10)}T${b.time}`);
+      return da.getTime() - db.getTime();
+    })[0] || null;
+
+  const getTimeUntil = (date: string, time: string) => {
+    const diff = new Date(`${date.slice(0,10)}T${time}`).getTime() - Date.now();
+    const hours = Math.floor(diff / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    if (hours > 24) return `через ${Math.floor(hours/24)} д.`;
+    if (hours > 0) return `через ${hours} ч. ${mins} мин.`;
+    return `через ${mins} мин.`;
   };
 
   if (isLoading) {
@@ -140,20 +198,24 @@ export default function Dashboard() {
           <div className="widget-header">
             <Target size={20} />
             <h2>Задачи на сегодня</h2>
-            <span className="task-count">{todayTasks.length + overdueTasks.length}</span>
+            <span className="task-count">{(tasksExpanded || isMobile ? todayTasks.length + overdueTasks.length : Math.min(4, todayTasks.length + overdueTasks.length))}</span>
           </div>
           <div className="widget-content">
             {overdueTasks.length === 0 && todayTasks.length === 0 && tomorrowTasks.length === 0 ? (
-              <p className="empty-state">Нет задач на сегодня. Отличная работа!</p>
+              <div className="tasks-empty-state">
+                <div className="empty-confetti">🎉</div>
+                <p className="empty-title">Всё выполнено!</p>
+                <p className="empty-subtitle">Отличный день, {userName}!</p>
+              </div>
             ) : (
               <ul className="task-list">
                 {overdueTasks.length > 0 && (
                   <div className="task-section-label overdue-label">🔴 ПРОСРОЧЕННЫЕ</div>
                 )}
-                {overdueTasks.slice(0, 3).map((task) => (
-                  <li key={task.id} className={`dashboard-task-item priority-${task.priority}`}>
+                {overdueTasks.slice(0, tasksExpanded ? undefined : 3).map((task) => (
+                  <li key={task.id} className={`dashboard-task-item priority-${task.priority} ${completingId === task.id ? 'task-completing' : ''}`}>
                     <button className="task-checkbox" onClick={() => handleTaskToggle(task.id, task.done)}>
-                      <Circle size={18} />
+                      {completingId === task.id ? <Check size={18} /> : <Circle size={18} />}
                     </button>
                     <div className="task-info">
                       <span className="task-title">{task.title}</span>
@@ -165,10 +227,10 @@ export default function Dashboard() {
                 {todayTasks.length > 0 && overdueTasks.length > 0 && (
                   <div className="task-section-label">СЕГОДНЯ</div>
                 )}
-                {todayTasks.slice(0, 4).map((task) => (
-                  <li key={task.id} className={`dashboard-task-item priority-${task.priority}`}>
+                {todayTasks.slice(0, tasksExpanded ? undefined : 4).map((task) => (
+                  <li key={task.id} className={`dashboard-task-item priority-${task.priority} ${completingId === task.id ? 'task-completing' : ''}`}>
                     <button className="task-checkbox" onClick={() => handleTaskToggle(task.id, task.done)}>
-                      <Circle size={18} />
+                      {completingId === task.id ? <Check size={18} /> : <Circle size={18} />}
                     </button>
                     <div className="task-info">
                       <span className="task-title">{task.title}</span>
@@ -180,10 +242,10 @@ export default function Dashboard() {
                 {tomorrowTasks.length > 0 && (
                   <div className="task-section-label">ЗАВТРА</div>
                 )}
-                {tomorrowTasks.slice(0, 2).map((task) => (
-                  <li key={task.id} className={`dashboard-task-item priority-${task.priority}`}>
+                {tomorrowTasks.slice(0, tasksExpanded ? undefined : 2).map((task) => (
+                  <li key={task.id} className={`dashboard-task-item priority-${task.priority} ${completingId === task.id ? 'task-completing' : ''}`}>
                     <button className="task-checkbox" onClick={() => handleTaskToggle(task.id, task.done)}>
-                      <Circle size={18} />
+                      {completingId === task.id ? <Check size={18} /> : <Circle size={18} />}
                     </button>
                     <div className="task-info">
                       <span className="task-title">{task.title}</span>
@@ -192,8 +254,15 @@ export default function Dashboard() {
                   </li>
                 ))}
 
-                {todayTasks.length + overdueTasks.length + tomorrowTasks.length > 5 && (
-                  <p className="more-tasks">+{todayTasks.length + overdueTasks.length + tomorrowTasks.length - 5} ещё задач</p>
+                {!tasksExpanded && (todayTasks.length + overdueTasks.length + tomorrowTasks.length > 5) && (
+                  <button className="show-more-btn" onClick={() => setTasksExpanded(true)}>
+                    ↓ показать ещё {todayTasks.length + overdueTasks.length + tomorrowTasks.length - 5} задач
+                  </button>
+                )}
+                {tasksExpanded && (
+                  <button className="show-more-btn" onClick={() => setTasksExpanded(false)}>
+                    ↑ свернуть
+                  </button>
                 )}
               </ul>
             )}
@@ -212,28 +281,26 @@ export default function Dashboard() {
               <p className="empty-state">Нет активных привычек. Начни формировать полезные привычки!</p>
             ) : (
               <ul className="habit-list">
-                {activeHabits.slice(0, 5).map((habit) => {
-                  const completed = getHabitProgress(habit.id);
-                  const goal = habit.goal || 1;
-                  const progress = Math.min((completed / goal) * 100, 100);
-
-                  return (
-                    <li key={habit.id} className="dashboard-habit-item">
-                      <div className="habit-info">
-                        <span className="habit-title">{habit.title}</span>
-                        <span className="habit-progress-text">
-                          {completed}/{goal}
+                {activeHabits.slice(0, 5).map((habit) => (
+                  <li key={habit.id} className="dashboard-habit-item">
+                    <div
+                      className="habit-circle"
+                      style={{ backgroundColor: habit.color || '#4caf50' }}
+                      onClick={() => handleHabitToggle(habit.id, today)}
+                    >
+                      {habit.name?.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="habit-info">
+                      <span className="habit-name">{habit.name}</span>
+                      {habit.type === 'quantity' && (
+                        <span className="habit-progress">
+                          {habit.todayValue || 0} / {habit.targetValue} {habit.unit}
                         </span>
-                      </div>
-                      <div className="habit-progress-bar">
-                        <div
-                          className="habit-progress-fill"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
+                      )}
+                      {habit.doneToday && <span className="habit-done-badge">✓</span>}
+                    </div>
+                  </li>
+                ))}
               </ul>
             )}
           </div>
@@ -264,6 +331,54 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Week Widget */}
+        <div className="dashboard-widget week-widget">
+          <div className="widget-header">
+            <CheckCheck size={20} />
+            <h2>Неделя</h2>
+          </div>
+          <div className="widget-content">
+            <div className="week-grid">
+              {weekGrid.map((day) => (
+                <div key={day.dateStr} className={`week-day ${day.isToday ? 'week-day-today' : ''}`}>
+                  <div
+                    className="week-day-bar"
+                    style={{
+                      height: `${Math.max(day.pct * 48, day.total > 0 ? 4 : 0)}px`,
+                      backgroundColor: day.pct >= 1 ? '#4caf50' : day.pct > 0 ? '#ff9800' : day.total > 0 ? '#f44336' : 'rgba(255,255,255,0.08)'
+                    }}
+                  />
+                  <span className="week-day-label">{day.label}</span>
+                  {day.total > 0 && (
+                    <span className="week-day-count">{day.done}/{day.total}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Upcoming Widget */}
+        {upcomingTask && (
+          <div className="dashboard-widget upcoming-widget">
+            <div className="widget-header">
+              <Calendar size={20} />
+              <h2>Ближайшее</h2>
+            </div>
+            <div className="widget-content">
+              <div className="upcoming-task">
+                <div className={`upcoming-priority-bar priority-${upcomingTask.priority}`} />
+                <div className="upcoming-info">
+                  <span className="upcoming-title">{upcomingTask.title}</span>
+                  <span className="upcoming-time">
+                    ⏰ {upcomingTask.time} · {getTimeUntil(upcomingTask.date!, upcomingTask.time!)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
