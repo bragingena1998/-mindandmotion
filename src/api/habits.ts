@@ -99,7 +99,7 @@ function adaptHabitFromAPI(raw: any): Habit {
     userId: raw.user_id ?? raw.userId ?? raw.userid ?? undefined,
     createdAt: raw.created_at ?? raw.createdAt ?? raw.createdat ?? undefined,
     color: raw.color ?? raw.colour ?? undefined,
-    active: raw.active === true || raw.active === 1 || raw.active === '1' || raw.is_active === true || raw.is_active === 1,
+    active: raw.active !== undefined ? Boolean(raw.active) : undefined,
   };
 }
 

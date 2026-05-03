@@ -89,7 +89,7 @@ export default function Dashboard() {
     return task.date.slice(0, 10) === tomorrow && !task.done;
   });
 
-  const activeHabits = habits.filter((h) => h.active === true);
+  const activeHabits = habits.filter((h) => h.active !== false);
   const doneHabitsToday = activeHabits.filter(h => isHabitDoneToday(h.id)).length;
 
   const getHabitProgress = (habitId: number) => {
