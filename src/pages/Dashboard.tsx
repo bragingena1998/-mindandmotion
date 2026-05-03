@@ -2,14 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { Circle, Check, TrendingUp, Award, Calendar, Clock, CheckCheck, Target } from 'lucide-react';
 import type { Task } from '../api/tasks';
 import type { Habit, HabitRecord } from '../api/habits';
-import { fetchTasks, updateTask, fetchTotalCompletedCount } from '../api/tasks';
+import { fetchTasks, updateTask } from '../api/tasks';
 import { fetchHabits, fetchHabitRecords, createHabitRecord, deleteHabitRecord } from '../api/habits';
 
 export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [habitRecords, setHabitRecords] = useState<HabitRecord[]>([]);
-  const [totalCompleted, setTotalCompleted] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState('');
   const [tasksExpanded, setTasksExpanded] = useState(false);
@@ -42,20 +41,17 @@ export default function Dashboard() {
     setIsLoading(true);
     try {
       console.log('[Dashboard] Loading data...');
-      const [tasksData, habitsData, recordsData, completedCount] = await Promise.all([
+      const [tasksData, habitsData, recordsData] = await Promise.all([
         fetchTasks(),
         fetchHabits(currentYear, currentMonth),
         fetchHabitRecords(currentYear, currentMonth),
-        fetchTotalCompletedCount(),
       ]);
       console.log('[Dashboard] Tasks loaded:', tasksData.length, 'Done tasks:', tasksData.filter(t => t.done).length);
       console.log('[Dashboard] Habits loaded:', habitsData.length, 'Active:', habitsData.filter(h => h.active === true).length);
       console.log('[Dashboard] Records loaded:', recordsData.length);
-      console.log('[Dashboard] Total completed count:', completedCount);
       setTasks(tasksData);
       setHabits(habitsData);
       setHabitRecords(recordsData);
-      setTotalCompleted(completedCount);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -93,7 +89,8 @@ export default function Dashboard() {
     return task.date.slice(0, 10) === tomorrow && !task.done;
   });
 
-  const activeHabits = habits.filter((h) => h.active !== false);
+  const activeHabits = habits.filter((h) => h.active === true);
+  const doneHabitsToday = activeHabits.filter(h => isHabitDoneToday(h.id)).length;
 
   const getHabitProgress = (habitId: number) => {
     const record = habitRecords.find((r) => r.habitId === habitId);
@@ -127,7 +124,9 @@ export default function Dashboard() {
       } else {
         await createHabitRecord(habitId, year, month, day, 1);
       }
-      await loadData();
+      // Точечное обновление только records вместо полного reload
+      const updatedRecords = await fetchHabitRecords(currentYear, currentMonth);
+      setHabitRecords(updatedRecords);
     } catch (error) {
       console.error('Failed to toggle habit:', error);
     }
@@ -311,7 +310,7 @@ export default function Dashboard() {
           <div className="widget-header">
             <TrendingUp size={20} />
             <h2>Привычки на сегодня</h2>
-            <span className="habit-count">{activeHabits.length}</span>
+            <span className="habit-count">{doneHabitsToday}/{activeHabits.length}</span>
           </div>
           <div className="widget-content">
             {activeHabits.length === 0 ? (
@@ -354,8 +353,8 @@ export default function Dashboard() {
           </div>
           <div className="widget-content stats-grid">
             <div className="stat-item">
-              <span className="stat-value">{totalCompleted}</span>
-              <span className="stat-label">Задач выполнено</span>
+              <span className="stat-value">{todayTasks.length + completedToday}</span>
+              <span className="stat-label">Запланировано</span>
             </div>
             <div className="stat-item">
               <span className="stat-value">{completedToday}</span>
