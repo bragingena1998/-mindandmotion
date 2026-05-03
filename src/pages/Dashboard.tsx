@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Circle, Check, TrendingUp, Award, Calendar, Clock, CheckCheck } from 'lucide-react';
+import { Circle, Check, TrendingUp, Award, Calendar, Clock, CheckCheck, Target } from 'lucide-react';
 import type { Task } from '../api/tasks';
 import type { Habit, HabitRecord } from '../api/habits';
 import { fetchTasks, updateTask, fetchTotalCompletedCount } from '../api/tasks';
@@ -15,14 +15,6 @@ export default function Dashboard() {
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [completingId, setCompletingId] = useState<number | null>(null);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  const [tasksExpanded, setTasksExpanded] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
