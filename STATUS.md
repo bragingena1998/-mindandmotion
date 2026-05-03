@@ -1,6 +1,6 @@
 # Mind & Motion — Статус проекта
 
-*Актуально на: апрель 2026*
+*Актуально на: май 2026*
 
 ---
 
@@ -9,7 +9,7 @@
 | Платформа | Ветка | Статус | Примечание |
 |-----------|-------|--------|------------|
 | Mobile (React Native) | `mobile` | 🟢 В продакшне | Основной продукт, ~13 экранов |
-| Web (React + Vite) | `web` | 🟡 Активная разработка | 2/6 страниц готово |
+| Web (React + Vite) | `web` | � Активная разработка | Dashboard готов, Tasks, Habits готовы |
 | Backend (Node.js) | `backend` | 🟢 В продакшне | mindandmotion.ru/api |
 | Monorepo Shared | — | ❌ Не начато | Phase 1 планируется |
 
@@ -19,7 +19,7 @@
 
 | Маршрут | Файл | Статус | Комментарий |
 |---------|------|--------|-------------|
-| `/` | `App.tsx:14` | ❌ Заглушка | Dashboard (coming soon) |
+| `/` | `pages/Dashboard.tsx` | ✅ Готово | Dashboard с виджетами задач, привычек, статистики, недели |
 | `/tasks` | `pages/Tasks.tsx` | ✅ Готово | Полный CRUD, рекуррентные задачи |
 | `/habits` | `pages/Habits.tsx` | ✅ Готово | Таблица, модалка, дни недели |
 | `/calendar` | `App.tsx:15` | ❌ Заглушка | Calendar (coming soon) |
@@ -72,6 +72,12 @@
 - ✅ Компоненты: TaskCard, TaskModal, TimePicker, DatePicker, FolderChips
 - ✅ Компоненты: HabitTable, HabitModal, HabitTrendChart, все таймеры
 - ✅ Layout с навигацией
+- ✅ Dashboard — виджеты задач (сегодня/просроченные/завтра), привычки, статистика, мини-график недели, ближайшее событие
+- ✅ Dashboard — анимация выполнения задач, empty state, кнопка "показать ещё"
+- ✅ Dashboard — адаптивность: скролл на мобиле, expand на десктопе
+- ✅ Исправлен API 404 для /tasks/stats/total-completed
+- ✅ Фикс фильтрации задач по дате (ISO формат .slice(0,10))
+- ✅ Фикс отображения активных привычек
 - ✅ Mobile/Desktop адаптивность (bottom sheet vs modal)
 - ✅ Обработка полей days_of_week (исправлен баг с форматом)
 
@@ -100,7 +106,7 @@
 
 | Приоритет | Фича | Причина | Влияние |
 |-----------|------|---------|---------|
-| 🔴 Высокий | Dashboard | Главная страница после входа | Пользователь видит заглушку |
+| ✅ Выполнено | Dashboard | Готов, задеплоен на mindandmotion.ru | — |
 | 🔴 Высокий | Calendar | Навигация в меню ведёт на заглушку | Пользователь видит заглушку |
 | 🟡 Средний | Profile | Настройки пользователя | Менее критично |
 | 🟡 Средний | Register | Регистрация новых пользователей | Работает редирект, но не идеально |
@@ -117,9 +123,10 @@
 3. **⚠️ Дублирование кода mobile/web** — требуется Phase 1 монорепо
 4. **⚠️ Нет тестов** — ни unit, ни e2e тестов
 5. **⚠️ Конфликт BASE_URL** — mobile использует IP:5000, web — домен
-6. **⚠️ Storage различия** — web localStorage vs mobile AsyncStorage
-7. **⚠️ TypeScript строгость** — часть кода использует `any`
-8. **⚠️ CSS без препроцессора** — растущие tasks.css и habits.css
+6. **⚠️ handleHabitToggle не реализован** — клик по привычке на Dashboard вызывает ReferenceError, нужно подключить API
+7. **⚠️ Storage различия** — web localStorage vs mobile AsyncStorage
+8. **⚠️ TypeScript строгость** — часть кода использует `any`
+9. **⚠️ CSS без препроцессора** — растущие tasks.css и habits.css
 
 ---
 
@@ -127,7 +134,7 @@
 
 | Документ | Назначение | Статус |
 |----------|------------|--------|
-| `docs/AGENTS.md` | Правила работы агентов (cascade/windsurf) | ✅ Актуально |
+| `AGENTS.md` | Правила работы агентов (cascade/windsurf) | ✅ Актуально |
 | `docs/WEB_TRANSFER_GUIDE.md` | Руководство по переносу вкладок | ✅ Актуально |
 | `docs/Миграция.md` | План унификации монорепо | 🔄 Планируется |
 | `docs/Миграция по приоритетам.md` | Приоритизация задач миграции | 🔄 Планируется |
@@ -138,10 +145,10 @@
 
 ## Репозитории
 
-- **Web:** https://github.com/bragingena1998/-mindandmotion/tree/web
-- **Backend:** https://github.com/bragingena1998/-mindandmotion/tree/backend
-- **Mobile:** https://github.com/bragingena1998/-mindandmotion/tree/mobile
+- **Web:** https://github.com/bragingena1998/mindandmotion/tree/web
+- **Backend:** https://github.com/bragingena1998/mindandmotion/tree/backend
+- **Mobile:** https://github.com/bragingena1998/mindandmotion/tree/mobile
 
 ---
 
-*Последнее обновление: апрель 2026*
+*Последнее обновление: 2026-05-03*

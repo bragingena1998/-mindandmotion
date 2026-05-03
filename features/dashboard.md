@@ -170,3 +170,20 @@ web/src/
 - `docs/AGENTS.md` — API endpoints
 - `docs/.windsurf/rules/01-web.md` — web-специфика
 - `mobile/src/screens/DashboardScreen.js` — мобильная реализация (source of truth)
+
+---
+
+## Known Issues (актуально на 2026-05-03)
+
+| Проблема | Статус | Описание |
+|----------|--------|----------|
+| handleHabitToggle | 🔴 Открыт | ReferenceError при клике по привычке — функция не определена |
+| habit.name vs habit.title | 🟡 Проверить | API возвращает `title`, компонент использует `name` — возможна причина пустых названий |
+
+## Архитектурные решения
+
+| Решение | Причина |
+|---------|---------|
+| Фильтрация задач через `.slice(0,10)` | Бэкенд возвращает ISO datetime, сравниваем только дату |
+| `h.active !== false` вместо `h.active` | Защита от undefined — привычки без поля active считаются активными |
+| `fetchTotalCompletedCount` через `/tasks` | Эндпоинт `/tasks/stats/total-completed` отсутствует на бэкенде |

@@ -31,6 +31,11 @@
 
 ## 🚧 В процессе
 
+### 🔄 В работе (май 2026)
+- [ ] **handleHabitToggle** — реализовать отметку привычки с Dashboard (ReferenceError исправлен, нужна API интеграция)
+- [ ] **Calendar страница** — следующий приоритет после Dashboard
+- [ ] **Profile страница** — настройки пользователя
+
 ### Calendar (следующий приоритет)
 - [ ] Изучить `mobile/src/screens/CalendarScreen.js`
 - [ ] Создать `web/src/pages/Calendar.tsx`
