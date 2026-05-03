@@ -26,15 +26,32 @@ export default function Dashboard() {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
 
+  // Проверка выполнена ли привычка сегодня
+  const isHabitDoneToday = (habitId: number) => {
+    const today = new Date();
+    return habitRecords.some(r =>
+      r.habitId === habitId &&
+      r.year === today.getFullYear() &&
+      r.month === today.getMonth() + 1 &&
+      r.day === today.getDate() &&
+      r.value > 0
+    );
+  };
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
+      console.log('[Dashboard] Loading data...');
       const [tasksData, habitsData, recordsData, completedCount] = await Promise.all([
         fetchTasks(),
         fetchHabits(currentYear, currentMonth),
         fetchHabitRecords(currentYear, currentMonth),
         fetchTotalCompletedCount(),
       ]);
+      console.log('[Dashboard] Tasks loaded:', tasksData.length, 'Done tasks:', tasksData.filter(t => t.done).length);
+      console.log('[Dashboard] Habits loaded:', habitsData.length, 'Active:', habitsData.filter(h => h.active === true).length);
+      console.log('[Dashboard] Records loaded:', recordsData.length);
+      console.log('[Dashboard] Total completed count:', completedCount);
       setTasks(tasksData);
       setHabits(habitsData);
       setHabitRecords(recordsData);
@@ -76,7 +93,7 @@ export default function Dashboard() {
     return task.date.slice(0, 10) === tomorrow && !task.done;
   });
 
-  const activeHabits = habits;
+  const activeHabits = habits.filter((h) => h.active !== false);
 
   const getHabitProgress = (habitId: number) => {
     const record = habitRecords.find((r) => r.habitId === habitId);
@@ -133,9 +150,18 @@ export default function Dashboard() {
   };
 
   const calculateStreak = () => {
-    if (habitRecords.length === 0) return 0;
-    const completedHabits = habitRecords.filter((r) => r.completed > 0).length;
-    return Math.floor((completedHabits / activeHabits.length) * 100) || 0;
+    if (activeHabits.length === 0) return 0;
+    const today = new Date();
+    const completedToday = activeHabits.filter(habit =>
+      habitRecords.some(r =>
+        r.habitId === habit.id &&
+        r.year === today.getFullYear() &&
+        r.month === today.getMonth() + 1 &&
+        r.day === today.getDate() &&
+        r.value > 0
+      )
+    ).length;
+    return Math.floor((completedToday / activeHabits.length) * 100) || 0;
   };
 
   const buildWeekGrid = () => {
@@ -292,27 +318,29 @@ export default function Dashboard() {
               <p className="empty-state">Нет активных привычек. Начни формировать полезные привычки!</p>
             ) : (
               <ul className="habit-list">
-                {activeHabits.slice(0, 5).map((habit) => (
-                  <li key={habit.id} className="dashboard-habit-item">
-                    <div
-                      className="habit-circle"
-                      style={{ backgroundColor: habit.color || '#4caf50' }}
-                      onClick={() => handleHabitToggle(habit.id, today)}
-                    >
-                      {habit.name?.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="habit-info">
-                      <span className="habit-name">{habit.name}</span>
-                      {habitRecords.some(r =>
-                        r.habitId === habit.id &&
-                        r.year === currentYear &&
-                        r.month === currentMonth &&
-                        r.day === new Date().getDate() &&
-                        r.value > 0
-                      ) && <span className="habit-done-badge">✓</span>}
-                    </div>
-                  </li>
-                ))}
+                {activeHabits.slice(0, 5).map((habit) => {
+                  const doneToday = isHabitDoneToday(habit.id);
+                  const habitColor = habit.color || '#4caf50';
+                  return (
+                    <li key={habit.id} className="dashboard-habit-item">
+                      <div
+                        className={`habit-circle ${doneToday ? 'habit-circle-done' : ''}`}
+                        style={{
+                          backgroundColor: doneToday ? '#4caf50' : 'transparent',
+                          border: `2px solid ${habitColor}`,
+                          color: doneToday ? '#fff' : habitColor
+                        }}
+                        onClick={() => handleHabitToggle(habit.id, today)}
+                      >
+                        {habit.name?.slice(0, 2).toUpperCase()}
+                        {doneToday && <span className="habit-circle-check">✓</span>}
+                      </div>
+                      <div className="habit-info">
+                        <span className="habit-name">{habit.name}</span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

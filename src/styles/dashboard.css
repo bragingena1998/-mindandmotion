@@ -252,6 +252,34 @@
   }
 }
 
+/* Mobile Widget Order */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tasks-widget {
+    order: 1;
+  }
+
+  .upcoming-widget {
+    order: 2;
+  }
+
+  .habits-widget {
+    order: 3;
+  }
+
+  .week-widget {
+    order: 4;
+  }
+
+  .stats-widget {
+    order: 5;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .dashboard-grid {
@@ -380,6 +408,26 @@
   color: #fff;
   flex-shrink: 0;
   cursor: pointer;
+  position: relative;
+}
+
+.habit-circle-done {
+  background-color: #4caf50 !important;
+}
+
+.habit-circle-check {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #4caf50;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .habit-info {

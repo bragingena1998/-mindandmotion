@@ -224,9 +224,31 @@ export async function deleteTask(taskId: number): Promise<void> {
   await apiClient.delete(`/tasks/${taskId}`);
 }
 
-// ШАГ 1: Получение общего счётчика выполненных задач за всё время
 export async function fetchTotalCompletedCount(): Promise<number> {
   try {
+    // Пробуем эндпоинт статистики (если есть на бэкенде)
+    const response = await apiClient.get('/tasks/stats');
+    const data = response.data;
+    if (data.totalCompleted !== undefined) return Number(data.totalCompleted);
+    if (data.total_completed !== undefined) return Number(data.total_completed);
+    if (data.completed !== undefined) return Number(data.completed);
+  } catch {
+    // /tasks/stats не существует — идём запасным путём
+  }
+
+  try {
+    // Запасной путь: GET /tasks?all=true
+    const response = await apiClient.get('/tasks?all=true');
+    const data = response.data;
+    const tasks = (data.tasks || data).map(adaptTaskFromAPI);
+    const count = tasks.filter((t: Task) => t.done).length;
+    if (count > 0) return count;
+  } catch {
+    // /tasks?all=true тоже не работает
+  }
+
+  try {
+    // Последний вариант: считаем из уже загруженных задач текущего запроса
     const response = await apiClient.get('/tasks');
     const data = response.data;
     const tasks = (data.tasks || data).map(adaptTaskFromAPI);

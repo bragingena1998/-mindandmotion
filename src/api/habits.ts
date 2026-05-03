@@ -98,6 +98,8 @@ function adaptHabitFromAPI(raw: any): Habit {
     orderIndex: Number(raw.order_index ?? raw.orderIndex ?? raw.orderindex ?? 0),
     userId: raw.user_id ?? raw.userId ?? raw.userid ?? undefined,
     createdAt: raw.created_at ?? raw.createdAt ?? raw.createdat ?? undefined,
+    color: raw.color ?? raw.colour ?? undefined,
+    active: raw.active !== undefined ? Boolean(raw.active) : undefined,
   };
 }
 
