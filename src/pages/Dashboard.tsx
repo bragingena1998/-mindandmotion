@@ -76,7 +76,7 @@ export default function Dashboard() {
     return task.date.slice(0, 10) === tomorrow && !task.done;
   });
 
-  const activeHabits = habits.filter((h) => h.active !== false);
+  const activeHabits = habits;
 
   const getHabitProgress = (habitId: number) => {
     const record = habitRecords.find((r) => r.habitId === habitId);
@@ -97,11 +97,8 @@ export default function Dashboard() {
     }
   };
 
-  const handleHabitToggle = async (habitId: number, date: string) => {
-    const todayDate = new Date(date);
-    const year = todayDate.getFullYear();
-    const month = todayDate.getMonth() + 1;
-    const day = todayDate.getDate();
+  const handleHabitToggle = async (habitId: number, dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
 
     const existingRecord = habitRecords.find(
       (r) => r.habitId === habitId && r.year === year && r.month === month && r.day === day
@@ -306,12 +303,13 @@ export default function Dashboard() {
                     </div>
                     <div className="habit-info">
                       <span className="habit-name">{habit.name}</span>
-                      {habit.type === 'quantity' && (
-                        <span className="habit-progress">
-                          {habit.todayValue || 0} / {habit.targetValue} {habit.unit}
-                        </span>
-                      )}
-                      {habit.doneToday && <span className="habit-done-badge">✓</span>}
+                      {habitRecords.some(r =>
+                        r.habitId === habit.id &&
+                        r.year === currentYear &&
+                        r.month === currentMonth &&
+                        r.day === new Date().getDate() &&
+                        r.value > 0
+                      ) && <span className="habit-done-badge">✓</span>}
                     </div>
                   </li>
                 ))}

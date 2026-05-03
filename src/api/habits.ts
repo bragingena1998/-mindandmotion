@@ -22,6 +22,8 @@ export interface Habit {
   orderIndex: number;
   userId?: number;
   createdAt?: string;
+  color?: string;                         // Цвет привычки для отображения
+  active?: boolean;                       // Флаг активности привычки
 }
 
 export interface HabitRecord {
