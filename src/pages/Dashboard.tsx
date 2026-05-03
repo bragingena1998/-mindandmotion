@@ -3,7 +3,7 @@ import { Circle, Check, TrendingUp, Award, Calendar, Clock, CheckCheck, Target }
 import type { Task } from '../api/tasks';
 import type { Habit, HabitRecord } from '../api/habits';
 import { fetchTasks, updateTask, fetchTotalCompletedCount } from '../api/tasks';
-import { fetchHabits, fetchHabitRecords } from '../api/habits';
+import { fetchHabits, fetchHabitRecords, createHabitRecord, deleteHabitRecord } from '../api/habits';
 
 export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -94,6 +94,28 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Failed to update task:', error);
       setCompletingId(null);
+    }
+  };
+
+  const handleHabitToggle = async (habitId: number, date: string) => {
+    const todayDate = new Date(date);
+    const year = todayDate.getFullYear();
+    const month = todayDate.getMonth() + 1;
+    const day = todayDate.getDate();
+
+    const existingRecord = habitRecords.find(
+      (r) => r.habitId === habitId && r.year === year && r.month === month && r.day === day
+    );
+
+    try {
+      if (existingRecord) {
+        await deleteHabitRecord(habitId, year, month, day);
+      } else {
+        await createHabitRecord(habitId, year, month, day, 1);
+      }
+      await loadData();
+    } catch (error) {
+      console.error('Failed to toggle habit:', error);
     }
   };
 

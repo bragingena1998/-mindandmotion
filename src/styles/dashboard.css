@@ -409,6 +409,12 @@
   margin-top: 1px;
 }
 
+/* Week Widget */
+.week-widget,
+.upcoming-widget {
+  align-self: start;
+}
+
 /* Week Grid */
 .week-grid { display:flex; gap:6px; align-items:flex-end; height:80px; padding-bottom:20px; position:relative; }
 .week-day { display:flex; flex-direction:column; align-items:center; flex:1; gap:3px; }
