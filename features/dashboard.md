@@ -177,8 +177,9 @@ web/src/
 
 | Проблема | Статус | Описание |
 |----------|--------|----------|
-| handleHabitToggle | 🔴 Открыт | ReferenceError при клике по привычке — функция не определена |
+| handleHabitToggle | ✅ Исправлено | Функция реализована с createHabitRecord/deleteHabitRecord |
 | habit.name vs habit.title | 🟡 Проверить | API возвращает `title`, компонент использует `name` — возможна причина пустых названий |
+| Высота виджетов | ✅ Исправлено | Добавлен `align-self: start` для week-widget и upcoming-widget |
 
 ## Архитектурные решения
 

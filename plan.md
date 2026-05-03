@@ -32,7 +32,9 @@
 ## 🚧 В процессе
 
 ### 🔄 В работе (май 2026)
-- [ ] **handleHabitToggle** — реализовать отметку привычки с Dashboard (ReferenceError исправлен, нужна API интеграция)
+- [x] **handleHabitToggle** — реализована отметка привычки с Dashboard ✅
+- [x] **Фикс высоты виджетов** — добавлен `align-self: start` для week-widget и upcoming-widget ✅
+- [x] **Фикс счётчика выполненных задач** — `fetchTotalCompletedCount` работает корректно ✅
 - [ ] **Calendar страница** — следующий приоритет после Dashboard
 - [ ] **Profile страница** — настройки пользователя
 

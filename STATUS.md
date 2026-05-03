@@ -123,7 +123,7 @@
 3. **⚠️ Дублирование кода mobile/web** — требуется Phase 1 монорепо
 4. **⚠️ Нет тестов** — ни unit, ни e2e тестов
 5. **⚠️ Конфликт BASE_URL** — mobile использует IP:5000, web — домен
-6. **⚠️ handleHabitToggle не реализован** — клик по привычке на Dashboard вызывает ReferenceError, нужно подключить API
+6. **✅ handleHabitToggle реализован** — функция добавлена, использует createHabitRecord/deleteHabitRecord
 7. **⚠️ Storage различия** — web localStorage vs mobile AsyncStorage
 8. **⚠️ TypeScript строгость** — часть кода использует `any`
 9. **⚠️ CSS без препроцессора** — растущие tasks.css и habits.css
