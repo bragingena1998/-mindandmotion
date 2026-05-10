@@ -388,7 +388,7 @@ const HabitsScreen = ({ route }) => {
       });
       const hasAdvanced = !!(habit.start_date || habit.end_date || (habit.days_of_week && habit.days_of_week.length > 0));
       setShowAdvanced(hasAdvanced);
-      setShowCustomUnit(!=['Дни', 'Часы', 'Кол-во'].includes(habit.unit));
+      setShowCustomUnit(!(['Дни', 'Часы', 'Кол-во'].includes(habit.unit)));
     } else {
       setEditingHabitId(null);
       setHabitForm({ name: '', unit: 'Дни', plan: '', targetType: 'daily', startDate: null, endDate: null, daysOfWeek: [] });
