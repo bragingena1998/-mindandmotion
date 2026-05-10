@@ -40,7 +40,7 @@
       }
     },
     "android": {
-      "package": "com.bragin22.mindandmotionmobile.dev",
+      "package": "com.bragin22.mindandmotionmobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
