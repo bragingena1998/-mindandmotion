@@ -18,8 +18,12 @@ const Modal = ({ visible, onClose, title, children }) => {
     >
       {/* Тап по фону — закрыть */}
       <Pressable style={styles.backdrop} onPress={onClose}>
-        {/* Стоп пропаганда клика через контент */}
-        <Pressable style={styles.modalWrapper}>
+        {/* Стоп пропаганда клика через контент, но пропускаем скролл */}
+        <View
+          style={styles.modalWrapper}
+          onStartShouldSetResponder={() => true}
+          onTouchEnd={(e) => e.stopPropagation()}
+        >
           <View style={[
             styles.modal,
             { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
@@ -37,16 +41,16 @@ const Modal = ({ visible, onClose, title, children }) => {
             )}
 
             <ScrollView
-              style={styles.content}
-              contentContainerStyle={styles.contentContainer}
+              style={styles.scrollContent}
+              contentContainerStyle={styles.scrollContentContainer}
               showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="always"
-              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
             >
               {children}
             </ScrollView>
           </View>
-        </Pressable>
+        </View>
       </Pressable>
     </RNModal>
   );
@@ -68,6 +72,7 @@ const styles = StyleSheet.create({
   modal: {
     width: '100%',
     maxWidth: 500,
+    maxHeight: '90%', // Ограничиваем высоту модалки
     borderWidth: 2,
     borderRadius: 20,
     padding: 24,
@@ -92,8 +97,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   closeIcon: { fontSize: 14, fontWeight: 'bold', marginTop: -2 },
-  content: { width: '100%' },
-  contentContainer: { paddingBottom: 4 },
+  scrollContent: { 
+    flex: 1, // Занимает доступное пространство
+    width: '100%' 
+  },
+  scrollContentContainer: { 
+    paddingBottom: 20, // Больше отступ снизу
+    flexGrow: 1, // Позволяет ScrollView расти
+  },
 });
 
 export default Modal;
