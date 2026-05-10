@@ -1,8 +1,6 @@
-import 'dotenv/config';
-
 const IS_DEV = process.env.APP_VARIANT === 'development';
 
-export default {
+module.exports = {
   expo: {
     name: IS_DEV ? 'M&M Dev' : 'Mind & Motion',
     slug: 'mindandmotion-mobile',
