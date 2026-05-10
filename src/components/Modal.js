@@ -17,7 +17,7 @@ const Modal = ({ visible, onClose, title, children }) => {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        style={styles.keyboardView}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
@@ -44,7 +44,6 @@ const Modal = ({ visible, onClose, title, children }) => {
               )}
 
               <ScrollView
-                style={styles.content}
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="always"
@@ -62,9 +61,6 @@ const Modal = ({ visible, onClose, title, children }) => {
 };
 
 const styles = StyleSheet.create({
-  keyboardView: {
-    flex: 1,
-  },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
@@ -74,16 +70,16 @@ const styles = StyleSheet.create({
   },
   modalWrapper: {
     width: '100%',
-    maxHeight: '92%',
-    alignItems: 'center',
+    maxHeight: '92%',    // ← КЛЮЧЕВОЕ: ограничение высоты здесь
+    flexShrink: 1,       // ← позволяет wrapper сжаться до maxHeight
   },
   modal: {
     width: '100%',
     maxWidth: 500,
     borderWidth: 2,
     borderRadius: 20,
-    // ❌ Убрали padding: 24 отсюда
-    overflow: 'hidden', // важно для borderRadius при скролле
+    overflow: 'hidden',
+    flexShrink: 1,       // ← modal тоже сжимается под wrapper
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
@@ -108,10 +104,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   closeIcon: { fontSize: 14, fontWeight: 'bold', marginTop: -2 },
-  content: {
-    width: '100%',
-    // flex: 1 здесь НЕ ставим — ScrollView сам определит высоту внутри modal
-  },
   contentContainer: {
     // ✅ padding перенесён сюда из modal
     paddingHorizontal: 24,
