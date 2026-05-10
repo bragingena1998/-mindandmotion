@@ -322,6 +322,9 @@ const HabitsScreen = ({ route }) => {
         }
       }
 
+      // 🔄 Сигнал дашборду — привычка обновлена
+      bumpAll();
+
       setTimeout(() => {
         isUpdatingRef.current = false;
       }, 1500);

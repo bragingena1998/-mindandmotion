@@ -69,6 +69,44 @@ const isoTomorrow = () => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
 
+// 🔄 Расчет следующей даты для повторяющихся задач
+const getNextRecurringDate = (task) => {
+  // Берём дату задачи (не сегодня!)
+  const baseDate = task.date
+    ? new Date(task.date + 'T00:00:00')
+    : new Date();
+
+  const next = new Date(baseDate);
+
+  switch (task.recurrenceType) {
+    case 'daily':
+      next.setDate(next.getDate() + 1);
+      break;
+    case 'weekly':
+      next.setDate(next.getDate() + 7);
+      break;
+    case 'monthly':
+      // ВАЖНО: setMonth сохраняет день месяца
+      // Защита от "31 февраля" — если день не совпадает, берём последний день месяца
+      const originalDay = next.getDate();
+      next.setMonth(next.getMonth() + 1);
+      if (next.getDate() !== originalDay) {
+        next.setDate(0); // последний день предыдущего месяца
+      }
+      break;
+    case 'yearly':
+      next.setFullYear(next.getFullYear() + 1);
+      break;
+    default:
+      next.setDate(next.getDate() + 1);
+  }
+
+  const y = next.getFullYear();
+  const m = String(next.getMonth() + 1).padStart(2, '0');
+  const d = String(next.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -1145,13 +1183,32 @@ const TasksScreen = ({ navigation }) => {
         if (done) showToast('✅ Задача выполнена!');
         else showToast('↩ Задача снова в работе');
         
-        // Для recurring задач создаем новую задачу в фоне
+        // Для recurring задач создаем новую задачу в фоне с правильной датой
         if (done && t.isRecurring) {
           setTimeout(async () => {
             try {
-              await loadTasks(undefined, true); // forceRefresh для recurring
+              // 🔄 Создаём следующую задачу с правильной датой (не сегодня!)
+              const nextDate = getNextRecurringDate(t);
+              const newTaskData = {
+                title: t.title,
+                date: nextDate,
+                deadline: t.deadline,
+                time: t.time,
+                priority: t.priority,
+                comment: t.comment || '',
+                isRecurring: t.isRecurring ? 1 : 0,
+                recurrenceType: t.recurrenceType,
+                folderId: t.folderId || null,
+                completed: false,
+                done: false,
+              };
+
+              await tasksAPI.createTaskOffline(newTaskData);
+              console.log('🔄 Recurring task created for:', nextDate);
+
+              await loadTasks(undefined, true); // forceRefresh для обновления списка
             } catch (err) {
-              console.error('Failed to load recurring task:', err);
+              console.error('Failed to create recurring task:', err);
             }
           }, 1000);
         }
