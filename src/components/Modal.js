@@ -2,9 +2,10 @@
 import React from 'react';
 import {
   View, Text, Modal as RNModal, StyleSheet,
-  TouchableOpacity, Pressable, KeyboardAvoidingView, Platform,
+  TouchableOpacity, ScrollView, Pressable,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Modal = ({ visible, onClose, title, children }) => {
@@ -17,49 +18,48 @@ const Modal = ({ visible, onClose, title, children }) => {
       animationType="fade"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        enabled={Platform.OS === 'ios'}
-      >
-        {/* Тап по фону — закрыть */}
-        <Pressable style={styles.backdrop} onPress={onClose}>
-          {/* Стоп пропаганда клика через контент */}
-          <Pressable style={styles.modalWrapper}>
-            <View
-              style={[
-                styles.modal,
-                { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
-              ]}
-            >
-              {title && (
-                <View style={styles.header}>
-                  <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
-                  <TouchableOpacity
-                    style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
-                    onPress={onClose}
-                  >
-                    <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              <ScrollView
-                contentContainerStyle={styles.contentContainer}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="none"
-                nestedScrollEnabled={true}
-                scrollEventThrottle={16}
-                bounces={false}
-                onStartShouldSetResponder={() => true}
+      {/* GestureHandlerRootView ВНУТРИ Modal — создаёт новое дерево жестов */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          enabled={Platform.OS === 'ios'}
+        >
+          <Pressable style={styles.backdrop} onPress={onClose}>
+            <Pressable style={styles.modalWrapper}>
+              <View
+                style={[
+                  styles.modal,
+                  { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
+                ]}
               >
-                {children}
-              </ScrollView>
-            </View>
+                {title && (
+                  <View style={styles.header}>
+                    <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
+                    <TouchableOpacity
+                      style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
+                      onPress={onClose}
+                    >
+                      <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <ScrollView
+                  contentContainerStyle={styles.contentContainer}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="none"
+                  nestedScrollEnabled
+                  bounces={false}
+                >
+                  {children}
+                </ScrollView>
+              </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </GestureHandlerRootView>
     </RNModal>
   );
 };
@@ -74,8 +74,8 @@ const styles = StyleSheet.create({
   },
   modalWrapper: {
     width: '100%',
-    maxHeight: '92%',    // ← КЛЮЧЕВОЕ: ограничение высоты здесь
-    flexShrink: 1,       // ← позволяет wrapper сжаться до maxHeight
+    maxHeight: '92%',
+    flexShrink: 1,
   },
   modal: {
     width: '100%',
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 20,
     overflow: 'hidden',
-    flexShrink: 1,       // ← modal тоже сжимается под wrapper
+    flexShrink: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
@@ -94,7 +94,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    // ✅ padding перенесён сюда
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 20,
@@ -109,7 +108,6 @@ const styles = StyleSheet.create({
   },
   closeIcon: { fontSize: 14, fontWeight: 'bold', marginTop: -2 },
   contentContainer: {
-    // ✅ padding перенесён сюда из modal
     paddingHorizontal: 24,
     paddingBottom: 24,
   },
