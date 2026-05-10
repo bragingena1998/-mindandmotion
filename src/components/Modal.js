@@ -2,8 +2,9 @@
 import React from 'react';
 import {
   View, Text, Modal as RNModal, StyleSheet,
-  TouchableOpacity, ScrollView, Pressable, KeyboardAvoidingView, Platform,
+  TouchableOpacity, Pressable, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Modal = ({ visible, onClose, title, children }) => {

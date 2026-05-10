@@ -413,7 +413,8 @@ const DayPanel = ({ selectedDay, data, colors, onClose, onAddEvent, onNavigateTa
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const CalendarScreen = ({ navigation }) => {
-  const { bumpAll } = useDataSync();
+  const { bumpAll, tick } = useDataSync();
+  const lastLoadTimeRef = useRef(0);
   const { colors } = useTheme();
 
   const [viewMode, setViewMode]   = useState('month');
@@ -454,9 +455,22 @@ const CalendarScreen = ({ navigation }) => {
     }
   }, [loading, tutorialCompleted, events.length]);
 
+  // При фокусе — обновляем с throttle 3 секунды
   useFocusEffect(
-    useCallback(() => { loadData(); }, [year, month])
+    useCallback(() => {
+      const now = Date.now();
+      if (now - lastLoadTimeRef.current < 3000) return;
+      lastLoadTimeRef.current = now;
+      loadData();
+    }, [year, month])
   );
+
+  // При сигнале от других экранов — принудительно обновляем
+  useEffect(() => {
+    if (tick === 0) return;
+    lastLoadTimeRef.current = 0; // Сбрасываем throttle
+    loadData();
+  }, [tick]);
 
   const loadData = async () => {
     try {
@@ -687,7 +701,6 @@ const CalendarScreen = ({ navigation }) => {
     try { 
       // Оптимистичное удаление из UI
       setEvents(prev => prev.filter(ev => ev.id !== id));
-      await cancelBirthdayNotification(id); // Отменяем уведомление
       
       // API запрос с офлайн-обработкой
       try {
@@ -699,10 +712,11 @@ const CalendarScreen = ({ navigation }) => {
           console.log('📵 Offline — queued event delete');
           // UI уже обновлён оптимистично выше
         } else {
-          throw error; // другая ошибка — пробрасываем
+          throw error;
         }
       }
       
+      // Сигнал другим экранам — событие удалено
       loadData();
       bumpAll();
     }

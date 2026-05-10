@@ -1195,6 +1195,7 @@ const TasksScreen = ({ navigation }) => {
           comment: t.comment || '', done, doneDate: done ? toMysqlFormat(new Date()) : null,
           time: t.time, isRecurring: t.isRecurring, recurrenceType: t.recurrenceType,
           folderId: t.folderId || null,
+          nextDate: done && t.isRecurring ? getNextRecurringDate(t) : undefined,
         });
         
         if (done) showToast('✅ Задача выполнена!');

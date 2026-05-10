@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator,
@@ -213,6 +214,7 @@ const AnimatedTaskCard = ({ task, stripColor, colors, onToggle, getFolderLabel, 
 const DashboardScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const { tick, bumpAll } = useDataSync();
+  const lastLoadTimeRef = useRef(0);
   
   // 🚀 Local-first хуки для мгновенной загрузки данных дашборда
   const {
