@@ -6,6 +6,7 @@ class SQLiteCacheManager {
     this.db = null;
     this.initPromise = null;
     this.operationQueue = Promise.resolve(); // Очередь операций для предотвращения database is locked
+    this.memoryCache = new Map(); // In-memory кеш для мгновенного доступа
     
     // Сразу стартуем инициализацию
     this.initPromise = this.init();
@@ -23,6 +24,10 @@ class SQLiteCacheManager {
     try {
       this.db = await SQLite.openDatabaseAsync('app_cache.db');
       
+      // 🚀 WAL режим для параллельного чтения и записи
+      await this.db.runAsync('PRAGMA journal_mode=WAL');
+      await this.db.runAsync('PRAGMA synchronous=NORMAL');
+      
       // Создаем таблицу для кеша через runAsync
       await this.db.runAsync(
         'CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, timestamp INTEGER NOT NULL, type TEXT NOT NULL)'
@@ -34,10 +39,7 @@ class SQLiteCacheManager {
         'CREATE INDEX IF NOT EXISTS idx_cache_timestamp ON cache(timestamp)'
       );
       
-      console.log('✅ SQLite cache initialized');
-      
-      // 🧹 Cleanup через 5 секунд после полной инициализации
-      setTimeout(() => this.cleanup(24 * 60 * 60 * 1000), 5000);
+      console.log('✅ SQLite cache initialized (WAL mode)');
     } catch (error) {
       console.error('❌ SQLite init error:', error);
       throw error;
@@ -68,6 +70,9 @@ class SQLiteCacheManager {
           [key, serializedValue, timestamp, type]
         );
         
+        // 🔄 Обновляем in-memory кеш
+        this.memoryCache.set(key, value);
+        
         return true;
       } catch (error) {
         console.error(`❌ Cache set error for key ${key}:`, error);
@@ -78,21 +83,31 @@ class SQLiteCacheManager {
 
   // Получить значение из кеша
   async get(key) {
-    await this.ensureDb();
-    try {
-      const result = await this.db.getFirstAsync(
-        'SELECT value FROM cache WHERE key = ?',
-        [key]
-      );
-      
-      if (result?.value) {
-        return JSON.parse(result.value);
-      }
-      return null;
-    } catch (error) {
-      console.error(`❌ Cache get error for key ${key}:`, error);
-      return null;
+    // ⚡ Сначала проверяем in-memory кеш (мгновенный доступ)
+    if (this.memoryCache.has(key)) {
+      return this.memoryCache.get(key);
     }
+    
+    return this.executeOperation(async () => {
+      await this.ensureDb();
+      try {
+        const result = await this.db.getFirstAsync(
+          'SELECT value FROM cache WHERE key = ?',
+          [key]
+        );
+        
+        if (result?.value) {
+          const parsed = JSON.parse(result.value);
+          // 🔄 Кешируем в память для следующих запросов
+          this.memoryCache.set(key, parsed);
+          return parsed;
+        }
+        return null;
+      } catch (error) {
+        console.error(`❌ Cache get error for key ${key}:`, error);
+        return null;
+      }
+    });
   }
 
   // Получить все значения по типу
@@ -126,6 +141,8 @@ class SQLiteCacheManager {
       await this.ensureDb();
       try {
         await this.db.runAsync('DELETE FROM cache WHERE key = ?', [key]);
+        // 🔄 Удаляем из in-memory кеша
+        this.memoryCache.delete(key);
         return true;
       } catch (error) {
         console.error(`❌ Cache remove error for key ${key}:`, error);
@@ -140,6 +157,8 @@ class SQLiteCacheManager {
       await this.ensureDb();
       try {
         await this.db.runAsync('DELETE FROM cache');
+        // 🔄 Очищаем in-memory кеш
+        this.memoryCache.clear();
         return true;
       } catch (error) {
         console.error('❌ Cache clear error:', error);
@@ -153,7 +172,12 @@ class SQLiteCacheManager {
     return this.executeOperation(async () => {
       await this.ensureDb();
       try {
+        // 🔄 Сначала получаем ключи для удаления из in-memory кеша
+        const keysResult = await this.db.getAllAsync('SELECT key FROM cache WHERE type = ?', [type]);
+        // Удаляем из SQLite
         await this.db.runAsync('DELETE FROM cache WHERE type = ?', [type]);
+        // 🔄 Удаляем из in-memory кеша
+        keysResult.forEach(row => this.memoryCache.delete(row.key));
         return true;
       } catch (error) {
         console.error(`❌ Cache clearByType error for type ${type}:`, error);
