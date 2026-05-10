@@ -92,7 +92,7 @@ const LifeProgressBar = ({ label, value, color }) => {
 
 const HabitsScreen = ({ route }) => {
   const { colors } = useTheme();
-  const { bumpAll } = useDataSync();
+  const { bumpAll, tick } = useDataSync();
   
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
@@ -226,11 +226,20 @@ const HabitsScreen = ({ route }) => {
     useCallback(() => {
       if (isUpdatingRef.current) return;
       const now = Date.now();
-      if (now - lastLoadTimeRef.current < 30000) return;
+      // Уменьшаем throttle до 3 секунд вместо 30
+      if (now - lastLoadTimeRef.current < 3000) return;
       lastLoadTimeRef.current = now;
       if (loadRecords) loadRecords();
-    }, [loadRecords])
+      if (loadHabits) loadHabits();
+    }, [loadRecords, loadHabits])
   );
+
+  // При получении сигнала от другого экрана (bumpAll) — принудительно обновляем
+  useEffect(() => {
+    if (tick === 0) return;
+    lastLoadTimeRef.current = 0; // Сбрасываем throttle
+    if (loadRecords) loadRecords();
+  }, [tick]);
 
   const loadProfile = async () => {
     try {

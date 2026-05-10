@@ -71,10 +71,28 @@ const isoTomorrow = () => {
 
 // 🔄 Расчет следующей даты для повторяющихся задач
 const getNextRecurringDate = (task) => {
-  // Берём дату задачи (не сегодня!)
-  const baseDate = task.date
-    ? new Date(task.date + 'T00:00:00')
+  // Очищаем дату от времени и Z-суффикса перед парсингом
+  let rawDate = task.date || null;
+  let cleanDate = null;
+
+  if (rawDate) {
+    // Берём только первые 10 символов: "YYYY-MM-DD"
+    cleanDate = String(rawDate).slice(0, 10);
+  }
+
+  // Парсим локально (без UTC сдвига)
+  const baseDate = cleanDate
+    ? new Date(cleanDate + 'T00:00:00')
     : new Date();
+
+  // Защита от Invalid Date
+  if (isNaN(baseDate.getTime())) {
+    const fallback = new Date();
+    const y = fallback.getFullYear();
+    const m = String(fallback.getMonth() + 1).padStart(2, '0');
+    const d = String(fallback.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
 
   const next = new Date(baseDate);
 
@@ -85,15 +103,14 @@ const getNextRecurringDate = (task) => {
     case 'weekly':
       next.setDate(next.getDate() + 7);
       break;
-    case 'monthly':
-      // ВАЖНО: setMonth сохраняет день месяца
-      // Защита от "31 февраля" — если день не совпадает, берём последний день месяца
+    case 'monthly': {
       const originalDay = next.getDate();
       next.setMonth(next.getMonth() + 1);
       if (next.getDate() !== originalDay) {
         next.setDate(0); // последний день предыдущего месяца
       }
       break;
+    }
     case 'yearly':
       next.setFullYear(next.getFullYear() + 1);
       break;
@@ -1183,34 +1200,12 @@ const TasksScreen = ({ navigation }) => {
         if (done) showToast('✅ Задача выполнена!');
         else showToast('↩ Задача снова в работе');
         
-        // Для recurring задач создаем новую задачу в фоне с правильной датой
+        // Для recurring задач — сервер сам создаёт следующую задачу
+        // Клиент только перезагружает список после небольшой задержки
         if (done && t.isRecurring) {
-          setTimeout(async () => {
-            try {
-              // 🔄 Создаём следующую задачу с правильной датой (не сегодня!)
-              const nextDate = getNextRecurringDate(t);
-              const newTaskData = {
-                title: t.title,
-                date: nextDate,
-                deadline: t.deadline,
-                time: t.time,
-                priority: t.priority,
-                comment: t.comment || '',
-                isRecurring: t.isRecurring ? 1 : 0,
-                recurrenceType: t.recurrenceType,
-                folderId: t.folderId || null,
-                completed: false,
-                done: false,
-              };
-
-              await tasksAPI.createTaskOffline(newTaskData);
-              console.log('🔄 Recurring task created for:', nextDate);
-
-              await loadTasks(undefined, true); // forceRefresh для обновления списка
-            } catch (err) {
-              console.error('Failed to create recurring task:', err);
-            }
-          }, 1000);
+          setTimeout(() => {
+            loadTasks(undefined, true);
+          }, 1200); // Небольшая задержка чтобы сервер успел создать задачу
         }
         
         // Успешная синхронизация - вызываем bumpAll

@@ -18,8 +18,8 @@ const Modal = ({ visible, onClose, title, children }) => {
     >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
       >
         {/* Тап по фону — закрыть */}
         <Pressable style={styles.backdrop} onPress={onClose}>
@@ -46,9 +46,12 @@ const Modal = ({ visible, onClose, title, children }) => {
               <ScrollView
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="always"
-                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="none"
+                nestedScrollEnabled={true}
+                scrollEventThrottle={16}
                 bounces={false}
+                onStartShouldSetResponder={() => true}
               >
                 {children}
               </ScrollView>
