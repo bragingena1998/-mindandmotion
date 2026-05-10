@@ -2,7 +2,7 @@
 import React from 'react';
 import {
   View, Text, Modal as RNModal, StyleSheet,
-  TouchableOpacity, ScrollView, Pressable,
+  TouchableOpacity, ScrollView, Pressable, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -16,47 +16,55 @@ const Modal = ({ visible, onClose, title, children }) => {
       animationType="fade"
       onRequestClose={onClose}
     >
-      {/* Тап по фону — закрыть */}
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        {/* Стоп пропаганда клика через контент, но пропускаем скролл */}
-        <View
-          style={styles.modalWrapper}
-          onStartShouldSetResponder={() => true}
-          onTouchEnd={(e) => e.stopPropagation()}
-        >
-          <View style={[
-            styles.modal,
-            { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
-          ]}>
-            {title && (
-              <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
-                <TouchableOpacity
-                  style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
-                  onPress={onClose}
-                >
-                  <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <ScrollView
-              style={styles.scrollContent}
-              contentContainerStyle={styles.scrollContentContainer}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              nestedScrollEnabled={true}
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        {/* Тап по фону — закрыть */}
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          {/* Стоп пропаганда клика через контент */}
+          <Pressable style={styles.modalWrapper}>
+            <View
+              style={[
+                styles.modal,
+                { backgroundColor: colors.surface, borderColor: colors.accent1 || '#333' },
+              ]}
             >
-              {children}
-            </ScrollView>
-          </View>
-        </View>
-      </Pressable>
+              {title && (
+                <View style={styles.header}>
+                  <Text style={[styles.title, { color: colors.textMain }]}>{title}</Text>
+                  <TouchableOpacity
+                    style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
+                    onPress={onClose}
+                  >
+                    <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <ScrollView
+                style={styles.content}
+                contentContainerStyle={styles.contentContainer}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="always"
+                nestedScrollEnabled
+                bounces={false}
+              >
+                {children}
+              </ScrollView>
+            </View>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
     </RNModal>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+  },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
@@ -72,10 +80,10 @@ const styles = StyleSheet.create({
   modal: {
     width: '100%',
     maxWidth: 500,
-    maxHeight: '90%', // Ограничиваем высоту модалки
     borderWidth: 2,
     borderRadius: 20,
-    padding: 24,
+    // ❌ Убрали padding: 24 отсюда
+    overflow: 'hidden', // важно для borderRadius при скролле
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
@@ -86,7 +94,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    // ✅ padding перенесён сюда
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 18, fontWeight: '700', textTransform: 'uppercase',
@@ -97,13 +108,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   closeIcon: { fontSize: 14, fontWeight: 'bold', marginTop: -2 },
-  scrollContent: { 
-    flex: 1, // Занимает доступное пространство
-    width: '100%' 
+  content: {
+    width: '100%',
+    // flex: 1 здесь НЕ ставим — ScrollView сам определит высоту внутри modal
   },
-  scrollContentContainer: { 
-    paddingBottom: 20, // Больше отступ снизу
-    flexGrow: 1, // Позволяет ScrollView расти
+  contentContainer: {
+    // ✅ padding перенесён сюда из modal
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
 });
 
