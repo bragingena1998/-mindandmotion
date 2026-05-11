@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Toast = ({ visible, message, type = 'success', onHide }) => {
@@ -54,13 +55,13 @@ const Toast = ({ visible, message, type = 'success', onHide }) => {
   const getToastStyle = () => {
     switch (type) {
       case 'success':
-        return { backgroundColor: '#22c55e', icon: '✅' };
+        return { backgroundColor: '#22c55e', iconName: 'checkmark-circle' };
       case 'error':
-        return { backgroundColor: '#ef4444', icon: '❌' };
+        return { backgroundColor: '#ef4444', iconName: 'close-circle' };
       case 'warning':
-        return { backgroundColor: '#f59e0b', icon: '⚠️' };
+        return { backgroundColor: '#f59e0b', iconName: 'warning' };
       default:
-        return { backgroundColor: colors.accent1, icon: 'ℹ️' };
+        return { backgroundColor: colors.accent1, iconName: 'information-circle' };
     }
   };
 
@@ -77,7 +78,7 @@ const Toast = ({ visible, message, type = 'success', onHide }) => {
         },
       ]}
     >
-      <Text style={styles.toastIcon}>{toastStyle.icon}</Text>
+      <Ionicons name={toastStyle.iconName} size={18} color="#fff" />
       <Text style={styles.toastMessage}>{message}</Text>
     </Animated.View>
   );

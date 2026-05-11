@@ -30,6 +30,7 @@ import { useTutorial } from '../hooks/useTutorial';
 import { useDataSync } from '../contexts/DataSyncContext';
 import { useLocalFirst } from '../hooks/useLocalFirst';
 import HabitTrendChart from '../components/HabitTrendChart';
+import Svg, { Rect, Line, Polyline, Path } from 'react-native-svg';
 
 const formatDateISO = (date) => {
   if (!date) return null;
@@ -533,7 +534,7 @@ const HabitsScreen = ({ route }) => {
   const currentYearVal = todayDate.getFullYear();
 
   const activeHabitsToday = habits.filter(h => {
-    const dateObj = new Date(year, month - 1, currentDay);
+    const dateObj = new Date(currentYearVal, currentMonthIdx - 1, currentDay);
     if (h.start_date) { const s = new Date(h.start_date); s.setHours(0, 0, 0, 0); if (dateObj < s) return false; }
     if (h.end_date) { const e = new Date(h.end_date); e.setHours(23, 59, 59, 999); if (dateObj > e) return false; }
     if (h.days_of_week && h.days_of_week.length > 0) { if (!h.days_of_week.includes(dateObj.getDay())) return false; }
@@ -571,7 +572,7 @@ const HabitsScreen = ({ route }) => {
 
   // Вспомогательные функции для TodayCard
   const isActiveToday = (h) => {
-    const dateObj = new Date(year, month - 1, currentDay);
+    const dateObj = new Date(currentYearVal, currentMonthIdx - 1, currentDay);
     if (h.start_date) { const s = new Date(h.start_date); s.setHours(0,0,0,0); if (dateObj < s) return false; }
     if (h.end_date) { const e = new Date(h.end_date); e.setHours(23,59,59,999); if (dateObj > e) return false; }
     if (h.days_of_week && h.days_of_week.length > 0) {
@@ -600,22 +601,37 @@ const HabitsScreen = ({ route }) => {
   const getAmountLabel = (h) => {
     const plan = h.plan || 1;
     const daysInMonth = new Date(year, month, 0).getDate();
-    const today = isCurrentMonth ? currentDay : daysInMonth;
-    let activeDays = 0;
-    for (let d = 1; d <= today; d++) {
+    const todayDay = isCurrentMonth ? currentDay : daysInMonth;
+
+    // activeDaysDone — сколько активных дней прошло (для числителя)
+    let activeDaysDone = 0;
+    for (let d = 1; d <= todayDay; d++) {
       const dateObj = new Date(year, month - 1, d);
       if (h.start_date) { const s = new Date(h.start_date); s.setHours(0,0,0,0); if (dateObj < s) continue; }
       if (h.end_date) { const e = new Date(h.end_date); e.setHours(23,59,59,999); if (dateObj > e) continue; }
       if (h.days_of_week && h.days_of_week.length > 0) { if (!h.days_of_week.includes(dateObj.getDay())) continue; }
-      activeDays++;
+      activeDaysDone++;
     }
+
+    // activeDaysTotal — сколько активных дней всего в месяце (для плана/знаменателя)
+    let activeDaysTotal = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(year, month - 1, d);
+      if (h.start_date) { const s = new Date(h.start_date); s.setHours(0,0,0,0); if (dateObj < s) continue; }
+      if (h.end_date) { const e = new Date(h.end_date); e.setHours(23,59,59,999); if (dateObj > e) continue; }
+      if (h.days_of_week && h.days_of_week.length > 0) { if (!h.days_of_week.includes(dateObj.getDay())) continue; }
+      activeDaysTotal++;
+    }
+
     const doneRecs = records.filter(r => r.habitid === h.id);
     if (h.unit === 'Дни') {
       const doneCount = doneRecs.filter(r => r.value > 0).length;
-      return h.target_type === 'daily' ? `${doneCount} / ${activeDays} дн` : `${doneCount} дн`;
+      return h.target_type === 'daily'
+        ? `${doneCount} / ${activeDaysTotal} дн` 
+        : `${doneCount} дн`;
     }
     const total = doneRecs.reduce((s, r) => s + (parseFloat(r.value) || 0), 0);
-    const planTotal = h.target_type === 'daily' ? plan * activeDays : plan;
+    const planTotal = h.target_type === 'daily' ? plan * activeDaysTotal : plan;
     if (h.unit === 'Часы') return `${total % 1 === 0 ? total : total.toFixed(1)} / ${planTotal} ч`;
     const unitSuffix = h.unit && h.unit !== 'Кол-во' ? ` ${h.unit}` : '';
     return `${total} / ${planTotal}${unitSuffix}`;
@@ -881,39 +897,53 @@ const HabitsScreen = ({ route }) => {
           
           {/* Сегментный контрол */}
           <View style={{ flexDirection: 'row', gap: 4, marginRight: 'auto', marginLeft: 8 }}>
-            <TouchableOpacity 
+            {/* Карточки / Cards — иконка: линейный график */}
+            <TouchableOpacity
               onPress={() => switchMode('cards')}
-              style={[
-                { 
-                  height: 32, 
-                  borderRadius: 8, 
-                  paddingHorizontal: 12, 
-                  justifyContent: 'center', 
-                  alignItems: 'center',
-                  backgroundColor: viewMode === 'cards' ? colors.accent1 : colors.surface,
-                  borderWidth: viewMode === 'cards' ? 0 : 1,
-                  borderColor: colors.borderSubtle
-                }
-              ]}
+              style={{
+                height: 32,
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: viewMode === 'cards' ? colors.accent1 : colors.surface,
+                borderWidth: viewMode === 'cards' ? 0 : 1,
+                borderColor: colors.borderSubtle,
+              }}
             >
-              <Text style={{ fontSize: 16, color: viewMode === 'cards' ? '#020617' : colors.textMain }}>📈</Text>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                <Polyline
+                  points="3,17 8,11 13,14 21,5"
+                  stroke={viewMode === 'cards' ? '#020617' : colors.textMain}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
             </TouchableOpacity>
-            <TouchableOpacity 
+
+            {/* Таблица / Table — иконка: bar chart */}
+            <TouchableOpacity
               onPress={() => switchMode('table')}
-              style={[
-                { 
-                  height: 32, 
-                  borderRadius: 8, 
-                  paddingHorizontal: 12, 
-                  justifyContent: 'center', 
-                  alignItems: 'center',
-                  backgroundColor: viewMode === 'table' ? colors.accent1 : colors.surface,
-                  borderWidth: viewMode === 'table' ? 0 : 1,
-                  borderColor: colors.borderSubtle
-                }
-              ]}
+              style={{
+                height: 32,
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: viewMode === 'table' ? colors.accent1 : colors.surface,
+                borderWidth: viewMode === 'table' ? 0 : 1,
+                borderColor: colors.borderSubtle,
+              }}
             >
-              <Text style={{ fontSize: 16, color: viewMode === 'table' ? '#020617' : colors.textMain }}>📊</Text>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                <Rect x={3} y={10} width={4} height={11} rx={1}
+                  fill={viewMode === 'table' ? '#020617' : colors.textMain} />
+                <Rect x={10} y={6} width={4} height={15} rx={1}
+                  fill={viewMode === 'table' ? '#020617' : colors.textMain} />
+                <Rect x={17} y={2} width={4} height={19} rx={1}
+                  fill={viewMode === 'table' ? '#020617' : colors.textMain} />
+              </Svg>
             </TouchableOpacity>
           </View>
           

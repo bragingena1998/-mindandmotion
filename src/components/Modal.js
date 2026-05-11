@@ -5,6 +5,7 @@ import {
   TouchableOpacity, ScrollView, Pressable,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -40,7 +41,7 @@ const Modal = ({ visible, onClose, title, children }) => {
                       style={[styles.closeButton, { borderColor: colors.borderSubtle || '#444' }]}
                       onPress={onClose}
                     >
-                      <Text style={[styles.closeIcon, { color: colors.textMain }]}>✕</Text>
+                      <Ionicons name="close" size={20} color={colors.textMain} />
                     </TouchableOpacity>
                   </View>
                 )}

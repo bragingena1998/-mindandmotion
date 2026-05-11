@@ -6,6 +6,7 @@ import {
   Switch,
   TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '../contexts/ThemeContext';
 import Modal from './Modal';
@@ -172,7 +173,7 @@ const AppLockSettingsSection = () => {
       <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>ЗАЩИТА ПРИЛОЖЕНИЯ</Text>
 
       <View style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-        <Text style={{ fontSize: 20 }}>🔐</Text>
+        <Ionicons name="lock-closed-outline" size={22} color={colors.accent1} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.menuItemText, { color: colors.textMain }]}>PIN при входе</Text>
           <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
@@ -190,7 +191,7 @@ const AppLockSettingsSection = () => {
       {lockEnabled && (
         <>
           <View style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-            <Text style={{ fontSize: 20 }}>👆</Text>
+            <Ionicons name="finger-print-outline" size={22} color={colors.accent1} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.menuItemText, { color: colors.textMain }]}>Биометрия</Text>
               <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
@@ -207,7 +208,7 @@ const AppLockSettingsSection = () => {
           </View>
 
           <View style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-            <Text style={{ fontSize: 20 }}>⏰</Text>
+            <Ionicons name="timer-outline" size={22} color={colors.accent1} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.menuItemText, { color: colors.textMain }]}>Отсрочка 5 мин</Text>
               <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
@@ -217,9 +218,8 @@ const AppLockSettingsSection = () => {
             <Switch
               value={gracePeriod > 0}
               onValueChange={async (value) => {
-                const minutes = value ? 5 : 0;
-                await setGracePeriod(minutes);
-                setGracePeriodState(minutes);
+                setGracePeriodState(value ? 5 : 0);
+                await setGracePeriod(value ? 5 : 0);
               }}
               trackColor={{ false: '#444', true: colors.accent1 + '99' }}
               thumbColor={gracePeriod > 0 ? colors.accent1 : '#888'}
@@ -236,7 +236,7 @@ const AppLockSettingsSection = () => {
               setShowChangePin(true);
             }}
           >
-            <Text style={{ fontSize: 20 }}>🔢</Text>
+            <Ionicons name="keypad-outline" size={22} color={colors.accent1} />
             <Text style={[styles.menuItemText, { color: colors.textMain }]}>Сменить PIN</Text>
             <Text style={{ color: colors.textMuted, fontSize: 18 }}>{'\u203a'}</Text>
           </TouchableOpacity>

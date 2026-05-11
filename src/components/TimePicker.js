@@ -3,6 +3,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, FlatList, Modal as RNModal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
 const ITEM_HEIGHT = 40;
@@ -128,11 +129,11 @@ const TimePicker = ({ label, value, onChangeTime }) => {
         <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
           {value && (
             <TouchableOpacity onPress={() => onChangeTime(null)}>
-              <Text style={{ fontSize: 16, color: colors.textMuted }}>✕</Text>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={open}>
-            <Text style={{ fontSize: 20 }}>🕒</Text>
+            <Ionicons name="time-outline" size={22} color={colors.accent1} />
           </TouchableOpacity>
         </View>
       </View>

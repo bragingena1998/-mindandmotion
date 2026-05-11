@@ -1,15 +1,16 @@
 // src/components/TabBar.js
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
 const TabBar = ({ state, navigation }) => {
   const { colors } = useTheme();
 
   const tabs = [
-    { name: 'Tasks', label: 'Задачи', icon: '✓' },
-    { name: 'Habits', label: 'Привычки', icon: '⚡' },
-    { name: 'Profile', label: 'Профиль', icon: '👤' },
+    { name: 'Tasks', label: 'Задачи', iconOutline: 'checkmark-circle-outline', iconActive: 'checkmark-circle' },
+    { name: 'Habits', label: 'Привычки', iconOutline: 'flash-outline', iconActive: 'flash' },
+    { name: 'Profile', label: 'Профиль', iconOutline: 'person-outline', iconActive: 'person' },
   ];
 
   return (
@@ -43,12 +44,11 @@ const TabBar = ({ state, navigation }) => {
               styles.tabContent,
               isFocused && { backgroundColor: colors.accent1 + '20' }
             ]}>
-              <Text style={[
-                styles.tabIcon,
-                { color: isFocused ? colors.accent1 : colors.textMuted }
-              ]}>
-                {tab.icon}
-              </Text>
+              <Ionicons
+                name={isFocused ? tab.iconActive : tab.iconOutline}
+                size={24}
+                color={isFocused ? colors.accent1 : colors.textMuted}
+              />
               <Text style={[
                 styles.tabLabel,
                 { color: isFocused ? colors.accent1 : colors.textMuted }
@@ -81,10 +81,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 12,
-  },
-  tabIcon: {
-    fontSize: 24,
-    marginBottom: 2,
   },
   tabLabel: {
     fontSize: 11,

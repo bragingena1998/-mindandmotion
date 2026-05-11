@@ -1,15 +1,16 @@
 // src/components/SimpleTabBar.js
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
 const SimpleTabBar = ({ activeTab, onTabChange }) => {
   const { colors } = useTheme();
 
   const tabs = [
-    { id: 'Tasks', label: 'Задачи', icon: '✓' },
-    { id: 'Habits', label: 'Привычки', icon: '⚡' },
-    { id: 'Profile', label: 'Профиль', icon: '👤' },
+    { id: 'Tasks', label: 'Задачи', iconOutline: 'checkmark-circle-outline', iconActive: 'checkmark-circle' },
+    { id: 'Habits', label: 'Привычки', iconOutline: 'flash-outline', iconActive: 'flash' },
+    { id: 'Profile', label: 'Профиль', iconOutline: 'person-outline', iconActive: 'person' },
   ];
 
   return (
@@ -30,12 +31,11 @@ const SimpleTabBar = ({ activeTab, onTabChange }) => {
               styles.tabContent,
               isActive && { backgroundColor: colors.accent1 + '20' }
             ]}>
-              <Text style={[
-                styles.tabIcon,
-                { color: isActive ? colors.accent1 : colors.textMuted }
-              ]}>
-                {tab.icon}
-              </Text>
+              <Ionicons
+                name={isActive ? tab.iconActive : tab.iconOutline}
+                size={24}
+                color={isActive ? colors.accent1 : colors.textMuted}
+              />
               <Text style={[
                 styles.tabLabel,
                 { color: isActive ? colors.accent1 : colors.textMuted }
@@ -72,10 +72,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 12,
-  },
-  tabIcon: {
-    fontSize: 24,
-    marginBottom: 2,
   },
   tabLabel: {
     fontSize: 11,

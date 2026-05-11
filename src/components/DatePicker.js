@@ -2,6 +2,7 @@
 // Нативный DateTimePicker Android + кнопка сброса
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -44,11 +45,11 @@ const DatePicker = ({ label, value, onChangeDate, allowClear }) => {
         <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
           {allowClear && value && (
             <TouchableOpacity onPress={() => onChangeDate(null)}>
-              <Text style={{ fontSize: 16, color: colors.textMuted }}>✕</Text>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={() => setIsVisible(true)}>
-            <Text style={{ fontSize: 20 }}>📅</Text>
+            <Ionicons name="calendar-outline" size={22} color={colors.accent1} />
           </TouchableOpacity>
         </View>
       </View>
