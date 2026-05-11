@@ -29,6 +29,7 @@ import HabitsTutorial from '../components/HabitsTutorial';
 import { useTutorial } from '../hooks/useTutorial';
 import { useDataSync } from '../contexts/DataSyncContext';
 import { useLocalFirst } from '../hooks/useLocalFirst';
+import HabitTrendChart from '../components/HabitTrendChart';
 
 const formatDateISO = (date) => {
   if (!date) return null;
@@ -146,6 +147,8 @@ const HabitsScreen = ({ route }) => {
   const [profile, setProfile] = useState(null);
   const [lifeProgress, setLifeProgress] = useState({ percent: 0, yearsLived: 0, yearsLeft: 64 });
   const [yearProgress, setYearProgress] = useState({ percent: 0, daysPassed: 0, daysLeft: 365 });
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
+  const [barMode, setBarMode] = useState('percent'); // 'percent' | 'amount'
 
   useEffect(() => {
     setLoading(habitsLoading || recordsLoading);
@@ -207,7 +210,10 @@ const HabitsScreen = ({ route }) => {
     }
   }, [route?.params]);
 
-  useEffect(() => { loadProfile(); }, []);
+  useEffect(() => { 
+    loadProfile(); 
+    loadViewMode();
+  }, []);
 
   useEffect(() => {
     const checkHabitTimer = async () => {
@@ -221,6 +227,13 @@ const HabitsScreen = ({ route }) => {
     const interval = setInterval(checkHabitTimer, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const loadViewMode = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('@mm_habits_view_mode');
+      if (saved === 'cards' || saved === 'table') setViewMode(saved);
+    } catch {}
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -547,6 +560,193 @@ const HabitsScreen = ({ route }) => {
     return 'в день';
   };
 
+  const switchMode = async (mode) => {
+    setViewMode(mode);
+    try { 
+      await AsyncStorage.setItem('@mm_habits_view_mode', mode); 
+    } catch {}
+  };
+
+  const isCurrentMonth = year === currentYearVal && month === currentMonthIdx;
+
+  // Вспомогательные функции для TodayCard
+  const isActiveToday = (h) => {
+    const dateObj = new Date(year, month - 1, currentDay);
+    if (h.start_date) { const s = new Date(h.start_date); s.setHours(0,0,0,0); if (dateObj < s) return false; }
+    if (h.end_date) { const e = new Date(h.end_date); e.setHours(23,59,59,999); if (dateObj > e) return false; }
+    if (h.days_of_week && h.days_of_week.length > 0) {
+      if (!h.days_of_week.includes(dateObj.getDay())) return false;
+    }
+    return true;
+  };
+
+  const getHabitPercent = (h) => {
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const today = isCurrentMonth ? currentDay : daysInMonth;
+    let activeDays = 0; let completedDays = 0;
+    for (let d = 1; d <= today; d++) {
+      const dateObj = new Date(year, month - 1, d);
+      if (h.start_date) { const s = new Date(h.start_date); s.setHours(0,0,0,0); if (dateObj < s) continue; }
+      if (h.end_date) { const e = new Date(h.end_date); e.setHours(23,59,59,999); if (dateObj > e) continue; }
+      if (h.days_of_week && h.days_of_week.length > 0) { if (!h.days_of_week.includes(dateObj.getDay())) continue; }
+      activeDays++;
+      const rec = records.find(r => r.habitid === h.id && r.day === d);
+      if (rec && rec.value > 0) completedDays++;
+    }
+    if (activeDays === 0) return 0;
+    return Math.round((completedDays / activeDays) * 100);
+  };
+
+  const getAmountLabel = (h) => {
+    const plan = h.plan || 1;
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const today = isCurrentMonth ? currentDay : daysInMonth;
+    let activeDays = 0;
+    for (let d = 1; d <= today; d++) {
+      const dateObj = new Date(year, month - 1, d);
+      if (h.start_date) { const s = new Date(h.start_date); s.setHours(0,0,0,0); if (dateObj < s) continue; }
+      if (h.end_date) { const e = new Date(h.end_date); e.setHours(23,59,59,999); if (dateObj > e) continue; }
+      if (h.days_of_week && h.days_of_week.length > 0) { if (!h.days_of_week.includes(dateObj.getDay())) continue; }
+      activeDays++;
+    }
+    const doneRecs = records.filter(r => r.habitid === h.id && r.year === year && r.month === month);
+    if (h.unit === 'Дни') {
+      const doneCount = doneRecs.filter(r => r.value > 0).length;
+      return h.target_type === 'daily' ? `${doneCount} / ${activeDays} дн` : `${doneCount} дн`;
+    }
+    const total = doneRecs.reduce((s, r) => s + (parseFloat(r.value) || 0), 0);
+    const planTotal = h.target_type === 'daily' ? plan * activeDays : plan;
+    if (h.unit === 'Часы') return `${total % 1 === 0 ? total : total.toFixed(1)} / ${planTotal} ч`;
+    const unitSuffix = h.unit && h.unit !== 'Кол-во' ? ` ${h.unit}` : '';
+    return `${total} / ${planTotal}${unitSuffix}`;
+  };
+
+  const getStreak = (h) => {
+    let streak = 0;
+    for (let i = currentDay; i >= 1; i--) {
+      const dateObj = new Date(year, month - 1, i);
+      if (h.days_of_week && h.days_of_week.length > 0 && !h.days_of_week.includes(dateObj.getDay())) continue;
+      const rec = records.find(r => r.habitid === h.id && r.day === i);
+      if (rec && rec.value > 0) streak++;
+      else break;
+    }
+    return streak;
+  };
+
+  // Данные для тренд-графика
+  const getTrendData = () => {
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const lastDay = isCurrentMonth ? currentDay : daysInMonth;
+    return Array.from({ length: lastDay }, (_, i) => {
+      const day = i + 1;
+      const activeHabits = habits.filter(h => {
+        const dateObj = new Date(year, month - 1, day);
+        if (h.start_date) { const s = new Date(h.start_date); s.setHours(0,0,0,0); if (dateObj < s) return false; }
+        if (h.end_date) { const e = new Date(h.end_date); e.setHours(23,59,59,999); if (dateObj > e) return false; }
+        if (h.days_of_week && h.days_of_week.length > 0) { if (!h.days_of_week.includes(dateObj.getDay())) return false; }
+        return true;
+      });
+      if (activeHabits.length === 0) return { day, pct: 0, hasPlan: false };
+      const completed = activeHabits.filter(h => {
+        const rec = records.find(r => r.habitid === h.id && r.day === day);
+        return rec && rec.value > 0;
+      }).length;
+      return { day, pct: Math.round((completed / activeHabits.length) * 100), hasPlan: true };
+    });
+  };
+
+  // Компонент TodayCard
+  const TodayCard = () => {
+    const habitsWithStats = habits.map(h => ({
+      ...h,
+      percent: getHabitPercent(h),
+      amountLabel: getAmountLabel(h),
+      streak: getStreak(h),
+      activeToday: isActiveToday(h),
+      completedToday: records.find(r => r.habitid === h.id && r.day === currentDay && r.value > 0)
+    }));
+
+    return (
+      <View style={{ backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.borderSubtle, marginBottom: 12, overflow: 'hidden' }}>
+        {/* Шапка карточки */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10, paddingBottom: 8 }}>
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+              <Text style={{ fontSize: 30, fontWeight: '900', color: colors.textMain }}>{completedToday}</Text>
+              <Text style={{ fontSize: 18, color: colors.textMuted }}> / </Text>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textMuted }}>{totalHabitsToday}</Text>
+            </View>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>сегодня</Text>
+          </View>
+          <TouchableOpacity onPress={() => setBarMode(barMode === 'percent' ? 'amount' : 'percent')}>
+            <Text style={{ fontSize: 32, fontWeight: '900', color: colors.accent1 }}>{dailyPercent}%</Text>
+            <Text style={{ fontSize: 10, color: colors.accent1, opacity: 0.6 }}>↕ {barMode === 'percent' ? '123' : '%'}</Text>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: colors.accent1 }}>{motivationText}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Список баров привычек */}
+        <View style={{ padding: 6, paddingBottom: 10, gap: 3 }}>
+          {habitsWithStats.map(h => (
+            <View key={h.id}>
+              <View 
+                style={{
+                  backgroundColor: h.completedToday ? 'rgba(249,115,22,0.09)' : h.activeToday ? 'rgba(249,115,22,0.04)' : 'transparent',
+                  borderRadius: 8,
+                  paddingHorizontal: 6,
+                  paddingVertical: 4,
+                  opacity: (!h.activeToday && !h.completedToday) ? 0.45 : 1
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <Text style={{ fontSize: 12 }}>{h.target_type === 'daily' ? '⏳' : '📅'}</Text>
+                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: colors.textMain }} numberOfLines={1}>
+                    {h.name}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                    {h.streak >= 2 && (
+                      <View style={{ 
+                        backgroundColor: 'rgba(249,115,22,0.15)', 
+                        paddingHorizontal: 7, 
+                        paddingVertical: 1, 
+                        borderRadius: 9999 
+                      }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#fbbf24' }}>🔥 {h.streak}</Text>
+                      </View>
+                    )}
+                    <Text style={{ 
+                      fontSize: 11, 
+                      fontWeight: '700', 
+                      color: colors.textMuted, 
+                      minWidth: 54, 
+                      textAlign: 'right' 
+                    }}>
+                      {barMode === 'percent' ? `${h.percent}%` : h.amountLabel}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <View style={{ 
+                height: 3, 
+                backgroundColor: colors.borderSubtle, 
+                borderRadius: 9999, 
+                overflow: 'hidden',
+                marginTop: 2
+              }}>
+                <View style={{ 
+                  height: '100%', 
+                  width: `${h.percent}%`, 
+                  borderRadius: 9999,
+                  backgroundColor: colors.accent2 || colors.accent1
+                }} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <ScrollView 
       style={[styles.container, { backgroundColor: colors.background }]} 
@@ -676,6 +876,45 @@ const HabitsScreen = ({ route }) => {
               {new Date(year, month - 1).toLocaleString('ru-RU', { month: 'long', year: 'numeric' }).toUpperCase()} ▼
             </Text>
           </TouchableOpacity>
+          
+          {/* Сегментный контрол */}
+          <View style={{ flexDirection: 'row', gap: 4, marginRight: 'auto', marginLeft: 8 }}>
+            <TouchableOpacity 
+              onPress={() => switchMode('cards')}
+              style={[
+                { 
+                  height: 32, 
+                  borderRadius: 8, 
+                  paddingHorizontal: 12, 
+                  justifyContent: 'center', 
+                  alignItems: 'center',
+                  backgroundColor: viewMode === 'cards' ? colors.accent1 : colors.surface,
+                  borderWidth: viewMode === 'cards' ? 0 : 1,
+                  borderColor: colors.borderSubtle
+                }
+              ]}
+            >
+              <Text style={{ fontSize: 16, color: viewMode === 'cards' ? '#020617' : colors.textMain }}>📈</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => switchMode('table')}
+              style={[
+                { 
+                  height: 32, 
+                  borderRadius: 8, 
+                  paddingHorizontal: 12, 
+                  justifyContent: 'center', 
+                  alignItems: 'center',
+                  backgroundColor: viewMode === 'table' ? colors.accent1 : colors.surface,
+                  borderWidth: viewMode === 'table' ? 0 : 1,
+                  borderColor: colors.borderSubtle
+                }
+              ]}
+            >
+              <Text style={{ fontSize: 16, color: viewMode === 'table' ? '#020617' : colors.textMain }}>📊</Text>
+            </TouchableOpacity>
+          </View>
+          
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {habits.length > 1 && (
               <TouchableOpacity style={[styles.iconBtn, { borderColor: colors.borderSubtle }]} onPress={() => setShowReorderModal(true)}>
@@ -689,18 +928,38 @@ const HabitsScreen = ({ route }) => {
         </View>
         {habits.length === 0 ? (
           <View style={[styles.placeholder, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-            <Text style={{ color: colors.textMuted }}>Нет привычек</Text>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textMuted, marginBottom: 8 }}>🎯</Text>
+            <Text style={{ fontSize: 16, color: colors.textMuted, textAlign: 'center', marginBottom: 12 }}>Пока нет привычек</Text>
+            <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', marginBottom: 20 }}>Создай первую привычку, чтобы начать отслеживать прогресс</Text>
+            <TouchableOpacity style={[styles.button, { backgroundColor: colors.accent1 }]} onPress={() => openHabitModal(null)}>
+              <Text style={{ color: '#020617', fontWeight: '600' }}>+ Создать привычку</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          <HabitTable
-            habits={habits}
-            year={year}
-            month={month}
-            records={records}
-            onCellChange={handleCellChange}
-            onHabitDelete={confirmDeleteHabit}
-            onHabitEdit={openHabitModal}
-          />
+          <>
+            {/* РЕЖИМ КАРТОЧКИ */}
+            {viewMode === 'cards' && (
+              <>
+                {isCurrentMonth && <TodayCard />}
+                <HabitTrendChart data={getTrendData()} month={month} year={year} colors={colors} />
+              </>
+            )}
+            
+            {/* РЕЖИМ ТАБЛИЦЫ */}
+            {viewMode === 'table' && (
+              <>
+                <HabitTable
+                  habits={habits}
+                  records={records}
+                  year={year}
+                  month={month}
+                  onCellChange={handleCellChange}
+                  onEdit={openHabitModal}
+                  onDelete={setHabitToDelete}
+                />
+              </>
+            )}
+          </>
         )}
       </View>
 
