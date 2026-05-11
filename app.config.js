@@ -25,7 +25,7 @@ module.exports = {
       [
         'expo-notifications',
         {
-          icon: './assets/icon.png',
+          icon: './assets/notification-icon.png',
           color: '#000000',
           androidMode: 'default',
           androidCollapsedTitle: IS_DEV ? 'M&M Dev' : 'Mind & Motion',

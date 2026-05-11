@@ -249,7 +249,7 @@ export async function scheduleDailyNotifications() {
         title: 'Доброе утро! 🌅',
         body,
         sound: true,
-        android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
+        android: { color: '#7C3AED' },
       },
       trigger: scheduledTime,
     });
@@ -282,7 +282,7 @@ export async function scheduleDailyNotifications() {
         title: 'Вечерний итог 🌙',
         body,
         sound: true,
-        android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
+        android: { color: '#7C3AED' },
       },
       trigger: scheduledTime,
     });
@@ -330,7 +330,7 @@ export async function scheduleWeeklyNotification() {
       title: 'Недельный итог 📅',
       body: `За эту неделю выполнено ${completedThisWeek} задач${completedThisWeek === 1 ? 'а' : completedThisWeek <= 4 ? 'и' : ''}. Загляни в Mind&Motion и подведи итог!`,
       sound: true,
-      android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
+      android: { color: '#7C3AED' },
     },
     trigger: scheduledTime,
   });
@@ -369,7 +369,7 @@ export async function scheduleTaskReminders(task) {
         title: `Напоминание ⏰`,
         body: `«${task.title}» начнётся через ${minsBefore} мин`,
         sound: true,
-        android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
+        android: { color: '#7C3AED' },
       },
       trigger: triggerDate,
     });
@@ -426,7 +426,7 @@ export async function scheduleBirthdayNotification(event) {
         ? `У ${event.name} через ${notifyBefore === 1 ? 'завтра' : `${notifyBefore} дн.`} день рождения!`
         : `«${event.name}» через ${notifyBefore === 1 ? 'завтра' : `${notifyBefore} дн.`}`,
       sound: true,
-      android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
+      android: { color: '#7C3AED' },
     },
     trigger: triggerDate,
   });
@@ -464,7 +464,7 @@ export async function scheduleSessionEndNotification(durationMinutes, taskTitle)
         ? `${durationMinutes} мин концентрации на «${taskTitle}». Отличная работа!`
         : `${durationMinutes} мин концентрации позади! Отличная работа!`,
       sound: true,
-      android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
+      android: { color: '#7C3AED' },
     },
     trigger: triggerDate,
   });
@@ -499,7 +499,7 @@ export async function checkInactivityNotification() {
           title: 'Давно не заходил 💪',
           body: `Уже ${diffDays} ${diffDays === 2 ? 'дня' : 'дней'} без захода. Тебя ждут задачи и привычки!`,
           sound: true,
-          android: { icon: './assets/notification-icon.png', color: '#7C3AED' },
+          android: { color: '#7C3AED' },
         },
         trigger: { seconds: 3 }, // через 3 секунды после запуска
       });
