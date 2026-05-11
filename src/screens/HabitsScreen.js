@@ -844,7 +844,7 @@ const HabitsScreen = ({ route }) => {
         <Text style={{ textAlign: 'center', color: colors.textMuted, fontStyle: 'italic', marginBottom: 16 }}>
           "{quotes[Math.floor(yearProgress.daysPassed % quotes.length)]}"
         </Text>
-        {year === currentYearVal && month === currentMonthIdx && (
+        {viewMode === 'table' && year === currentYearVal && month === currentMonthIdx && (
           <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.accent1 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View>
@@ -856,16 +856,18 @@ const HabitsScreen = ({ route }) => {
             </View>
           </View>
         )}
-        <View style={[styles.lifeCard, { backgroundColor: 'rgba(148, 163, 184, 0.05)', borderColor: colors.borderSubtle }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-            <Text style={[styles.cardTitle, { color: colors.textMain }]}>ВРЕМЯ</Text>
-            <Text style={{ fontSize: 10, color: colors.textMuted }}>MEMENTO MORI</Text>
+        {viewMode === 'table' && (
+          <View style={[styles.lifeCard, { backgroundColor: 'rgba(148, 163, 184, 0.05)', borderColor: colors.borderSubtle }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={[styles.cardTitle, { color: colors.textMain }]}>ВРЕМЯ</Text>
+              <Text style={{ fontSize: 10, color: colors.textMuted }}>MEMENTO MORI</Text>
+            </View>
+            <View style={{ gap: 12 }}>
+              <LifeProgressBar label={`ПРОЖИТО: ${profile?.gender === 'female' ? 'Ж' : 'М'} / ${lifeProgress.yearsLived} ЛЕТ`} value={lifeProgress.percent} color={colors.danger1} />
+              <LifeProgressBar label={`ГОД: ОСТАЛОСЬ ${yearProgress.daysLeft} ДН.`} value={yearProgress.percent} color={colors.accent1} />
+            </View>
           </View>
-          <View style={{ gap: 12 }}>
-            <LifeProgressBar label={`ПРОЖИТО: ${profile?.gender === 'female' ? 'Ж' : 'М'} / ${lifeProgress.yearsLived} ЛЕТ`} value={lifeProgress.percent} color={colors.danger1} />
-            <LifeProgressBar label={`ГОД: ОСТАЛОСЬ ${yearProgress.daysLeft} ДН.`} value={yearProgress.percent} color={colors.accent1} />
-          </View>
-        </View>
+        )}
       </View>
 
       {/* ===== ТАБЛИЦА ПРИВЫЧЕК ===== */}
@@ -941,6 +943,15 @@ const HabitsScreen = ({ route }) => {
             {viewMode === 'cards' && (
               <>
                 {isCurrentMonth && <TodayCard />}
+                <HabitTable
+                  habits={habits}
+                  records={records}
+                  year={year}
+                  month={month}
+                  onCellChange={handleCellChange}
+                  onEdit={openHabitModal}
+                  onDelete={setHabitToDelete}
+                />
                 <HabitTrendChart data={getTrendData()} month={month} year={year} colors={colors} />
               </>
             )}
