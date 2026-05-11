@@ -6,14 +6,14 @@ async function initializeDB() {
       CREATE TABLE IF NOT EXISTS tasks (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
-        date DATE NOT NULL,
+        date DATE DEFAULT NULL,
         time VARCHAR(5) DEFAULT NULL,
         deadline DATE,
-        title VARCHAR(255) NOT NULL,
+        title VARCHAR(500) NOT NULL,
         priority INT DEFAULT 2,
         comment TEXT,
         done BOOLEAN DEFAULT FALSE,
-        done_date DATETIME,
+        done_date DATE DEFAULT NULL,
         focus_sessions INT DEFAULT 0,
         is_recurring BOOLEAN DEFAULT FALSE,
         recurrence_type VARCHAR(50),
@@ -44,6 +44,7 @@ async function initializeDB() {
       { col: 'start_year',   sql: 'ADD COLUMN start_year INT DEFAULT NULL, ADD COLUMN start_month INT DEFAULT NULL' },
       { col: 'order_index',  sql: 'ADD COLUMN order_index INT DEFAULT 0' },
       { col: 'target_type',  sql: "ADD COLUMN target_type VARCHAR(20) DEFAULT 'monthly', ADD COLUMN start_date DATE DEFAULT NULL, ADD COLUMN end_date DATE DEFAULT NULL, ADD COLUMN days_of_week TEXT DEFAULT NULL" },
+      { col: 'year', sql: 'ADD COLUMN year INT DEFAULT NULL, ADD COLUMN month INT DEFAULT NULL' },
     ];
     for (const m of habitMigrations) {
       const [cols] = await pool.query(`SHOW COLUMNS FROM habits LIKE '${m.col}'`);
@@ -68,7 +69,7 @@ async function initializeDB() {
         year INT NOT NULL,
         month INT NOT NULL,
         day INT NOT NULL,
-        value INT DEFAULT 0,
+        value VARCHAR(255) DEFAULT '0',
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY unique_record (user_id, habit_id, year, month, day),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -130,6 +131,8 @@ async function initializeDB() {
       { table: 'tasks',   col: 'folder_id',   sql: 'ADD COLUMN folder_id INT DEFAULT NULL' },
       { table: 'tasks',   col: 'focus_sessions', sql: 'ADD COLUMN focus_sessions INT DEFAULT 0' },
       { table: 'tasks',   col: 'time',        sql: 'ADD COLUMN time VARCHAR(5) DEFAULT NULL AFTER date' },
+      { table: 'tasks',   col: 'subtasks_count', sql: 'ADD COLUMN subtasks_count INT DEFAULT 0' },
+      { table: 'folders', col: 'emoji', sql: "ADD COLUMN emoji VARCHAR(10) DEFAULT NULL" },
     ];
     for (const m of tableMigrations) {
       const [cols] = await pool.query(`SHOW COLUMNS FROM ${m.table} LIKE '${m.col}'`);
@@ -161,6 +164,107 @@ async function initializeDB() {
       ('sacred_text', '')
     `);
     console.log('✓ secret_chat tables OK');
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS announcement_reads (
+        user_id INT NOT NULL,
+        announcement_id INT NOT NULL,
+        read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_announcements (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        body TEXT NOT NULL,
+        type ENUM('update','info','warning') DEFAULT 'info',
+        is_active TINYINT(1) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS birthdays (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        type VARCHAR(30) DEFAULT 'birthday',
+        day INT NOT NULL,
+        month INT NOT NULL,
+        year INT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        notify_before INT DEFAULT 1,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chat_settings (
+        setting_key VARCHAR(50) NOT NULL PRIMARY KEY,
+        setting_value VARCHAR(255) DEFAULT NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+    `);
+    await pool.query(`
+      INSERT IGNORE INTO chat_settings (setting_key, setting_value) VALUES
+      ('gmo_mode', 'off'),
+      ('login_title', 'Раз, два ...'),
+      ('sacred_text', 'И так это первая сходка, какой план?')
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS email_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT DEFAULT NULL,
+        email VARCHAR(255) NOT NULL,
+        subject VARCHAR(255) NOT NULL,
+        message_id VARCHAR(255) DEFAULT NULL,
+        status ENUM('sent','failed','bounced') DEFAULT 'sent',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS message_reactions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        message_id INT NOT NULL,
+        user_id INT NOT NULL,
+        type VARCHAR(20) DEFAULT 'tomato'
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        code VARCHAR(10) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS secret_chat (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS secret_chat_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        text TEXT NOT NULL,
+        is_author TINYINT(1) DEFAULT 0,
+        tomato_count INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+    `);
+
+    console.log('✓ New tables (announcements, birthdays, chat, etc.) OK');
 
     console.log('✓ Database tables initialized');
   } catch (err) {
