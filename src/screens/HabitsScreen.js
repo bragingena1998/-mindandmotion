@@ -609,7 +609,7 @@ const HabitsScreen = ({ route }) => {
       if (h.days_of_week && h.days_of_week.length > 0) { if (!h.days_of_week.includes(dateObj.getDay())) continue; }
       activeDays++;
     }
-    const doneRecs = records.filter(r => r.habitid === h.id && r.year === year && r.month === month);
+    const doneRecs = records.filter(r => r.habitid === h.id);
     if (h.unit === 'Дни') {
       const doneCount = doneRecs.filter(r => r.value > 0).length;
       return h.target_type === 'daily' ? `${doneCount} / ${activeDays} дн` : `${doneCount} дн`;
@@ -949,8 +949,8 @@ const HabitsScreen = ({ route }) => {
                   year={year}
                   month={month}
                   onCellChange={handleCellChange}
-                  onEdit={openHabitModal}
-                  onDelete={setHabitToDelete}
+                  onHabitEdit={openHabitModal}
+                  onHabitDelete={setHabitToDelete}
                 />
                 <HabitTrendChart data={getTrendData()} month={month} year={year} colors={colors} />
               </>
@@ -965,8 +965,8 @@ const HabitsScreen = ({ route }) => {
                   year={year}
                   month={month}
                   onCellChange={handleCellChange}
-                  onEdit={openHabitModal}
-                  onDelete={setHabitToDelete}
+                  onHabitEdit={openHabitModal}
+                  onHabitDelete={setHabitToDelete}
                 />
               </>
             )}
