@@ -483,9 +483,9 @@ const DraggableTaskItem = React.memo(({
       <View style={{ flexDirection: 'row', width: 80 }}>
         <TouchableOpacity 
           onPress={() => handleEditTask(item)} 
-          style={[{ width: 40, height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent1 }]}
+          style={{ width: 36, height: 36, justifyContent: 'center', alignItems: 'center' }}
         >
-          <Ionicons name="pencil" size={16} color="#fff" />
+          <Ionicons name="pencil-outline" size={15} color="rgba(255,255,255,0.5)" />
         </TouchableOpacity>
       </View>
     );
@@ -558,10 +558,10 @@ const DraggableTaskItem = React.memo(({
                   </View>
                 </View>
                 <TouchableOpacity 
-                  style={[{ width: 40, height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent1 }]}
+                  style={{ width: 36, height: 36, justifyContent: 'center', alignItems: 'center' }}
                   onPress={(e) => { e.stopPropagation(); if (!dragTask) handleEditTask(item); }}
                 >
-                  <Ionicons name="pencil" size={16} color="#fff" />
+                  <Ionicons name="pencil-outline" size={15} color="rgba(255,255,255,0.5)" />
                 </TouchableOpacity>
                 <View style={{ paddingLeft: 8, justifyContent: 'flex-end', paddingBottom: 5 }}>
                   <Text style={{ fontSize: 12, color: colors.textMuted }}>{isExpanded ? '▲' : '▼'}</Text>
