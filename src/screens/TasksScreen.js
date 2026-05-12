@@ -33,6 +33,7 @@ import {
   PanGestureHandler,
   State,
 } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 import DatePicker from '../components/DatePicker';
 import TimePicker from '../components/TimePicker';
 import FocusSessionModal, { hasFocusSession, getFocusSession } from '../components/FocusSessionModal';
