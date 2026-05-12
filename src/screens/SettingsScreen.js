@@ -281,7 +281,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     marginRight: 14,
   },
-  backText: { fontSize: 18 },
+  backText: { 
+    fontSize: 20, 
+    lineHeight: 22,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+  },
   headerTitle: { fontSize: 20, fontWeight: '700' },
   section: { marginTop: 28, paddingHorizontal: 20 },
   sectionTitle: {

@@ -159,21 +159,21 @@ const ProfileScreen = ({ onLogout }) => {
           style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
           onPress={() => setShowSettings(true)}
         >
-          <Text style={[styles.actionText, { color: colors.textMain }]}>⚙️ Настройки</Text>
+          <Text style={[styles.actionText, { color: colors.textMain }]}>Настройки</Text>
         </TouchableOpacity>
         {!hideDeleteDemoButton && (
           <TouchableOpacity
             style={[styles.actionButton, { marginTop: 12, backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
             onPress={() => setShowDeleteDemoModal(true)}
           >
-            <Text style={[styles.actionText, { color: colors.textMuted }]}>🧹 Удалить демо-данные</Text>
+            <Text style={[styles.actionText, { color: colors.textMuted }]}>Удалить демо-данные</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
           style={[styles.actionButton, { marginTop: 12, borderColor: colors.danger1, borderWidth: 1, backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}
           onPress={handleLogout}
         >
-          <Text style={[styles.actionText, { color: colors.danger1 }]}>🚶 Выйти</Text>
+          <Text style={[styles.actionText, { color: colors.danger1 }]}>Выйти</Text>
         </TouchableOpacity>
       </View>
 

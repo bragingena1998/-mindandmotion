@@ -553,7 +553,7 @@ const DraggableTaskItem = React.memo(({
                   </View>
                 </View>
                 <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); if (!dragTask) handleEditTask(item); }}>
-                  <Text style={{ fontSize: 16 }}>{'\u270F\uFE0F'}</Text>
+                  <Text style={{ fontSize: 16, color: colors.textMuted, opacity: 0.6 }}>{'\u270F\uFE0F'}</Text>
                 </TouchableOpacity>
                 <View style={{ paddingLeft: 8, justifyContent: 'flex-end', paddingBottom: 5 }}>
                   <Text style={{ fontSize: 12, color: colors.textMuted }}>{isExpanded ? '▲' : '▼'}</Text>

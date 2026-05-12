@@ -1120,7 +1120,7 @@ const HabitsScreen = ({ route }) => {
           </Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <Button title="Отмена" variant="outline" onPress={() => setHabitToDelete(null)} style={{ flex: 1 }} />
-            <Button title="Архивировать" variant="danger" noBorder onPress={executeDelete} style={{ flex: 1 }} />
+            <Button title="Архив" variant="danger" noBorder onPress={executeDelete} style={{ flex: 1 }} />
           </View>
         </View>
       </Modal>

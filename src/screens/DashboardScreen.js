@@ -627,18 +627,10 @@ const DashboardScreen = ({ navigation }) => {
             </Text>
             <Text style={[styles.date, { color: colors.textMuted }]}>{formatDateRu(new Date())}</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <TouchableOpacity 
-              onPress={handleResetCache}
-              style={{ padding: 8 }}
-            >
-              <Text style={{ fontSize: 20 }}>🧹</Text>
-            </TouchableOpacity>
-            <View style={[styles.avatar, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-              <Text style={{ color: colors.accentText, fontWeight: '700' }}>
-                {(profile?.name || 'MM').slice(0, 2).toUpperCase()}
-              </Text>
-            </View>
+          <View style={[styles.avatar, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
+            <Text style={{ color: colors.accentText, fontWeight: '700' }}>
+              {(profile?.name || 'MM').slice(0, 2).toUpperCase()}
+            </Text>
           </View>
         </View>
 
