@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, ActivityIndicator, RefreshControl
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
 import Modal from '../components/Modal';
@@ -219,9 +220,9 @@ const SettingsScreen = ({ onBack, user: initialUser, onUserUpdate }) => {
               style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
               onPress={() => setShowNotifications(true)}
             >
-              <Text style={{ fontSize: 20 }}>🔔</Text>
+              <Ionicons name="notifications-outline" size={20} color={colors.textMuted} />
               <Text style={[styles.menuItemText, { color: colors.textMain }]}>Настройка уведомлений</Text>
-              <Text style={{ color: colors.textMuted, fontSize: 18 }}>{'\u203a'}</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -234,9 +235,9 @@ const SettingsScreen = ({ onBack, user: initialUser, onUserUpdate }) => {
               style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
               onPress={() => setShowPasswordModal(true)}
             >
-              <Text style={{ fontSize: 20 }}>🔒</Text>
+              <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} />
               <Text style={[styles.menuItemText, { color: colors.textMain }]}>Сменить пароль</Text>
-              <Text style={{ color: colors.textMuted, fontSize: 18 }}>{'\u203a'}</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
