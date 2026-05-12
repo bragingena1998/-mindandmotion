@@ -1,6 +1,7 @@
 // src/components/HabitTable.js
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import Modal from './Modal';
@@ -318,7 +319,7 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     if (!active) {
       return (
         <View key={`${habit.id}-${day}`} style={[styles.dayCell, { backgroundColor: '#0f172a', borderColor: '#334155' }]}>
-          <Text style={{color: '#475569', fontSize: 10}}>✕</Text>
+          <Ionicons name="remove" size={10} color="#475569" />
         </View>
       );
     }
@@ -327,11 +328,28 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
     if (isHol) cellBg = 'rgba(251, 191, 36, 0.15)';
     else if (isWknd) cellBg = 'rgba(244, 63, 94, 0.1)';
 
-    // Formatting value
+    // Special handling for 'Дни' unit - show icon instead of text
+    if (value > 0 && habit.unit === 'Дни') {
+      return (
+        <TouchableOpacity
+          key={`${habit.id}-${day}`}
+          style={[
+              styles.dayCell, 
+              { backgroundColor: cellBg, borderColor: '#334155' },
+              isToday && { borderColor: colors.accent1, borderWidth: 2, zIndex: 10 }
+          ]}
+          onPress={() => handleCellTap(habit, day, value)}
+          onLongPress={() => handleCellLongPress(habit, day, value)}
+        >
+          <Ionicons name="checkmark" size={16} color={colors.accent1} />
+        </TouchableOpacity>
+      );
+    }
+
+    // Formatting value for other units
     let displayValue = '';
     if (value > 0) {
-        if (habit.unit === 'Дни') displayValue = '✓';
-        else if (habit.unit === 'Часы') displayValue = value % 1 === 0 ? value : value.toFixed(1);
+        if (habit.unit === 'Часы') displayValue = value % 1 === 0 ? value : value.toFixed(1);
         else displayValue = value;
     }
     
@@ -366,12 +384,17 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
             {habits.map((h, i) => (
               <Swipeable key={h.id} renderRightActions={() => (
                 <View style={{ flexDirection: 'row', width: 80 }}>
-                  <TouchableOpacity onPress={() => onHabitEdit(h)} style={[styles.swipeBtn, { backgroundColor: colors.accent1 }]}><Text>✎</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={() => onHabitDelete(h)} style={[styles.swipeBtn, { backgroundColor: colors.danger1 }]}><Text>🗑️</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => onHabitEdit(h)} style={[styles.swipeBtn, { backgroundColor: colors.accent1 }]}><Ionicons name="pencil" size={16} color="#fff" /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => onHabitDelete(h)} style={[styles.swipeBtn, { backgroundColor: colors.danger1 }]}><Ionicons name="trash-outline" size={16} color="#fff" /></TouchableOpacity>
                 </View>
               )}>
                 <View style={[styles.rowCell, { height: ROW_HEIGHT, borderTopWidth: i > 0 ? 1 : 0, borderColor: '#334155' }]}>
-                  <Text style={{ fontSize: 12, marginRight: 6 }}>{h.target_type === 'daily' ? '⏳' : '📅'}</Text>
+                  <Ionicons
+                    name={h.target_type === 'daily' ? 'timer-outline' : 'calendar-outline'}
+                    size={12}
+                    color={colors.textMuted}
+                    style={{ marginRight: 6 }}
+                  />
                   <Text style={[styles.habitName, { color: colors.textMain }]} numberOfLines={2}>{h.name}</Text>
                 </View>
               </Swipeable>
@@ -514,9 +537,27 @@ const HabitTable = ({ habits, year, month, records, onCellChange, onHabitDelete,
           )}
 
           <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
-            <Button title="✖" variant="outline" style={{ flex: 1 }} onPress={() => setShowTimerModal(false)} />
-            <Button title="🗑️" variant="danger" style={{ flex: 1 }} onPress={clearCell} />
-            <Button title="✓" style={{ flex: 1 }} textStyle={{ fontSize: 14 }} onPress={saveTimer} />
+            <TouchableOpacity
+              onPress={() => setShowTimerModal(false)}
+              style={{ flex: 1, borderRadius: 8, borderWidth: 1, borderColor: colors.borderSubtle,
+                       paddingVertical: 12, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="close" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={clearCell}
+              style={{ flex: 1, borderRadius: 8, backgroundColor: colors.danger1,
+                       paddingVertical: 12, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="trash-outline" size={20} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={saveTimer}
+              style={{ flex: 1, borderRadius: 8, backgroundColor: colors.accent1,
+                       paddingVertical: 12, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="checkmark" size={20} color="#020617" />
+            </TouchableOpacity>
           </View>
           
           <TouchableOpacity 

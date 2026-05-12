@@ -102,11 +102,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 9999,
   },
-  toastIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  toastMessage: {
+    toastMessage: {
     flex: 1,
     color: '#fff',
     fontSize: 14,
