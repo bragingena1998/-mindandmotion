@@ -7,6 +7,7 @@ import {
   Vibration,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '../contexts/ThemeContext';
 import Background from '../components/Background';
@@ -162,9 +163,11 @@ const AppLockScreen = ({ onUnlock }) => {
                       onPress={() => onKey('bio')}
                       disabled={!bioAvailable || !bioEnabled}
                     >
-                      <Text style={{ fontSize: 22 }}>
-                        {bioAvailable && bioEnabled ? '👆' : '👆'}
-                      </Text>
+                      <Ionicons 
+                        name="finger-print" 
+                        size={28} 
+                        color={bioAvailable && bioEnabled ? colors.accent1 : colors.textMuted} 
+                      />
                     </TouchableOpacity>
                   );
                 }

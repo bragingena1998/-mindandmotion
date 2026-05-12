@@ -479,9 +479,13 @@ const DraggableTaskItem = React.memo(({
   const renderRightActions = (progress, dragX) => {
     const scale = dragX.interpolate({ inputRange: [-60, 0], outputRange: [1, 0], extrapolate: 'clamp' });
     return (
-      <View style={styles.swipeActionRight}>
-        <Animated.Text style={[styles.swipeActionText, { transform: [{ scale }] }]}>🎯</Animated.Text>
-        <Animated.Text style={[{ fontSize: 10, color: '#020617', fontWeight: '700', marginTop: 2 }, { transform: [{ scale }] }]}>ФОКУС</Animated.Text>
+      <View style={{ flexDirection: 'row', width: 80 }}>
+        <TouchableOpacity 
+          onPress={() => handleEditTask(item)} 
+          style={[{ width: 40, height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent1 }]}
+        >
+          <Ionicons name="pencil" size={16} color="#fff" />
+        </TouchableOpacity>
       </View>
     );
   };
@@ -552,13 +556,11 @@ const DraggableTaskItem = React.memo(({
                     )}
                   </View>
                 </View>
-                <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); if (!dragTask) handleEditTask(item); }}>
-                  <Text style={{ 
-    fontSize: 16, 
-    color: colors.textMuted,
-    opacity: 0.7,
-    fontFamily: undefined,
-  }}>{'\u270F'}</Text>
+                <TouchableOpacity 
+                  style={[{ width: 40, height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent1 }]}
+                  onPress={(e) => { e.stopPropagation(); if (!dragTask) handleEditTask(item); }}
+                >
+                  <Ionicons name="pencil" size={16} color="#fff" />
                 </TouchableOpacity>
                 <View style={{ paddingLeft: 8, justifyContent: 'flex-end', paddingBottom: 5 }}>
                   <Text style={{ fontSize: 12, color: colors.textMuted }}>{isExpanded ? '▲' : '▼'}</Text>
