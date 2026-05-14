@@ -18,6 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    /* ─── TOKENS ─────────────────────────────────────────── */
     :root {
       --bg:#0d0d0c; --bg2:#111110; --bg3:#161615; --bg4:#1c1c1a; --bg5:#222220;
       --border:rgba(255,255,255,.07); --border2:rgba(255,255,255,.11);
@@ -31,6 +32,8 @@
       --sh:0 4px 20px rgba(0,0,0,.45);
       --sh-lg:0 16px 56px rgba(0,0,0,.6);
     }
+
+    /* ─── RESET ──────────────────────────────────────────── */
     *{box-sizing:border-box;margin:0;padding:0}
     html{scroll-behavior:smooth;-webkit-text-size-adjust:none}
     body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;overflow-x:hidden}
@@ -39,12 +42,13 @@
     button{font:inherit;cursor:pointer;border:none;background:none}
     svg{display:block;flex-shrink:0}
 
+    /* ─── LAYOUT ─────────────────────────────────────────── */
     .wrap{width:min(1100px,calc(100% - 32px));margin:0 auto}
     .sec{padding:clamp(52px,7vw,88px) 0}
     .sec-sm{padding:clamp(40px,5vw,64px) 0}
     hr.div{border:none;border-top:1px solid var(--border)}
 
-    /* Nav */
+    /* ─── NAV ────────────────────────────────────────────── */
     .nav-wrap{position:sticky;top:0;z-index:60;backdrop-filter:blur(20px);background:rgba(13,13,12,.85);border-bottom:1px solid var(--border)}
     .nav{display:flex;align-items:center;justify-content:space-between;height:60px;gap:12px}
     .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:.9rem;letter-spacing:-.02em}
@@ -52,6 +56,8 @@
     .nav-links{display:flex;gap:18px;font-size:.82rem;color:var(--muted)}
     .nav-links a:hover{color:var(--text);transition:.15s}
     .nav-btns{display:flex;gap:7px}
+
+    /* ─── BUTTONS ────────────────────────────────────────── */
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 14px;border-radius:var(--r-full);font-size:.8rem;font-weight:600;transition:.18s ease;white-space:nowrap;border:1px solid transparent}
     .btn-gold{background:var(--gold);color:#0d0d0c;border-color:var(--gold)}
     .btn-gold:hover{background:#d4a33c;transform:translateY(-1px);box-shadow:0 6px 20px rgba(232,184,75,.25)}
@@ -61,13 +67,13 @@
     .btn-teal:hover{background:rgba(72,195,180,.18);transform:translateY(-1px)}
     .btn-lg{height:48px;padding:0 22px;font-size:.88rem}
 
-    /* Label / heading */
+    /* ─── TYPOGRAPHY ─────────────────────────────────────── */
     .label{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
     h2{font-size:clamp(1.75rem,3.2vw,2.8rem);font-weight:800;line-height:1.05;letter-spacing:-.04em;margin-bottom:12px}
     h2 em{font-style:normal;color:var(--gold)}
     .sub{color:var(--muted);max-width:52ch;font-size:.92rem;line-height:1.65}
 
-    /* Hero */
+    /* ─── HERO ───────────────────────────────────────────── */
     .hero{padding:clamp(40px,5vw,64px) 0 clamp(48px,7vw,80px);overflow:hidden}
     .hero-grid{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:clamp(24px,5vw,64px)}
     .hero-badge{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:var(--r-full);border:1px solid var(--gold-border);background:var(--gold-bg);font-size:11px;font-weight:600;color:var(--gold);margin-bottom:18px}
@@ -75,11 +81,11 @@
     .hero h1 em{font-style:normal;color:var(--gold)}
     .hero .sub{margin-bottom:24px}
     .hero-btns{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
-    .hero-pills{display:flex;flex-wrap:wrap;gap:7px}
+    .hero-pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
     .pill{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:var(--r-full);border:1px solid var(--border);background:var(--bg3);font-size:11px;color:var(--muted)}
     .pill.hi{border-color:var(--gold-border);background:var(--gold-bg);color:var(--gold)}
 
-    /* Phone visual */
+    /* ─── PHONE VISUAL (hero) ────────────────────────────── */
     .hero-vis{position:relative;height:540px;display:flex;align-items:center;justify-content:center}
     .glow{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(232,184,75,.1) 0,transparent 70%);filter:blur(8px)}
     .phone{position:absolute;border-radius:26px;overflow:hidden;background:#111;box-shadow:var(--sh-lg);border:1px solid rgba(255,255,255,.09)}
@@ -88,65 +94,55 @@
     .ph-l{z-index:1;left:4px;top:90px;width:min(180px,34vw);opacity:.3;filter:brightness(.55) saturate(.6);transform:rotate(-10deg)}
     .ph-r{z-index:1;right:4px;top:64px;width:min(180px,34vw);opacity:.3;filter:brightness(.55) saturate(.6);transform:rotate(10deg)}
 
-    /* Offline banner */
-    .off-banner .sc-wrap{margin:0 auto}
+    /* ─── OFFLINE BANNER ─────────────────────────────────── */
     .off-banner{background:linear-gradient(130deg,rgba(232,184,75,.055),rgba(155,127,219,.04));border:1px solid var(--gold-border);border-radius:var(--r-xl);padding:clamp(24px,3.5vw,44px);display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(20px,4vw,48px);align-items:center}
     .off-items{display:flex;flex-direction:column;gap:10px;margin-top:20px}
     .off-item{display:flex;align-items:flex-start;gap:12px;padding:13px 15px;border-radius:var(--r-md);background:var(--bg3);border:1px solid var(--border)}
     .oi-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .oi-text strong{display:block;font-size:.84rem;margin-bottom:2px}
     .oi-text span{font-size:.78rem;color:var(--muted);line-height:1.5}
-    .sc-wrap{border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border2);background:var(--bg3);box-shadow:var(--sh);padding:8px;max-width:260px;width:100%}
 
-    /* Split */
-    .split{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,60px);align-items:center}
-    .split .sc-wrap{margin:0 auto}
+    /* ─── SCREENSHOT WRAPPER ─────────────────────────────── */
+    .sc-wrap{border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border2);background:var(--bg3);box-shadow:var(--sh);padding:8px;max-width:260px;width:100%}
     .sc-wrap img{border-radius:12px;width:100%}
 
-    /* Feature grid */
+    /* ─── SPLIT (desktop: 2-col) ─────────────────────────── */
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,60px);align-items:center}
+    .split .sc-wrap{margin:0 auto}
+
+    /* ─── FEATURE GRID ───────────────────────────────────── */
     .fg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
     .fi{display:flex;align-items:flex-start;gap:11px;padding:14px 15px;border-radius:var(--r-md);background:var(--bg3);border:1px solid var(--border)}
     .fi-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .fi strong{display:block;font-size:.83rem;margin-bottom:3px}
     .fi span{font-size:.77rem;color:var(--muted);line-height:1.5}
 
-    /* Colour helpers */
+    /* ─── COLOUR HELPERS ─────────────────────────────────── */
     .c-gold{background:var(--gold-bg)} .c-purple{background:var(--purple-bg)}
     .c-green{background:var(--green-bg)} .c-teal{background:var(--teal-bg)}
     .c-red{background:var(--red-bg)}
 
-    /* Cal */
+    /* ─── CALENDAR ───────────────────────────────────────── */
     .cal-split{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,4vw,56px);align-items:center}
     .cal-text .label{margin-bottom:10px}
     .cal-text h2{margin-bottom:10px}
     .cal-text .sub{margin-bottom:20px}
-    .cal-list{list-style:none;display:flex;flex-direction:column;gap:8px}
-    .cal-list li{display:flex;align-items:center;gap:10px;font-size:.9rem}
-    .cal-list li svg{flex-shrink:0}
-    .cal-list li strong{font-weight:600;margin-right:4px}
-    .cal-list li span{color:var(--muted);font-size:.85rem}
+    /* desktop: карточки фич, аналогично .fg */
+    .cal-fg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:0}
     .cal-visual{position:relative;height:420px}
     .cal-phone{position:absolute;border-radius:22px;overflow:hidden;background:#111;box-shadow:0 16px 56px rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.12)}
     .cal-phone img{width:100%;height:auto;display:block}
-    /* задний — наклон остаётся, более яркий */
     .cal-back{width:190px;top:40px;right:0;transform:rotate(7deg);opacity:.8;filter:brightness(.8) saturate(.9);z-index:1}
-    /* передний — строго вертикально */
     .cal-front{width:215px;top:10px;right:85px;transform:rotate(0deg);z-index:2}
-    @media(max-width:640px){
-      .cal-split{grid-template-columns:1fr}
-      .cal-visual{height:340px}
-      .cal-back{width:155px;right:-10px}
-      .cal-front{width:175px;right:60px}
-    }
 
-    /* Stats */
-    .stats{display:flex;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-top:20px}
-    .st{flex:1;padding:16px 14px;text-align:center;border-right:1px solid var(--border)}
+    /* ─── STATS (habits) ─────────────────────────────────── */
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-top:20px}
+    .st{padding:16px 14px;text-align:center;border-right:1px solid var(--border)}
     .st:last-child{border-right:none}
-    .stv{font-size:1.55rem;font-weight:800;letter-spacing:-.04em;color:var(--gold)}
+    .stv{font-size:1.75rem;font-weight:800;letter-spacing:-.04em;color:var(--gold)}
     .stl{font-size:.73rem;color:var(--muted);margin-top:3px}
 
-    /* Platforms — 4 cols */
+    /* ─── PLATFORMS ──────────────────────────────────────── */
     .plat{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px}
     .pc{padding:18px 14px;border-radius:var(--r-lg);background:var(--bg3);border:1px solid var(--border);text-align:center;display:block;color:inherit;transition:.18s ease}
     a.pc:hover{border-color:var(--border2);background:var(--bg4);transform:translateY(-2px)}
@@ -158,42 +154,46 @@
     .b-soon{background:rgba(255,255,255,.06);color:var(--muted)}
     .b-plan{background:var(--purple-bg);color:var(--purple)}
 
-    /* Social */
-    .social-box{border-radius:var(--r-xl);padding:clamp(28px,4vw,48px);background:var(--bg3);border:1px solid var(--border)}
-    .social-btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+    /* ─── SOCIAL ─────────────────────────────────────────── */
+    .social-inline{margin-bottom:24px}
+    .social-inline .label{justify-content:center}
+    .social-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px}
     .soc-btn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 18px;border-radius:var(--r-full);font-size:.83rem;font-weight:600;border:1px solid var(--border2);color:var(--text);background:var(--bg4);transition:.18s ease;cursor:not-allowed;opacity:.6}
     .soc-btn.ready{cursor:pointer;opacity:1}
     .soc-btn.ready:hover{border-color:rgba(255,255,255,.22);background:var(--bg5);transform:translateY(-1px)}
 
-    /* CTA */
+    /* ─── CTA ────────────────────────────────────────────── */
     .cta-box{border-radius:var(--r-xl);padding:clamp(32px,4.5vw,56px);background:linear-gradient(130deg,rgba(232,184,75,.07),rgba(155,127,219,.04));border:1px solid var(--gold-border);text-align:center}
     .cta-box h2{max-width:16ch;margin:0 auto 12px}
     .cta-box .sub{margin:0 auto 24px}
+    .cta-divider{width:40px;height:1px;background:var(--border2);margin:20px auto}
     .cta-btns{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:18px}
     .cta-meta{display:flex;flex-wrap:wrap;gap:18px;justify-content:center}
     .cta-meta span{display:flex;align-items:center;gap:5px;font-size:.78rem;color:var(--muted)}
     .cta-meta span::before{content:"";display:block;width:14px;height:14px;background:var(--green-bg);border-radius:50%;flex-shrink:0}
 
-    /* Footer */
+    /* ─── FOOTER ─────────────────────────────────────────── */
     footer{padding:22px 0 32px;border-top:1px solid var(--border)}
     .foot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px}
     .foot-copy{font-size:.78rem;color:var(--faint)}
     .foot-links{display:flex;gap:16px;font-size:.78rem;color:var(--muted)}
     .foot-links a:hover{color:var(--text)}
 
-    /* Sticky mobile CTA */
+    /* ─── STICKY CTA ─────────────────────────────────────── */
     .sticky-cta{display:none;position:fixed;left:10px;right:10px;bottom:10px;z-index:80;flex-direction:row;gap:7px;padding:7px;border-radius:20px;background:rgba(13,13,12,.92);backdrop-filter:blur(18px);border:1px solid var(--border2);transition:opacity .3s}
     .sticky-cta .btn{flex:1;min-width:0}
 
-    /* Reveal */
+    /* ─── REVEAL ─────────────────────────────────────────── */
     .rv{opacity:0;transform:translateY(16px);transition:opacity .65s cubic-bezier(.16,1,.3,1),transform .65s cubic-bezier(.16,1,.3,1)}
     .rv.in{opacity:1;transform:none}
     .rv.d1{transition-delay:.1s} .rv.d2{transition-delay:.18s} .rv.d3{transition-delay:.26s}
 
-    /* Responsive */
+    /* ═══════════════════════════════════════════════════════
+       BREAKPOINT 860px — tablet collapse
+    ═══════════════════════════════════════════════════════ */
     @media(max-width:860px){
-      .hero-grid,.split,.off-banner .sc-wrap{margin:0 auto}
       .off-banner{grid-template-columns:1fr}
+      .off-banner .sc-wrap{margin:0 auto}
       .plat{grid-template-columns:repeat(2,1fr)}
       .hero-vis{height:460px}
       .ph-main{width:min(220px,58vw)}
@@ -201,14 +201,163 @@
       .ph-r{width:min(160px,34vw);right:-4px}
       .nav-links{display:none}
       .nav-btns .btn-teal{display:none}
+      .cal-split{grid-template-columns:1fr}
+      .cal-visual{height:340px}
+      .cal-back{width:155px;right:-10px}
+      .cal-front{width:175px;right:60px}
     }
-    @media(max-width:580px){
-      .fg{grid-template-columns:1fr}
-      .stats{flex-direction:column}
-      .st{border-right:none;border-bottom:1px solid var(--border)}
-      .st:last-child{border-bottom:none}
-      .sticky-cta{display:flex}
-      body{padding-bottom:80px}
+
+    /* ═══════════════════════════════════════════════════════
+       BREAKPOINT 768px — MOBILE FULL OVERHAUL
+    ═══════════════════════════════════════════════════════ */
+    @media(max-width:768px){
+
+      /* Базовые секции */
+      .sec, .sec-sm{ padding:40px 0 }
+      .wrap{ width:calc(100% - 40px) } /* 20px с каждой стороны */
+
+      /* ── NAV ── */
+      .nav-btns .btn-outline{ display:none } /* скрываем APK, остаётся только RuStore */
+
+      /* ── HERO ── */
+      .hero{ padding:32px 0 36px }
+      .hero-grid{
+        grid-template-columns:1fr;
+        gap:0;
+      }
+      /* Визуал телефона — скрываем на мобиле, текст занимает всю ширину */
+      .hero-vis{ display:none }
+
+      .hero h1{ font-size:2.6rem; line-height:.95; margin-bottom:14px }
+      .hero .sub{ font-size:.95rem; margin-bottom:20px; max-width:100% }
+
+      /* Кнопки hero: RuStore + APK в одну строку, Веб-Бета отдельно */
+      .hero-btns{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        grid-template-rows:auto auto;
+        gap:9px;
+        margin-bottom:16px;
+      }
+      .hero-btns .btn-gold { grid-column:1 }  /* RuStore — левая */
+      .hero-btns .btn-outline { grid-column:2 } /* APK — правая */
+      .hero-btns .btn-teal {
+        grid-column:1 / -1; /* Веб-Бета — на всю ширину */
+        justify-content:center;
+      }
+      .hero-btns .btn-lg{ height:46px; font-size:.85rem; padding:0 16px }
+
+      /* Пилюли-теги — прямо под кнопками, без лишнего отступа */
+      .hero-pills{ margin-top:0; gap:6px }
+
+      /* ── SPLIT (все feature-блоки) ── */
+      /* Переключаем на 1 колонку, меняем порядок */
+      .split{
+        grid-template-columns:1fr;
+        gap:20px;
+      }
+      /* Скриншот всегда идёт ПОСЛЕ текста */
+      .split .sc-wrap{
+        order:10 !important; /* перебиваем любой inline order */
+        max-width:280px;
+        margin:0 auto;
+        width:100%;
+      }
+      /* Текстовая часть — первой */
+      .split > div[style*="order"]{
+        order:1 !important;
+      }
+
+      /* ── OFFLINE BANNER ── */
+      .off-banner{
+        grid-template-columns:1fr;
+        gap:20px;
+        padding:20px;
+      }
+      .off-banner .sc-wrap{
+        order:10;
+        max-width:280px;
+        margin:0 auto;
+      }
+
+      /* ── FEATURE GRID — 1 колонка ── */
+      .fg{
+        grid-template-columns:1fr;
+        gap:9px;
+        margin-top:16px;
+      }
+      .fi{
+        padding:12px 13px;
+        align-items:center; /* иконка + название строго в ряд */
+      }
+      .fi-ic{ flex-shrink:0 }
+      /* Убираем фиксированную высоту, текст переносится свободно */
+      .fi > div{ min-height:0 }
+      .fi strong{ font-size:.88rem; margin-bottom:2px }
+      .fi span{ font-size:.8rem }
+
+      /* ── HABITS: метрики в 3 колонки, крупно ── */
+      .stats{
+        grid-template-columns:repeat(3,1fr);
+        margin-bottom:20px;
+      }
+      .stv{ font-size:2rem }
+      .stl{ font-size:.75rem }
+      /* Скриншот привычек — между метриками и карточками фич */
+      /* (порядок достигается через order на .sc-wrap в .split) */
+
+      /* ── CALENDAR ── */
+      .cal-split{
+        grid-template-columns:1fr;
+        gap:24px;
+      }
+      /* Скрываем позиционированный визуал телефонов на мобиле */
+      .cal-visual{ display:none }
+
+      /* Карточки календаря — те же .fi через .cal-fg */
+      .cal-fg{
+        grid-template-columns:1fr;
+        gap:9px;
+        margin-top:16px;
+      }
+
+      /* ── PLATFORMS: 2×2 ── */
+      .plat{
+        grid-template-columns:repeat(2,1fr);
+        gap:10px;
+      }
+      .pc{ padding:16px 12px }
+
+      /* ── SOCIAL inline в CTA ── */
+      .social-section{ display:none } /* убираем отдельную секцию соцсетей */
+      .social-inline{ display:block } /* показываем встроенную в CTA */
+
+      /* ── CTA ── */
+      .cta-box{ padding:28px 20px }
+      .cta-btns{
+        flex-direction:column;
+        align-items:stretch;
+        gap:9px;
+      }
+      .cta-btns .btn-lg{ width:100%; justify-content:center }
+      .cta-meta{ gap:12px }
+
+      /* ── FOOTER ── */
+      .foot{ flex-direction:column; align-items:flex-start; gap:10px }
+      .foot-links{ flex-wrap:wrap; gap:12px }
+
+      /* ── STICKY ── */
+      .sticky-cta{ display:flex }
+      body{ padding-bottom:80px }
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       BREAKPOINT 380px — very small phones
+    ═══════════════════════════════════════════════════════ */
+    @media(max-width:380px){
+      .hero h1{ font-size:2.1rem }
+      .hero-btns .btn-lg{ font-size:.78rem; padding:0 10px }
+      .stv{ font-size:1.6rem }
     }
   </style>
 </head>
@@ -230,17 +379,14 @@
       <a href="#download">Скачать</a>
     </nav>
     <div class="nav-btns">
-      <!-- APK -->
       <a class="btn btn-outline" href="https://mindandmotion.ru/downloads/mind-motion.apk" target="_blank" rel="noopener noreferrer">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
         APK
       </a>
-      <!-- Web Beta -->
       <a class="btn btn-teal" href="https://mindandmotion.ru" target="_blank" rel="noopener noreferrer">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18"/><path d="M12 3a15 15 0 0 0 0 18"/></svg>
         Web · Бета
       </a>
-      <!-- RuStore -->
       <a class="btn btn-gold" target="_blank" rel="noopener noreferrer"
          href="https://www.rustore.ru/catalog/app/com.bragin22.mindandmotionmobile">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12l1 10H5L6 2z"/><path d="M5 12a7 7 0 0 0 14 0"/></svg>
@@ -288,6 +434,7 @@
         <span class="pill">Android</span>
       </div>
     </div>
+    <!-- Визуал — скрывается на мобиле через CSS -->
     <div class="hero-vis rv in">
       <div class="glow"></div>
       <div class="phone ph-l" aria-hidden="true">
@@ -399,10 +546,7 @@
 <!-- TASKS -->
 <section class="sec" id="tasks">
   <div class="wrap split rv">
-    <div class="sc-wrap rv" style="order:1">
-      <img src="https://raw.githubusercontent.com/bragingena1998/mindandmotion/6844422c29ad36a70d979527d98d85ffe987766e/landing/assets/screens/tasks.png"
-           alt="Задачи" width="437" height="874" loading="lazy"/>
-    </div>
+    <!-- на мобиле order через CSS: текст первый, скриншот второй -->
     <div style="order:2">
       <div class="label">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -437,6 +581,10 @@
         </div>
       </div>
     </div>
+    <div class="sc-wrap rv d1" style="order:1">
+      <img src="https://raw.githubusercontent.com/bragingena1998/mindandmotion/6844422c29ad36a70d979527d98d85ffe987766e/landing/assets/screens/tasks.png"
+           alt="Задачи" width="437" height="874" loading="lazy"/>
+    </div>
   </div>
 </section>
 
@@ -452,6 +600,7 @@
       </div>
       <h2>Систематизируй<br><em>привычки</em></h2>
       <p class="sub">Отслеживай прогресс, следи за сериями выполнения и получай статистику по каждой привычке.</p>
+      <!-- Метрики — крупно, 3 колонки -->
       <div class="stats">
         <div class="st"><div class="stv">15</div><div class="stl">дней серия</div></div>
         <div class="st"><div class="stv">+23%</div><div class="stl">рост за месяц</div></div>
@@ -492,32 +641,39 @@
         </div>
         <h2>Планируй <em>наперёд</em></h2>
         <p class="sub">Просматривай расписание по неделям и месяцам. Видь загрузку и свободные слоты одним взглядом.</p>
-        <ul class="cal-list">
-          <li>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e8b84b" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <strong>Вид по неделе</strong><span>— детальный обзор каждого дня</span>
-          </li>
-          <li>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9b7fdb" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="8" y="14" width="3" height="3"/></svg>
-            <strong>Вид по месяцу</strong><span>— общая картина загрузки</span>
-          </li>
-          <li>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#48c3b4" stroke-width="2" stroke-linecap="round"><polyline points="5 9 2 12 5 15"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
-            <strong>Drag &amp; Drop</strong><span>— перетаскивай задачи по расписанию</span>
-          </li>
-          <li>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#52c072" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            <strong>Быстрое добавление</strong><span>— создай событие за секунду</span>
-          </li>
-        </ul>
+        <!-- Карточки фич вместо строчного формата -->
+        <div class="cal-fg fg">
+          <div class="fi">
+            <div class="fi-ic c-gold">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e8b84b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div><strong>Вид по неделе</strong><span>Детальный обзор каждого дня.</span></div>
+          </div>
+          <div class="fi">
+            <div class="fi-ic c-purple">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9b7fdb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="8" y="14" width="3" height="3"/></svg>
+            </div>
+            <div><strong>Вид по месяцу</strong><span>Общая картина загрузки.</span></div>
+          </div>
+          <div class="fi">
+            <div class="fi-ic c-teal">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#48c3b4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+            </div>
+            <div><strong>Drag &amp; Drop</strong><span>Перетаскивай задачи по расписанию.</span></div>
+          </div>
+          <div class="fi">
+            <div class="fi-ic c-green">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52c072" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            </div>
+            <div><strong>Быстрое добавление</strong><span>Создай событие за секунду.</span></div>
+          </div>
+        </div>
       </div>
       <div class="cal-visual">
-        <!-- задний — наклон 7deg, более яркий opacity .8 -->
         <div class="cal-phone cal-back">
           <img src="https://raw.githubusercontent.com/bragingena1998/mindandmotion/6844422c29ad36a70d979527d98d85ffe987766e/landing/assets/screens/calendar-month.png"
                alt="Вид по месяцу" width="356" height="712" loading="lazy"/>
         </div>
-        <!-- передний — строго вертикально, rotate(0) -->
         <div class="cal-phone cal-front">
           <img src="https://raw.githubusercontent.com/bragingena1998/mindandmotion/6844422c29ad36a70d979527d98d85ffe987766e/landing/assets/screens/calendar-week.png"
                alt="Вид по неделе" width="382" height="764" loading="lazy"/>
@@ -532,10 +688,6 @@
 <!-- SECURITY -->
 <section class="sec">
   <div class="wrap split rv">
-    <div class="sc-wrap" style="order:1">
-      <img src="https://raw.githubusercontent.com/bragingena1998/mindandmotion/6844422c29ad36a70d979527d98d85ffe987766e/landing/assets/screens/security.png"
-           alt="Безопасность" width="223" height="446" loading="lazy"/>
-    </div>
     <div style="order:2">
       <div class="label">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -570,6 +722,10 @@
         </div>
       </div>
     </div>
+    <div class="sc-wrap rv d1" style="order:1">
+      <img src="https://raw.githubusercontent.com/bragingena1998/mindandmotion/6844422c29ad36a70d979527d98d85ffe987766e/landing/assets/screens/security.png"
+           alt="Безопасность" width="223" height="446" loading="lazy"/>
+    </div>
   </div>
 </section>
 
@@ -585,7 +741,6 @@
     <h2>Скоро на <em>всех устройствах</em></h2>
     <p class="sub">Начни с Android. iOS, веб-версия и другие платформы — в разработке.</p>
     <div class="plat">
-      <!-- Android -->
       <div class="pc">
         <div class="pic">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#52c072" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 14l-2.5 4.33A1 1 0 0 0 3 20h18a1 1 0 0 0 .5-1.87L19 14"/><path d="M12 16V8"/><path d="M8 8l4-4 4 4"/><path d="M5 8h14"/></svg>
@@ -593,7 +748,6 @@
         <strong>Android</strong>
         <span class="badge b-live">Доступно</span>
       </div>
-      <!-- Web — кликабельно, бета -->
       <a class="pc" href="https://mindandmotion.ru" target="_blank" rel="noopener noreferrer">
         <div class="pic">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#48c3b4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -601,7 +755,6 @@
         <strong>Web</strong>
         <span class="badge b-beta">Бета-версия</span>
       </a>
-      <!-- PWA -->
       <div class="pc">
         <div class="pic">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9b7fdb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
@@ -609,7 +762,6 @@
         <strong>PWA</strong>
         <span class="badge b-plan">В разработке</span>
       </div>
-      <!-- iOS -->
       <div class="pc">
         <div class="pic">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7e7b75" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 13.93 5 22 8 22c1.25 0 2.5-1.06 4-1.06z"/><path d="M10 2c0 2.5 2 4 2 4s2-1.5 2-4"/></svg>
@@ -623,43 +775,7 @@
 
 <hr class="div"/>
 
-<!-- SOCIAL -->
-<section class="sec-sm">
-  <div class="wrap rv">
-    <div class="social-box">
-      <div class="label">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-        Мы в соцсетях
-      </div>
-      <h2 style="font-size:clamp(1.3rem,2.2vw,1.9rem)">Следи за <em>новостями</em></h2>
-      <p class="sub">Анонсы обновлений, советы по продуктивности и новости релизов — скоро в наших сообществах.</p>
-      <div class="social-btns">
-        <!-- YouTube — заглушка -->
-        <a class="soc-btn" href="#" aria-label="YouTube (скоро)" title="Скоро">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
-          YouTube
-          <span style="font-size:.68rem;opacity:.6;font-weight:400">· скоро</span>
-        </a>
-        <!-- Telegram — заглушка -->
-        <a class="soc-btn" href="#" aria-label="Telegram (скоро)" title="Скоро">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-16.5 6.75a2.25 2.25 0 0 0 .126 4.218l3.918 1.176 1.98 5.94a.75.75 0 0 0 1.26.275L13.5 18.75l4.278 3.143A2.25 2.25 0 0 0 21.354 20.2l1.65-15.75a2.249 2.249 0 0 0-1.806-2.017z"/></svg>
-          Telegram
-          <span style="font-size:.68rem;opacity:.6;font-weight:400">· скоро</span>
-        </a>
-        <!-- VK — заглушка -->
-        <a class="soc-btn" href="#" aria-label="ВКонтакте (скоро)" title="Скоро">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h4.5s.5 7 3.5 8c0 0-1-5 2-8h4s-2.5 4.5 0 9c0 0 2-4.5 5-9h1.5s-3 10-7 10H13s0-3.5-2-5c0 0-.5 3.5-2 5H6s.5-7-4-10z"/></svg>
-          ВКонтакте
-          <span style="font-size:.68rem;opacity:.6;font-weight:400">· скоро</span>
-        </a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<hr class="div"/>
-
-<!-- CTA -->
+<!-- CTA + SOCIAL (объединены) -->
 <section class="sec" id="download">
   <div class="wrap rv">
     <div class="cta-box">
@@ -669,6 +785,31 @@
       </div>
       <h2>Начни управлять<br>своим <em>временем</em></h2>
       <p class="sub">Скачай бесплатно и почувствуй контроль над своим днём уже сегодня.</p>
+
+      <!-- SOCIAL — встроены в CTA, видны всегда -->
+      <div class="social-inline">
+        <div class="label" style="justify-content:center;margin-bottom:10px">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Следи за новостями
+        </div>
+        <div class="social-btns">
+          <a class="soc-btn" href="#" title="Скоро">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
+            YouTube <span style="font-size:.68rem;opacity:.6">· скоро</span>
+          </a>
+          <a class="soc-btn" href="#" title="Скоро">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-16.5 6.75a2.25 2.25 0 0 0 .126 4.218l3.918 1.176 1.98 5.94a.75.75 0 0 0 1.26.275L13.5 18.75l4.278 3.143A2.25 2.25 0 0 0 21.354 20.2l1.65-15.75a2.249 2.249 0 0 0-1.806-2.017z"/></svg>
+            Telegram <span style="font-size:.68rem;opacity:.6">· скоро</span>
+          </a>
+          <a class="soc-btn" href="#" title="Скоро">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h4.5s.5 7 3.5 8c0 0-1-5 2-8h4s-2.5 4.5 0 9c0 0 2-4.5 5-9h1.5s-3 10-7 10H13s0-3.5-2-5c0 0-.5 3.5-2 5H6s.5-7-4-10z"/></svg>
+            ВКонтакте <span style="font-size:.68rem;opacity:.6">· скоро</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="cta-divider"></div>
+
       <div class="cta-btns">
         <a class="btn btn-gold btn-lg" target="_blank" rel="noopener noreferrer"
            href="https://www.rustore.ru/catalog/app/com.bragin22.mindandmotionmobile">
@@ -713,15 +854,16 @@
 <!-- Mobile sticky -->
 <div class="sticky-cta" id="sticky">
   <a class="btn btn-gold" target="_blank" rel="noopener noreferrer"
-     href="https://www.rustore.ru/catalog/app/com.bragin22.mindandmotionmobile">
-    RuStore
-  </a>
+     href="https://www.rustore.ru/catalog/app/com.bragin22.mindandmotionmobile">RuStore</a>
   <a class="btn btn-teal" href="https://mindandmotion.ru" target="_blank" rel="noopener noreferrer">Web</a>
   <a class="btn btn-outline" href="https://mindandmotion.ru/downloads/mind-motion.apk" target="_blank" rel="noopener noreferrer">APK</a>
 </div>
 
 <script>
-  const io = new IntersectionObserver(e => e.forEach(x => x.isIntersecting && x.target.classList.add('in')), {threshold:.12});
+  const io = new IntersectionObserver(
+    e => e.forEach(x => x.isIntersecting && x.target.classList.add('in')),
+    {threshold:.12}
+  );
   document.querySelectorAll('.rv').forEach(el => io.observe(el));
   const sticky = document.getElementById('sticky');
   const foot = document.querySelector('footer');
