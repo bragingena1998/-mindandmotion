@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "140a6aeb9e6fd334",
+        "id": "c877a1584709baed",
         "type": "tabs",
         "children": [
           {
-            "id": "131a38a9f7b6e953",
+            "id": "9e3a3d02ebc5780f",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -188,8 +188,9 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "131a38a9f7b6e953",
+  "active": "9e3a3d02ebc5780f",
   "lastOpenFiles": [
+    "Templates/Раннбук.md",
     "00-Обзор/Обзор.md.tmp.13880.4a0124e657bd",
     "04-Landing/Текущее-состояние.md.tmp.13880.7e403baac018",
     "README.md",
@@ -200,7 +201,6 @@
     "2026-07-22.md",
     "Templates/Итог-сессии.md",
     "Templates/Итог-сессии.md.tmp.13880.f831210d7a9b",
-    "Templates/Раннбук.md",
     "Templates/Раннбук.md.tmp.13880.0155a1d8ad71",
     "Templates/Новое-решение.md",
     "Templates/Новое-решение.md.tmp.13880.3b69914e7cf9",
@@ -210,7 +210,6 @@
     "09-Проблемы/Утечка-секретов-context-perplexity.md.tmp.13880.e785ababd4d4",
     "07-Правила/Правила-агента.md",
     "07-Правила/Правила-агента.md.tmp.13880.7b4cf54a98dc",
-    "10-Раннбуки/deploy-backend.md.tmp.13880.a8117107464d",
     "08-Решения/daysOfWeek-и-другие-долгие-баги.md",
     "08-Решения/решение-собственный-keystore.md",
     "08-Решения/История-решений.md",
