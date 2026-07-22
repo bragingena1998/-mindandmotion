@@ -110,7 +110,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Добро пожаловать.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -120,7 +119,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для Добро пожаловать"
+              "title": "Обратные ссылки"
             }
           },
           {
@@ -129,12 +128,11 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Добро пожаловать.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из Добро пожаловать"
+              "title": "Исходящие ссылки"
             }
           },
           {
@@ -172,13 +170,12 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Добро пожаловать.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура Добро пожаловать"
+              "title": "Структура"
             }
           }
         ]
@@ -196,11 +193,20 @@
       "daily-notes:Сегодняшняя заметка": false,
       "templates:Вставить шаблон": false,
       "command-palette:Открыть палитру команд": false,
-      "bases:Создать новую базу": false
+      "bases:Создать новую базу": false,
+      "obsidian-git:Open Git source control": false
     }
   },
-  "active": "fd830e1cd4631919",
+  "active": "651c82d9b24cf494",
   "lastOpenFiles": [
-    "Добро пожаловать.md"
+    "06-docs-v2",
+    "05-context-perplexity",
+    "04-landing",
+    "03-web",
+    "02-Mobile",
+    "01-Backend",
+    "00-Обзор",
+    "Добро пожаловать.md",
+    "README.md"
   ]
 }
