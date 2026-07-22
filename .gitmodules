@@ -1,0 +1,4 @@
+[submodule "landing"]
+	path = landing
+	url = https://github.com/bragingena1998/mindandmotion.git
+	branch = landing
