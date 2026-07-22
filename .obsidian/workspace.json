@@ -4,31 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "8a0780b5a8340d84",
+        "id": "140a6aeb9e6fd334",
         "type": "tabs",
         "children": [
           {
-            "id": "fd830e1cd4631919",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Добро пожаловать.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Добро пожаловать"
-            }
-          }
-        ]
-      },
-      {
-        "id": "3b6fca75dcb2286c",
-        "type": "tabs",
-        "children": [
-          {
-            "id": "a26c43bc57a6a095",
+            "id": "131a38a9f7b6e953",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -177,8 +157,19 @@
               "icon": "lucide-list",
               "title": "Структура"
             }
+          },
+          {
+            "id": "df8a747a074ea491",
+            "type": "leaf",
+            "state": {
+              "type": "git-view",
+              "state": {},
+              "icon": "git-pull-request",
+              "title": "Source Control"
+            }
           }
-        ]
+        ],
+        "currentTab": 5
       }
     ],
     "direction": "horizontal",
@@ -197,16 +188,43 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "651c82d9b24cf494",
+  "active": "131a38a9f7b6e953",
   "lastOpenFiles": [
-    "06-docs-v2",
-    "05-context-perplexity",
-    "04-landing",
-    "03-web",
-    "02-Mobile",
-    "01-Backend",
-    "00-Обзор",
-    "Добро пожаловать.md",
-    "README.md"
+    "README.md",
+    "README.md.tmp.13880.90aec0ed375f",
+    "00-Обзор/Обзор.md",
+    "00-Обзор/Обзор.md.tmp.13880.bc4f2c5af5f9",
+    "Без названия.canvas",
+    "2026-07-22.md",
+    "Templates/Итог-сессии.md",
+    "Templates/Итог-сессии.md.tmp.13880.f831210d7a9b",
+    "Templates/Раннбук.md",
+    "Templates/Раннбук.md.tmp.13880.0155a1d8ad71",
+    "Templates/Новое-решение.md",
+    "Templates/Новое-решение.md.tmp.13880.3b69914e7cf9",
+    "Templates/Новая-проблема.md",
+    "README.md.tmp.13880.935df4a0d135",
+    "09-Проблемы/Утечка-секретов-context-perplexity.md",
+    "09-Проблемы/Утечка-секретов-context-perplexity.md.tmp.13880.e785ababd4d4",
+    "07-Правила/Правила-агента.md",
+    "07-Правила/Правила-агента.md.tmp.13880.7b4cf54a98dc",
+    "10-Раннбуки/deploy-backend.md.tmp.13880.a8117107464d",
+    "08-Решения/daysOfWeek-и-другие-долгие-баги.md",
+    "08-Решения/решение-собственный-keystore.md",
+    "08-Решения/решение-собственный-keystore.md.tmp.13880.2a62c7a4c569",
+    "08-Решения/История-решений.md",
+    "09-Проблемы/Технический-долг-tgbot-landing.md",
+    "09-Проблемы/Технический-долг-web.md",
+    "09-Проблемы/Технический-долг-mobile.md",
+    "09-Проблемы/Технический-долг-backend.md",
+    "09-Проблемы/JWT-секрет-фолбэк.md",
+    "09-Проблемы/IDOR-подзадачи.md",
+    "06-Домен/Сущности.md",
+    "90-Архив/habits-app-архив.md",
+    "05-TG-Bot/Текущее-состояние.md",
+    "04-Landing/Текущее-состояние.md",
+    "03-Web/Текущее-состояние.md",
+    "02-Mobile/Текущее-состояние.md",
+    "01-Backend/Текущее-состояние.md"
   ]
 }
