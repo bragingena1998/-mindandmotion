@@ -30,14 +30,14 @@ function calculateStats(allTasks: Task[]) {
   const today = new Date()
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
 
-  // Сегодня: невыполненные с date=сегодня + выполненные с doneDate=сегодня
   const todayPool = allTasks.filter(t => {
     const taskDate = t.date?.substring(0, 10);
     const doneDateStr = t.doneDate?.substring(0, 10);
+    // Выполненная задача: сначала смотрим doneDate, если нет — date
     if (t.done) {
-      return doneDateStr === todayStr; // выполненные — по doneDate
+      return (doneDateStr === todayStr) || (!doneDateStr && taskDate === todayStr);
     } else {
-      return taskDate === todayStr; // невыполненные — по date
+      return taskDate === todayStr;
     }
   });
   const todayDone = todayPool.filter(t => t.done).length;
@@ -155,9 +155,10 @@ function groupTasksByDate(tasks: Task[], showDone: boolean): TaskSection[] {
     sections.push({ title: '📝 БЕЗ ДАТЫ', icon: '📝', tasks: noDateTasks });
   }
 
-  // Completed tasks (if showDone is true, shown at the very end)
   if (showDone) {
-    const completedTasks = validTasks.filter(t => t.done);
+    // Только выполненные без даты или чья дата не попала в другие секции
+    const shownTaskIds = new Set(sections.flatMap(s => s.tasks.map(t => t.id)));
+    const completedTasks = validTasks.filter(t => t.done && !shownTaskIds.has(t.id));
     if (completedTasks.length > 0) {
       sections.push({ title: '✓ ВЫПОЛНЕННЫЕ', icon: '✓', tasks: completedTasks });
     }
