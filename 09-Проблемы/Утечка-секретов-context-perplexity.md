@@ -1,10 +1,11 @@
 ---
 tags: [problem, security, critical]
 platform: infra
-status: open
+status: resolved
 severity: critical
 discovered: 2026-07-22
 discovered-by: "анализ архива context-perplexity/ по запросу владельца"
+resolved-date: 2026-07-23
 ---
 
 # КРИТИЧНО: боевые секреты в архиве `context-perplexity/`
@@ -34,3 +35,9 @@ discovered-by: "анализ архива context-perplexity/ по запрос�
 3. Впредь не хранить архивы переписки с секретами в отслеживаемой git-директории.
 
 См. также [[JWT-секрет-фолбэк]] — отдельная, не связанная напрямую, но усиливающая проблема с самим `JWT_SECRET` в коде.
+
+## Резолюция (2026-07-23)
+
+Все перечисленные секреты **сменены** владельцем в тот же день: `DB_PASSWORD`, `JWT_SECRET`, `EMAIL_PASS`, `GROQ_API_KEY`, личный пароль почты.
+
+Отдельный инцидент по пути: при переименовании локальной ветки суперпроекта (`landing` → `meta`) и добавлении ей remote эта ветка была **на несколько минут опубликована на GitHub** с коммитом `243a767`, содержащим `context-perplexity/` — репозиторий `bragingena1998/mindandmotion` публичный. Владелец удалил ветку с GitHub в течение нескольких минут. После этого история ветки `meta` переписана (`git filter-branch`, удалён `context-perplexity/` из всех коммитов), git-объекты с секретами вычищены локально (`git gc --prune=now`), `context-perplexity/` добавлен в `.gitignore` суперпроекта, оригинальные файлы восстановлены на диск (не отслеживаются git). Ветка `meta` перезапушена — проверено, что `context-perplexity` отсутствует и в дереве, и в истории на `origin/meta`.
