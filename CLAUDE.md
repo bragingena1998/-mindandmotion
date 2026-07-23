@@ -21,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Key vault entry points:
 - `vault/00-Обзор/Обзор.md` — home/MOC, links to everything, open issues list
+- `vault/12-Память/MEMORY.md` — facts about the owner and confirmed working-style feedback, vault-visible (separate from and complementary to the harness's own hidden memory system — decisions/problems stay in `08-Решения`/`09-Проблемы`, this folder is only for owner-facts/feedback that don't have another home)
 - `vault/07-Правила/Правила-агента.md` — the actual working contract (git rules, code rules, process, documentation protocol)
 - `vault/01-Backend/`, `02-Mobile/`, `03-Web/`, `04-Landing/`, `05-TG-Bot/` — per-platform "Текущее-состояние.md" (verified against real code)
 - `vault/06-Домен/Сущности.md` — cross-platform entity shapes
