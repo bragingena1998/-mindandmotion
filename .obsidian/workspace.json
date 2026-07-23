@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "031119a4e4e78ec8",
+        "id": "05513462b3085605",
         "type": "tabs",
         "children": [
           {
-            "id": "f4126cab3ba5dd77",
+            "id": "537699977714e616",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -188,8 +188,11 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "f4126cab3ba5dd77",
+  "active": "537699977714e616",
   "lastOpenFiles": [
+    "10-Раннбуки/telegram-bridge.md",
+    "Между-файлами-эволюция-во-времени.md",
+    "критическая-находка-секреты.md",
     "Templates/Новое-решение.md",
     "Templates/Раннбук.md",
     "00-Обзор/Обзор.md.tmp.13880.4a0124e657bd",
@@ -223,8 +226,6 @@
     "90-Архив/habits-app-архив.md",
     "05-TG-Bot/Текущее-состояние.md",
     "04-Landing/Текущее-состояние.md",
-    "03-Web/Текущее-состояние.md",
-    "02-Mobile/Текущее-состояние.md",
-    "01-Backend/Текущее-состояние.md"
+    "03-Web/Текущее-состояние.md"
   ]
 }
