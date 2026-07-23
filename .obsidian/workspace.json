@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "c877a1584709baed",
+        "id": "031119a4e4e78ec8",
         "type": "tabs",
         "children": [
           {
-            "id": "9e3a3d02ebc5780f",
+            "id": "f4126cab3ba5dd77",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -188,8 +188,9 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "9e3a3d02ebc5780f",
+  "active": "f4126cab3ba5dd77",
   "lastOpenFiles": [
+    "Templates/Новое-решение.md",
     "Templates/Раннбук.md",
     "00-Обзор/Обзор.md.tmp.13880.4a0124e657bd",
     "04-Landing/Текущее-состояние.md.tmp.13880.7e403baac018",
@@ -202,7 +203,6 @@
     "Templates/Итог-сессии.md",
     "Templates/Итог-сессии.md.tmp.13880.f831210d7a9b",
     "Templates/Раннбук.md.tmp.13880.0155a1d8ad71",
-    "Templates/Новое-решение.md",
     "Templates/Новое-решение.md.tmp.13880.3b69914e7cf9",
     "Templates/Новая-проблема.md",
     "README.md.tmp.13880.935df4a0d135",
