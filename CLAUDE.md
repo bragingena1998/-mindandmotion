@@ -10,9 +10,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Session start/end automation
 
-- **Session start** (owner greets, e.g. "привет"): run `git pull` in every submodule that has a remote (`backend`, `mobile`, `web`, `docs`, `vault`, `tg-bot`, `landing`) **and** in the superproject itself (`E:\ProjectMM`, branch `meta`, remote `origin` = `https://github.com/bragingena1998/mindandmotion.git`) before doing anything else — the owner may be switching machines (home PC vs laptop). Note: `vault/` uses the `obsidian-git` plugin with `autoPullInterval: 10` (minutes) and `autoBackupAfterFileChange: true`, so it may already be in sync if Obsidian was open there — pull anyway, it's cheap and safe.
-- **Session end** (owner says something like "на сегодня всё"/"на этом всё"): write a dated session-summary note in `vault/` (what changed, new decisions/problems opened or closed — use `vault/Templates/Итог-сессии.md`), then commit + `git push` **every** submodule with local changes made during the session (`backend`, `mobile`, `web`, `docs`, `vault`, `tg-bot`, `landing`) plus the superproject itself (bump submodule pointers, push `meta`). This is now symmetric — pull and push both happen at both ends, on all tracked branches, per the owner's explicit instruction (2026-07-22).
-- This is a standing, pre-authorized instruction for `git pull`/`git push`/routine commits on the submodules + superproject listed above — no need to ask before each one. Still always state what was pulled/pushed and to which branch. **Never touch `habits-app/`** (frozen archive on Beget remote, out of scope). Deploys, DB migrations, and anything touching the Beget VPS remain **never silent** — always confirm before executing, per the owner's explicit instruction.
+- **Session start** (owner greets, e.g. "привет"): run `git pull` in every submodule that has a remote (`backend`, `mobile`, `web`, `docs`, `vault`, `landing`) **and** in the superproject itself (`E:\ProjectMM`, branch `meta`, remote `origin` = `https://github.com/bragingena1998/mindandmotion.git`) before doing anything else — the owner may be switching machines (home PC vs laptop). Note: `vault/` uses the `obsidian-git` plugin with `autoPullInterval: 10` (minutes) and `autoBackupAfterFileChange: true`, so it may already be in sync if Obsidian was open there — pull anyway, it's cheap and safe.
+- **Morning report** (part of the greeting response, 2026-07-23): after pulling, give a short briefing — open/unresolved issues per platform from `vault/09-Проблемы/` (status ≠ resolved), and what was planned/left in progress from the last session's note in `vault/` (see session-summary notes, dated). Keep it scannable — bullet points per branch/platform, not a wall of text.
+- **Session end** (owner says something like "на сегодня всё"/"на этом всё"): give an **evening report** first — what was actually done this session (features, fixes, decisions), which branches/files changed, any new open issues — then write it as a dated session-summary note in `vault/` (use `vault/Templates/Итог-сессии.md`), then commit + `git push` **every** submodule with local changes made during the session (`backend`, `mobile`, `web`, `docs`, `vault`, `landing`) plus the superproject itself (bump submodule pointers, push `meta`). This is symmetric — pull and push both happen at both ends, on all tracked branches, per the owner's explicit instruction (2026-07-22).
+- This is a standing, pre-authorized instruction for `git pull`/`git push`/routine commits on the submodules + superproject listed above — no need to ask before each one. Still always state what was pulled/pushed and to which branch. **Never touch `habits-app/` or `tg-bot/`** (both frozen archives, out of scope — see below). Deploys, DB migrations, and anything touching the Beget VPS remain **never silent** — always confirm before executing, per the owner's explicit instruction.
+- These morning/evening reports are a deliberate, low-tech replacement for the Telegram-bot idea explored and abandoned 2026-07-23 — see `vault/05-TG-Bot/Текущее-состояние.md`. The owner uses Claude Code's built-in **Remote Control** (mobile app, Code tab) for working from the phone instead; no scheduled/always-on process is needed since these reports just hook into the greeting/farewell already happening at session boundaries.
 - **Before committing anything, `git status` first and eyeball the file list** — this project has twice had a `.env` file get force-staged despite `.gitignore` (once in `backend/`, caught 2026-07-22 before it was pushed). Never blind `git add -A && git commit` on a submodule without checking what's actually staged.
 - **After writing or editing any `.gitignore` (or other plain-text config file) on this machine, verify its encoding before committing** — `Write`/`Edit` have intermittently produced UTF-16 output here (root cause not fully understood; happened to `backend/.gitignore` and `tg-bot/.gitignore`, silently defeating the ignore rules and nearly causing a second secrets leak on 2026-07-22). Check with `head -c 40 <file> | xxd` — real UTF-8/ASCII has no `00` bytes between characters. If corrupted, rewrite via `cat > file <<'EOF' ... EOF` in Bash (not the Write tool), which has been reliable.
 - 2026-07-22 incident: a rename of the superproject's local branch (`landing` → `meta`) was pushed to GitHub without checking its commit history first, briefly publishing `context-perplexity/` (with real secrets) to this **public** repo. Branch was deleted by the owner within minutes and all affected secrets were rotated same-day. Lesson: **before pushing any branch that didn't already exist on the remote, check `git log -- context-perplexity` (or just `git show --stat` on the tip commit) for that branch first.** `context-perplexity/`'s history must be scrubbed (`git filter-repo`) before `meta` is ever pushed again with that folder's history intact.
@@ -35,7 +37,7 @@ Always check `git -C <submodule> branch --show-current` before trusting any doc'
 | `mobile/` | `mobile` | React Native + Expo (bare), React Navigation, Expo SQLite, AsyncStorage | 🟢 Продакшн |
 | `backend/` | `backend` | Node.js + Express + MySQL (mysql2), JWT, bcrypt, nodemailer | 🟢 Продакшн |
 | `web/` | `web` | React 18 + Vite + TypeScript, React Router, Axios, date-fns, Lucide | 🟡 Разработка |
-| `tg-bot/` | `tg-bot` | Node.js — Telegram-мост для approve-gate (старый workflow) | 🟡 Частично актуален |
+| `tg-bot/` | *(ветка удалена с GitHub)* | Node.js — Telegram-мост, заменён на Remote Control | 🗄️ Архив, не трогать |
 | `docs/` | `docs` | **Архив, deprecated** — см. выше | 🗄️ Архив |
 | `vault/` | `docs-vault` | Obsidian vault — актуальная документация | 🟢 Источник правды |
 | `landing/` | `landing` | Статический HTML/CSS/JS — сайт mindandmotion.store | 🟢 Готов |
@@ -60,12 +62,9 @@ npm run dev        # nodemon server.js (dev)
 npm run dev        # vite --port 3001 (overrides vite.config.ts's default 3002)
 npm run build      # vite build
 npm run preview    # vite preview
-
-# TG Bot (из E:\ProjectMM\tg-bot) — no package.json here; run scripts directly
-node scripts/telegram-bridge.cjs
-powershell -File scripts/watch-task.ps1
-# start-bot.cmd only covers watch-result.js, not the full pipeline — see vault/05-TG-Bot
 ```
+
+`tg-bot/` — archived 2026-07-23, do not run. See `vault/05-TG-Bot/Текущее-состояние.md`.
 
 Нет настроенных lint/test-скриптов ни в одном из подпроектов — проверять изменения запуском dev-сервера / ручным тестированием.
 
@@ -88,4 +87,4 @@ powershell -File scripts/watch-task.ps1
 - **PowerShell only** на Windows (нет `&&`, пути в кавычках, диск `E:\`)
 - **Документация:** после задачи, затрагивающей архитектуру/статус — обновить соответствующую заметку в `vault/`, не в `docs/`. Полный протокол — `vault/07-Правила/Правила-агента.md`
 - **Не создавать** `.save`, `.bak`, `*_copy` и прочие мусорные файлы в рабочих директориях
-- ⚠️ **Известная критическая проблема:** в `context-perplexity/` (не submodule, обычная папка в суперпроекте) в открытом виде лежат боевые секреты (пароль MySQL, JWT_SECRET, пароль почты, Groq API key) в 5 из 11 файлов истории переписки. Не запускать `git push`/не подключать remote к веткам суперпроекта без предварительной очистки истории. Подробности — `vault/09-Проблемы/Утечка-секретов-context-perplexity.md`
+- `context-perplexity/` — resolved 2026-07-22/23: contained real secrets in plaintext, briefly leaked via a bad branch push, cleaned from git history (`git filter-branch`) and added to `.gitignore`; all affected secrets rotated same day. Files still exist on disk (untracked, restored from backup) for historical reference. Full writeup — `vault/09-Проблемы/Утечка-секретов-context-perplexity.md`.
