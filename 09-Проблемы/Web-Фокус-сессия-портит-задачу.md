@@ -1,10 +1,11 @@
 ---
 tags: [problem, web, data-integrity]
 platform: web
-status: open
+status: resolved
 severity: critical
 discovered: 2026-07-23
 discovered-by: "аудит паритета mobile vs web (агент, Tasks)"
+resolved-date: 2026-07-23
 ---
 
 # Сохранение фокус-сессии на web может стереть остальные поля задачи
@@ -17,6 +18,6 @@ discovered-by: "аудит паритета mobile vs web (агент, Tasks)"
 - либо запрос падает (`title=undefined` как bind-параметр MySQL), тихо проглатывается пустым `catch {}`,
 - либо реально проходит и **стирает** `done`, `priority`, `folderId`, `isRecurring` задачи до дефолтных значений — включая случайную разотметку выполненной задачи и отвязку от папки/рекуррентности.
 
-## Что нужно
+## Что сделано
 
-Вызывать `POST /tasks/:id/focus` напрямую (как на mobile), либо собирать в `handleFocusSave` полный корректный payload из актуального объекта `task` перед вызовом `updateTask`. Первый вариант надёжнее и проще.
+Добавлена `addFocusSession(taskId)` в `web/src/api/tasks.ts`, вызывающая напрямую `POST /tasks/:id/focus`. `TaskCard.tsx:handleFocusSave` переведён на неё вместо общего `updateTask` — коммит `250bc4db` в `web`. Билд проверен (`npm run build` проходит).

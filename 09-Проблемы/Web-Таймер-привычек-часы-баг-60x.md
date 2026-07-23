@@ -1,10 +1,11 @@
 ---
 tags: [problem, web, data-integrity]
 platform: web
-status: open
+status: resolved
 severity: critical
 discovered: 2026-07-23
 discovered-by: "аудит паритета mobile vs web (агент, Habits)"
+resolved-date: 2026-07-23
 ---
 
 # Таймер для привычек-"Часы" искажает значение примерно в 60 раз
@@ -20,6 +21,6 @@ discovered-by: "аудит паритета mobile vs web (агент, Habits)"
 
 Есть также мёртвый дубликат с той же ошибкой: `web/src/components/HabitTimerBanner.tsx` — не используется (в `Layout.tsx` подключён только `GlobalTimerBanner.tsx`), но может запутать при будущих правках.
 
-## Что нужно
+## Что сделано
 
-Минимальный безопасный фикс — привести к часам↔секундам последовательно на входе/выходе (`existingHours * 3600` на входе, `totalSeconds / 3600` с округлением на выходе), как уже сделано правильно на mobile (`HabitsScreen.js:812-829`, `HabitTable.js:120-134`). Удалить или синхронизировать неиспользуемый `HabitTimerBanner.tsx`.
+Конвертация часы↔минуты добавлена на границе вызова в `HabitTable.tsx` (единственное место, где создаётся баннер): `existingMinutes: existingValue * 60` на входе, `onCellChange(..., Math.round((totalMinutes / 60) * 10) / 10)` на выходе (округление до 0.1ч, как на mobile). Сам `GlobalTimerBanner.tsx` не трогали — он был внутренне консистентен, баг был только в вызывающем коде. Неиспользуемый дубликат `HabitTimerBanner.tsx` (с той же ошибкой) удалён. Коммит `250bc4db` в `web`, билд проверен.
