@@ -15,7 +15,7 @@ export interface Task {
   date: string;
   time?: string;
   deadline: string | null;
-  priority: 1 | 2 | 3; // 1=low, 2=medium, 3=high
+  priority: 1 | 2 | 3; // 1=high, 2=medium, 3=low (совпадает с mobile)
   done: boolean;
   doneDate: string | null;
   focusSessions: number;
@@ -76,11 +76,11 @@ function priorityTextToNumber(raw: any): 1 | 2 | 3 {
   // Если уже число
   const num = Number(raw);
   if (num === 1 || num === 2 || num === 3) return num as 1 | 2 | 3;
-  // Если строка-текст
+  // Если строка-текст — 1=high, 3=low, совпадает с mobile
   const map: Record<string, 1 | 2 | 3> = {
-    'low': 1, '1': 1,
+    'low': 3, '1': 1,
     'medium': 2, '2': 2, 'normal': 2,
-    'high': 3, '3': 3,
+    'high': 1, '3': 3,
   };
   return map[String(raw)?.toLowerCase()] ?? 2;
 }
@@ -222,6 +222,12 @@ export async function updateTask(taskId: number, taskData: Partial<Task>): Promi
 
 export async function deleteTask(taskId: number): Promise<void> {
   await apiClient.delete(`/tasks/${taskId}`);
+}
+
+// Атомарный инкремент focus_sessions на бэкенде — не использовать updateTask() для этого,
+// т.к. это full-replace UPDATE и затрёт остальные поля задачи (см. vault/09-Проблемы/Web-Фокус-сессия-портит-задачу.md)
+export async function addFocusSession(taskId: number): Promise<void> {
+  await apiClient.post(`/tasks/${taskId}/focus`);
 }
 
 export async function fetchTotalCompletedCount(): Promise<number> {

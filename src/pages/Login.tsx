@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -9,7 +9,6 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const navigate = useNavigate()
   const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,9 +34,13 @@ export default function Login() {
         localStorage.setItem('app-auth-token', data.token)
         localStorage.setItem('app-user-email', email)
         login(data.token, data.user)
-        navigate('/', { replace: true })
+        // Полная перезагрузка, а не SPA-навигация: App.tsx вычисляет isAuthenticated
+        // только один раз при монтировании и не видит login() из AuthContext —
+        // navigate() оставлял пользователя отброшенным обратно на /login
+        // (см. vault/09-Проблемы/Web-Логин-редирект-баг.md)
+        window.location.href = '/'
       } else {
-        setError(data.message || 'Неверные учетные данные')
+        setError(data.message || data.error || 'Неверные учетные данные')
       }
     } catch (err) {
       setError('Ошибка сервера')

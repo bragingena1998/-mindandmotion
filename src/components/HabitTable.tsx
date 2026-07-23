@@ -301,12 +301,15 @@ export default function HabitTable({
                       e.stopPropagation();
                       const targetDay = isCurrentMonth ? todayDay : 1;
                       const existingValue = getCellValue(records, habit.id, year, month, targetDay);
+                      // existingValue хранится в ЧАСАХ (как везде для unit === 'Часы'), а баннер таймера
+                      // внутри работает в МИНУТАХ — конвертируем на границе в обе стороны, иначе значение
+                      // искажается примерно в 60 раз (см. vault/09-Проблемы/Web-Таймер-привычек-часы-баг-60x.md)
                       showBanner({
                         type: 'habit-timer',
                         habit: { id: habit.id, name: habit.name, plan: habit.plan, unit: habit.unit },
                         day: targetDay,
-                        existingMinutes: existingValue,
-                        onSave: (totalMinutes) => { onCellChange(habit.id, targetDay, totalMinutes); },
+                        existingMinutes: existingValue * 60,
+                        onSave: (totalMinutes) => { onCellChange(habit.id, targetDay, Math.round((totalMinutes / 60) * 10) / 10); },
                         onClose: () => {},
                       });
                     }}

@@ -35,10 +35,11 @@ function getFolderEmoji(folderName: string): string {
   return '📁';
 }
 
+// Приоритет: 1=высокий, 2=средний, 3=низкий — совпадает с mobile (см. vault/09-Проблемы/Web-Приоритет-задач-инвертирован.md)
 const PRIORITY_OPTIONS = [
-  { value: 3 as const, label: 'ВЫСОКИЙ', color: '#fb7185' },
+  { value: 1 as const, label: 'ВЫСОКИЙ', color: '#fb7185' },
   { value: 2 as const, label: 'СРЕДНИЙ', color: '#fbbf24' },
-  { value: 1 as const, label: 'НИЗКИЙ', color: '#9ca3af' },
+  { value: 3 as const, label: 'НИЗКИЙ', color: '#9ca3af' },
 ];
 
 const RECURRENCE_OPTIONS = [

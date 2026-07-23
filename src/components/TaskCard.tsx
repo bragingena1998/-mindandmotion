@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Trash2, Pencil, Plus, Check, X } from 'lucide-react';
 import type { Task, Folder, Subtask } from '../api/tasks';
-import { fetchSubtasks, createSubtask, updateSubtask, deleteSubtask, updateTask } from '../api/tasks';
+import { fetchSubtasks, createSubtask, updateSubtask, deleteSubtask, updateTask, addFocusSession } from '../api/tasks';
 import FocusModal from './FocusModal';
 
 interface TaskCardProps {
@@ -47,20 +47,21 @@ function formatTime(timeStr?: string): string {
   return timeStr.slice(0, 5); // HH:MM
 }
 
+// Приоритет: 1=высокий, 2=средний, 3=низкий — совпадает с mobile (см. vault/09-Проблемы/Web-Приоритет-задач-инвертирован.md)
 function getPriorityLabel(priority: number): string {
   switch (priority) {
-    case 1: return 'НИЗКИЙ';
+    case 1: return 'ВЫСОКИЙ';
     case 2: return 'СРЕДНИЙ';
-    case 3: return 'ВЫСОКИЙ';
+    case 3: return 'НИЗКИЙ';
     default: return 'СРЕДНИЙ';
   }
 }
 
 function getPriorityClass(priority: number): string {
   switch (priority) {
-    case 1: return 'low';
+    case 1: return 'high';
     case 2: return 'medium';
-    case 3: return 'high';
+    case 3: return 'low';
     default: return 'medium';
   }
 }
@@ -152,9 +153,8 @@ export default function TaskCard({ task, folder, onToggle, onDelete, onEdit }: T
 
   const handleFocusSave = async () => {
     try {
-      await updateTask(task.id, {
-        focusSessions: task.focusSessions + 1,
-      } as Partial<Task>);
+      // Атомарный инкремент на бэкенде — не updateTask(), чтобы не затереть остальные поля задачи
+      await addFocusSession(task.id);
       // Обновляем локальное значение для отображения
       task.focusSessions += 1;
     } catch {
