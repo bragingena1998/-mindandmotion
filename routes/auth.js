@@ -40,7 +40,7 @@ router.post('/register', async (req, res) => {
 
     const token = jwt.sign(
       { userId },
-      process.env.JWT_SECRET || 'your-secret-key-12345',
+      process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
 
@@ -80,7 +80,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.id },
-      process.env.JWT_SECRET || 'your-secret-key-12345',
+      process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
     
@@ -211,7 +211,7 @@ router.post('/verify-code', async (req, res) => {
 
     const token = jwt.sign(
       { userId },
-      process.env.JWT_SECRET || 'your-secret-key-12345',
+      process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
 
