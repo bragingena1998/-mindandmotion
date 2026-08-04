@@ -11,17 +11,10 @@
             "id": "170ad508c6d687c2",
             "type": "leaf",
             "state": {
-              "type": "canvas",
-              "state": {
-                "file": "Без названия.canvas",
-                "viewState": {
-                  "x": 0,
-                  "y": 0,
-                  "zoom": 0
-                }
-              },
-              "icon": "lucide-layout-dashboard",
-              "title": "Без названия"
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Граф"
             }
           }
         ]
